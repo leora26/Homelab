@@ -1,7 +1,7 @@
 use time::OffsetDateTime;
 use uuid::Uuid;
 use serde::{Serialize, Deserialize};
-
+use sqlx::FromRow;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, sqlx::Type)]
 pub enum ActionLogType {
@@ -13,10 +13,10 @@ pub enum ActionLogType {
     AccountCompletion
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct ActionLog {
     pub id: Uuid,
-    pub user_email: String,
+    pub user_id: Uuid,
     pub log_type: ActionLogType,
     pub file_id: Uuid,
     pub folder_id: Uuid,

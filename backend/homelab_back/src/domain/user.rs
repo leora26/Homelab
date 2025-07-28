@@ -1,6 +1,7 @@
 use uuid::Uuid;
 use time::OffsetDateTime;
 use serde::{Serialize, Deserialize};
+use sqlx::FromRow;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, sqlx::Type)]
 pub enum Role {
@@ -8,7 +9,7 @@ pub enum Role {
     Admin
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, FromRow)]
 pub struct User {
     pub id: Uuid,
     pub email: String,

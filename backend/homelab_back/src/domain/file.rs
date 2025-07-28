@@ -1,5 +1,8 @@
+use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
 use uuid::Uuid;
 
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, sqlx::Type)]
 pub enum FileType {
     Text,
     Image,
@@ -7,6 +10,7 @@ pub enum FileType {
     Unknown
 }
 
+#[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct File {
     pub id: Uuid,
     pub name: String,
