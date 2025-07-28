@@ -1,0 +1,10 @@
+services:
+  homelab-db:
+    image: postgres:16.1-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: 'homelab-db'
+      POSTGRES_USER: 'homelab'
+      POSTGRES_PASSWORD: 'homelab'
+    ports:
+      - '5432:5432'
