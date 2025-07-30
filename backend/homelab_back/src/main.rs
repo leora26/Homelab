@@ -1,4 +1,7 @@
 pub mod domain;
+pub mod db;
+pub mod service;
+pub mod handler;
 
 use std::env;
 use actix_web::{get, web, App, HttpServer, Responder};
@@ -35,7 +38,11 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(AppState { db_pool: pool.clone() }))
-            .service(hello)
+            .service(
+                web::scope("/api")
+                .configure(handler::user_handler::config
+                )
+            )
     })
         .bind(("127.0.0.1", 8080))?
         .run()
