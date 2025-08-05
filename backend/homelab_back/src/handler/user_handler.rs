@@ -1,12 +1,14 @@
-use actix_web::{get, web, HttpResponse, Responder};
+use actix_web::{get, post, web, App, HttpResponse, Responder};
 use crate::AppState;
 use crate::service::user_service;
 use tracing;
+use tracing_subscriber::fmt::format;
+use crate::data::create_user_command::CreateUserCommand;
 
 #[get("/users/{email}")]
-pub async fn get_user_by_email (
+pub async fn get_user_by_email(
     app_state: web::Data<AppState>,
-    path: web::Path<String>
+    path: web::Path<String>,
 ) -> impl Responder {
     let email = path.into_inner();
 
@@ -20,6 +22,64 @@ pub async fn get_user_by_email (
     }
 }
 
-pub fn config (cfg: &mut web::ServiceConfig) {
+#[get("/users")]
+pub async fn get_users(
+    app_state: web::Data<AppState>
+) -> impl Responder {
+    match user_service::get_all_users(&app_state.db_pool).await {
+        Ok(users) => {
+            if users.is_empty() {
+                HttpResponse::NotFound().body("No users were found in the system")
+            } else {
+                HttpResponse::Ok().json(users)
+            }
+        },
+        Err(e) => {
+            tracing::error!("Failed to fetch users: {:?}", e);
+            HttpResponse::InternalServerError().finish()
+        }
+    }
+}
+
+#[post("/users")]
+pub async fn create_user (
+    app_state: web::Data<AppState>,
+    req: web::Json<CreateUserCommand>
+) -> impl Responder {
+
+    let command = CreateUserCommand {
+        email: req.email.clone(),
+        password: hash_password(&req.password),
+        role: req.role.clone(),
+    };
+
+    match user_service::create_user(&app_state.db_pool, &command).await {
+        Ok(user) => {
+            HttpResponse::Created().json(user)
+        },
+        Err(e) => {
+            if let Some(db_err) = e.as_database_error() {
+                if db_err.is_unique_violation () {
+                    return HttpResponse::Conflict().body("Some of the database constraints were failed")
+                }
+            }
+
+            tracing::error!("Failed to create user: {:?}", e);
+            HttpResponse::InternalServerError().finish()
+        }
+    }
+
+}
+
+
+
+pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(get_user_by_email);
+    cfg.service(get_users);
+    cfg.service(create_user);
+}
+
+
+fn hash_password(password: &str) -> String {
+    format!("hashed_{}", password)
 }

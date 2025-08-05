@@ -2,6 +2,7 @@ pub mod domain;
 pub mod db;
 pub mod service;
 pub mod handler;
+mod data;
 
 use std::env;
 use actix_web::{get, web, App, HttpServer, Responder};

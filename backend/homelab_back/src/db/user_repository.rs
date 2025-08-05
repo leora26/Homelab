@@ -1,7 +1,10 @@
 use sqlx::PgPool;
-use crate::domain::user::User;
+use crate::data::create_user_command::CreateUserCommand;
+use crate::domain::user::{Role, User};
+use uuid::Uuid;
 
-pub async fn get_by_email (pool: &PgPool, email: &str) -> Result<Option<User>, sqlx::Error> {
+pub async fn get_by_email (pool: &PgPool, email: &str)
+    -> Result<Option<User>, sqlx::Error> {
     let user = sqlx::query_as!(
         User,
         "SELECT id, email, password_hash, created_at, role as \"role: _\" FROM users WHERE email = $1",
@@ -12,3 +15,35 @@ pub async fn get_by_email (pool: &PgPool, email: &str) -> Result<Option<User>, s
 
     Ok(user)
 }
+
+pub async fn get_all_users (pool: &PgPool)
+    -> Result<Vec<User>, sqlx::Error> {
+    let users = sqlx::query_as!(
+        User,
+        "SELECT id, email, password_hash, created_at, role as \"role: _\" FROM users"
+    )
+        .fetch_all(pool)
+        .await?;
+
+    Ok(users)
+}
+
+pub async fn create_user (pool: &PgPool, data: &CreateUserCommand)
+    -> Result<User, sqlx::Error> {
+
+    let user_id = Uuid::new_v4();
+
+    let user = sqlx::query_as!(
+        User,
+        "INSERT INTO users (id, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id, email, password_hash, created_at, role as \"role: _\"",
+        user_id,
+        &data.email,
+        &data.password,
+        &data.role as &Role
+    )
+        .fetch_one(pool)
+        .await?;
+
+    Ok(user)
+}
+
