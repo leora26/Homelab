@@ -41,8 +41,8 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(AppState { db_pool: pool.clone() }))
             .service(
                 web::scope("/api")
-                .configure(handler::user_handler::config
-                )
+                .configure(handler::user_handler::config)
+                .configure(handler::folder_handler::config)
             )
     })
         .bind(("127.0.0.1", 8080))?
