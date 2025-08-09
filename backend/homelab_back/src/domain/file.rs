@@ -15,5 +15,6 @@ pub struct File {
     pub id: Uuid,
     pub name: String,
     pub owner_id: Uuid,
+    pub parent_folder_id: Option<Uuid>,
     pub file_type: FileType
 }

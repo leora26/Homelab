@@ -34,7 +34,8 @@ CREATE TABLE files
     id        UUID PRIMARY KEY,
     name      TEXT      NOT NULL,
     owner_id  UUID      NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-    file_type file_type NOT NULL
+    file_type file_type NOT NULL,
+    parent_folder_id UUID REFERENCES folders (id) ON DELETE CASCADE
 );
 
 CREATE TYPE action_log_type AS ENUM (
