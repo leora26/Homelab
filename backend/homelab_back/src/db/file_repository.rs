@@ -28,3 +28,12 @@ pub async fn get_files_by_folder_id (pool: &PgPool, folder_id: &Uuid)
 
     Ok(files)
 }
+
+pub async fn delete_file_by_id (pool: &PgPool, file_id: &Uuid) 
+-> Result<(), sqlx::Error> {
+    sqlx::query!("DELETE FROM files WHERE id = $1", file_id)
+        .execute(pool)
+        .await?;
+    
+    Ok(())
+}

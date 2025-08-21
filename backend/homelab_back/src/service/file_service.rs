@@ -12,3 +12,8 @@ pub async fn get_files_by_folder(pool: &PgPool, folder_id: &Uuid)
 -> Result<Vec<File>, sqlx::Error> {
     file_repository::get_files_by_folder_id(pool, folder_id).await
 }
+
+pub async fn delete_file (pool: &PgPool, file_id: &Uuid)
+-> Result<(), sqlx::Error> {
+    file_repository::delete_file_by_id(pool, file_id).await
+}

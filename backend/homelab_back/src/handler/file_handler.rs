@@ -1,4 +1,4 @@
-use actix_web::{get, web, HttpResponse, Responder};
+use actix_web::{delete, get, web, HttpResponse, Responder};
 use tracing_subscriber::fmt::format;
 use uuid::Uuid;
 use crate::AppState;
@@ -10,7 +10,12 @@ pub async fn get_file(
     path: web::Path<String>
 )
 -> impl Responder {
-    let file_id = Uuid::parse_str(&path.into_inner()).unwrap();
+    let file_id = match Uuid::parse_str(&path.into_inner()) {
+        Ok(id) => id,
+        Err(_) => {
+            return HttpResponse::BadRequest().body("Invalid folder ID format");
+        }
+    };
 
     match file_service::get_file_by_id(&app_state.db_pool, &file_id).await {
         Ok(Some(file)) => HttpResponse::Ok().json(file),
@@ -28,7 +33,12 @@ pub async fn fetch_files (
     path: web::Path<String>
 )
 -> impl Responder {
-    let folder_id = Uuid::parse_str(&path.into_inner()).unwrap();
+    let folder_id = match Uuid::parse_str(&path.into_inner()) {
+        Ok(id) => id,
+        Err(_) => {
+            return HttpResponse::BadRequest().body("Invalid folder ID format");
+        }
+    };
 
     match file_service::get_files_by_folder(&app_state.db_pool, &folder_id).await {
         Ok(files) => {
@@ -43,6 +53,27 @@ pub async fn fetch_files (
             HttpResponse::InternalServerError().finish()
         }
 
+    }
+}
+
+#[delete("/files/{id}")]
+pub async fn delete_file (
+    app_state: web::Data<AppState>,
+    path: web::Path<String>
+) -> impl Responder {
+    let file_id = match Uuid::parse_str(&path.into_inner()) {
+        Ok(id) => id,
+        Err(_) => {
+            return HttpResponse::BadRequest().body("Invalid folder ID format");
+        }
+    };
+    
+    match file_service::delete_file(&app_state.db_pool, &file_id).await { 
+        Ok(_) => HttpResponse::NoContent().finish(),
+        Err(e) => {
+            tracing::error!("Failed to delete a file: {:?}", e);
+            HttpResponse::InternalServerError().finish()
+        }
     }
 }
 
