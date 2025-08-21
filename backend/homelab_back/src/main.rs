@@ -10,11 +10,6 @@ use dotenvy::dotenv;
 use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
 
-#[get("/")]
-async fn hello() -> impl Responder {
-    "Hello, your server is running!"
-}
-
 pub struct AppState {
     db_pool: PgPool,
 }

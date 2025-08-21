@@ -15,3 +15,6 @@ pub async fn find_all_children_folder (pool: &PgPool, folder_id: &Uuid) -> Resul
     folder_repository::find_all_children_folders(pool, folder_id).await
 }
 
+pub async fn delete_folder (pool: &PgPool, folder_id: &Uuid) -> Result<(), sqlx::Error> {
+    folder_repository::delete_folder_by_id(pool, folder_id).await
+}

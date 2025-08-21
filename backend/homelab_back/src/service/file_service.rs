@@ -4,7 +4,7 @@ use crate::db::file_repository;
 use crate::domain::file::File;
 
 pub async fn get_file_by_id (pool: &PgPool, file_id: &Uuid)
--> Result<Option<File>, sqlx::Error>{
+                             -> Result<Option<File>, sqlx::Error>{
     file_repository::get_file_by_id(pool, file_id).await
 }
 

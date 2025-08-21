@@ -41,3 +41,13 @@ pub async fn find_all_children_folders (pool: &PgPool, folder_id: &Uuid)
 
     Ok(folders)
 }
+
+
+pub async fn delete_folder_by_id(pool: &PgPool, folder_id: &Uuid) 
+    -> Result<(), sqlx::Error> {
+    sqlx::query!("DELETE FROM folders WHERE id = $1", folder_id)
+        .execute(pool)
+        .await?;
+
+    Ok(())    
+} 
