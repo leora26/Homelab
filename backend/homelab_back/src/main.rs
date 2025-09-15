@@ -3,6 +3,7 @@ pub mod db;
 pub mod service;
 pub mod handler;
 mod data;
+mod exception;
 
 use std::env;
 use actix_web::{get, web, App, HttpServer, Responder};

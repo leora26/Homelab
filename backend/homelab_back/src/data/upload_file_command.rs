@@ -5,5 +5,6 @@ use crate::data::file_data::FileData;
 #[derive(Debug, Deserialize)]
 pub struct UploadFileCommand {
     pub destination_folder_id: Uuid,
-    pub file: FileData
+    pub file: FileData,
+    pub owner_id: Uuid
 }
