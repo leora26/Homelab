@@ -81,4 +81,5 @@ pub async fn delete_file (
 pub fn config (c: &mut web::ServiceConfig) {
     c.service(fetch_files);
     c.service(get_file);
+    c.service(delete_file);
 }
