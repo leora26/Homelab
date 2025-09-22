@@ -1,7 +1,8 @@
-use actix_web::{delete, get, web, HttpResponse, Responder};
+use actix_web::{delete, get, post, web, HttpResponse, Responder};
 use tracing_subscriber::fmt::format;
 use uuid::Uuid;
 use crate::AppState;
+use crate::data::upload_file_command::UploadFileCommand;
 use crate::service::file_service;
 
 #[get("/files/{id}")]
@@ -77,9 +78,28 @@ pub async fn delete_file (
     }
 }
 
+#[post("/files")]
+pub async fn upload_file (
+    app_state: web::Data<AppState>,
+    req: web::Json<UploadFileCommand>
+) -> impl Responder {
+    let command = req.into_inner();
+
+    match file_service::upload_file(&app_state.db_pool, command).await {
+        Ok(file) => {
+            HttpResponse::Created().json(file)
+        },
+        Err(e) => {
+            HttpResponse::InternalServerError().body("Failed while creating a file")
+        }
+    }
+
+}
+
 
 pub fn config (c: &mut web::ServiceConfig) {
     c.service(fetch_files);
     c.service(get_file);
     c.service(delete_file);
+    c.service(upload_file);
 }

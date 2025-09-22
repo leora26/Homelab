@@ -44,4 +44,16 @@ impl File {
     pub fn get_file_type(name: &str) -> FileType {
         FileType::from_filename(name)
     }
+
+    pub fn new(id: Uuid, name: String, owner_id: Uuid, parent_folder_id: Uuid) -> File {
+        let file_type: FileType = File::get_file_type(&name);
+
+        File {
+            id,
+            name,
+            owner_id,
+            parent_folder_id,
+            file_type,
+        }
+    }
 }

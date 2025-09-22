@@ -24,3 +24,16 @@ pub struct User {
 
     pub role: Role
 }
+
+impl User {
+    pub fn new(id: Uuid, email: String, password: String, role: Role) -> User {
+        User {
+            id,
+            email,
+            //TODO: Implement bcrypt here or something
+            password_hash: password,
+            created_at: OffsetDateTime::now_utc(),
+            role
+        }
+    }
+}

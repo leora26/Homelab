@@ -47,13 +47,9 @@ pub async fn create_user (
     req: web::Json<CreateUserCommand>
 ) -> impl Responder {
 
-    let command = CreateUserCommand {
-        email: req.email.clone(),
-        password: hash_password(&req.password),
-        role: req.role.clone(),
-    };
+    let command = req.into_inner();
 
-    match user_service::create_user(&app_state.db_pool, &command).await {
+    match user_service::create_user(&app_state.db_pool, command).await {
         Ok(user) => {
             HttpResponse::Created().json(user)
         },
@@ -65,7 +61,7 @@ pub async fn create_user (
             }
 
             tracing::error!("Failed to create user: {:?}", e);
-            HttpResponse::InternalServerError().finish()
+            HttpResponse::InternalServerError().body(format!("{}", e))
         }
     }
 

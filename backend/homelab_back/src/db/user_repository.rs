@@ -28,7 +28,7 @@ pub async fn get_all_users (pool: &PgPool)
     Ok(users)
 }
 
-pub async fn create_user (pool: &PgPool, data: &CreateUserCommand)
+pub async fn create_user (pool: &PgPool, data: User)
     -> Result<User, sqlx::Error> {
 
     let user_id = Uuid::new_v4();
@@ -36,10 +36,10 @@ pub async fn create_user (pool: &PgPool, data: &CreateUserCommand)
     let user = sqlx::query_as!(
         User,
         "INSERT INTO users (id, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id, email, password_hash, created_at, role as \"role: _\"",
-        user_id,
-        &data.email,
-        &data.password,
-        &data.role as &Role
+        user.id,
+        user.email,
+        user.password_hash,
+        user.role as Role
     )
         .fetch_one(pool)
         .await?;
@@ -47,3 +47,17 @@ pub async fn create_user (pool: &PgPool, data: &CreateUserCommand)
     Ok(user)
 }
 
+
+
+pub async fn get_user_by_id (pool: &PgPool, user_id: &Uuid)
+-> Result<Option<User>, sqlx::Error> {
+    let user = sqlx::query_as!(
+        User,
+        "SELECT id, email, created_at, role FROM users WHERE id = $1",
+        user_id
+    )
+        .fetch_optional(pool)
+        .await?;
+
+    Ok(user)
+}
