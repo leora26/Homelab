@@ -27,8 +27,7 @@ impl FolderServiceImpl {
     #[async_recursion]
     async fn get_parent_folder_name(&self, f_id: &Uuid) -> Result<String, DataError> {
         let f = self.folder_repo.get_by_id(f_id)
-            .await
-            .map_err(DataError::DatabaseError)?
+            .await?
             .ok_or_else(|| DataError::EntityNotFoundException("Folder".to_string()))?;
 
         if let Some(parent_id) = f.parent_folder_id {
@@ -40,6 +39,7 @@ impl FolderServiceImpl {
     }
 }
 
+#[async_trait]
 impl FolderService for FolderServiceImpl {
     async fn get_root(&self, user_id: &Uuid) -> Result<Option<Folder>, DataError> {
         self.folder_repo.get_root(user_id).await

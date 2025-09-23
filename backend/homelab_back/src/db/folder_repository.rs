@@ -22,6 +22,7 @@ impl FolderRepositoryImpl {
     }
 }
 
+#[async_trait]
 impl FolderRepository for FolderRepositoryImpl {
     async fn get_root(&self, user_id: &Uuid) -> Result<Option<Folder>, DataError> {
         let folder = sqlx::query_as!(

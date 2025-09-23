@@ -2,7 +2,6 @@ use actix_web::{delete, get, post, web, HttpResponse, Responder};
 use uuid::Uuid;
 use crate::AppState;
 use crate::data::upload_file_command::UploadFileCommand;
-use crate::service::file_service;
 
 #[get("/files/{id}")]
 pub async fn get_file(
@@ -17,7 +16,7 @@ pub async fn get_file(
         }
     };
 
-    match file_service::get_file_by_id(&app_state.db_pool, &file_id).await {
+    match app_state.file_service.get_by_id(&file_id).await {
         Ok(Some(file)) => HttpResponse::Ok().json(file),
         Ok(None) => HttpResponse::NotFound().body(format!("Was not able to find file with a given id: {}", file_id)),
         Err(e) => {
@@ -40,7 +39,7 @@ pub async fn fetch_files (
         }
     };
 
-    match file_service::get_files_by_folder(&app_state.db_pool, &folder_id).await {
+    match app_state.file_service.get_by_folder(&folder_id).await {
         Ok(files) => {
             if files.is_empty() {
                 HttpResponse::NotFound().body(format!("There were no files found for the given folder with id: {}", folder_id))
@@ -68,7 +67,7 @@ pub async fn delete_file (
         }
     };
     
-    match file_service::delete_file(&app_state.db_pool, &file_id).await { 
+    match app_state.file_service.delete(&file_id).await {
         Ok(_) => HttpResponse::NoContent().finish(),
         Err(e) => {
             tracing::error!("Failed to delete a file: {:?}", e);
@@ -84,7 +83,7 @@ pub async fn upload_file (
 ) -> impl Responder {
     let command = req.into_inner();
 
-    match file_service::upload_file(&app_state.db_pool, command).await {
+    match app_state.file_service.upload(command).await {
         Ok(file) => {
             HttpResponse::Created().json(file)
         },

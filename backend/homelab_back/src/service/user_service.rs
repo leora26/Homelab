@@ -24,6 +24,7 @@ impl UserServiceImpl {
     }
 }
 
+#[async_trait]
 impl UserService for UserServiceImpl {
     async fn get_by_email(&self, email: &str) -> Result<Option<User>, DataError> {
         self.user_repo.get_by_email(email).await

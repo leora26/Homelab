@@ -23,6 +23,7 @@ impl UserRepositoryImpl {
     }
 }
 
+#[async_trait]
 impl UserRepository for UserRepositoryImpl {
     async fn get_by_email(&self, email: &str) -> Result<Option<User>, DataError> {
         let user = sqlx::query_as!(

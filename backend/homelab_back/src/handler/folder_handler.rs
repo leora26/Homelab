@@ -1,4 +1,3 @@
-use crate::service::folder_service;
 use crate::AppState;
 use actix_web::{delete, get, web, HttpResponse, Responder};
 use uuid::Uuid;
@@ -14,7 +13,7 @@ pub async fn get_foot_folder(
             return HttpResponse::BadRequest().body("Invalid folder ID format");
         }
     };
-    match folder_service::find_root_folder(&app_state.db_pool, &user_id).await {
+    match app_state.folder_service.get_root(&user_id).await {
         Ok(Some(folder)) => HttpResponse::Ok().json(folder),
         Ok(None) => HttpResponse::NotFound().body(format!(
             "No root folder was found for user with id: {}",
@@ -38,7 +37,7 @@ pub async fn get_folder_by_id(
             return HttpResponse::BadRequest().body("Invalid folder ID format");
         }
     };
-    match folder_service::find_folder_by_id(&app_state.db_pool, &folder_id).await {
+    match app_state.folder_service.get_by_id(&folder_id).await {
         Ok(Some(folder)) => HttpResponse::Ok().json(folder),
         Ok(None) => HttpResponse::NotFound().body(format!(
             "Could not find record of folder with an id of {}",
@@ -63,7 +62,7 @@ pub async fn get_all_subfolders(
         }
     };
 
-    match folder_service::find_all_children_folder(&app_state.db_pool, &folder_id).await {
+    match app_state.folder_service.get_children_by_id(&folder_id).await {
         Ok(folders) => {
             if folders.is_empty() {
                 HttpResponse::NotFound().body("No subfolders were found")
@@ -89,7 +88,7 @@ pub async fn delete_folder(
             return HttpResponse::BadRequest().body("Invalid folder ID format");
         }
     };
-    match folder_service::delete_folder(&app_state.db_pool, &folder_id).await {
+    match app_state.folder_service.delete(&folder_id).await {
         Ok(_) => HttpResponse::NoContent().finish(),
         Err(e) => {
             tracing::error!("Failed to delete a folder: {:?}", e);
