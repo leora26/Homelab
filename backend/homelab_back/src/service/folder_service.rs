@@ -1,45 +1,64 @@
+use std::sync::Arc;
 use async_recursion::async_recursion;
-use sqlx::PgPool;
+use async_trait::async_trait;
 use uuid::Uuid;
-use crate::db::folder_repository;
+use crate::db::folder_repository::FolderRepository;
 use crate::domain::folder::Folder;
 use crate::exception::data_error::DataError;
 
-pub async fn find_root_folder (pool: &PgPool, user_id: &Uuid) -> Result<Option<Folder>, sqlx::Error> {
-    folder_repository::find_root_folder(user_id, pool).await
+#[async_trait]
+pub trait FolderService: Send + Sync {
+    async fn get_root(&self, user_id: &Uuid) -> Result<Option<Folder>, DataError>;
+    async fn get_by_id(&self, folder_id: &Uuid) -> Result<Option<Folder>, DataError>;
+    async fn get_children_by_id(&self, folder_id: &Uuid) -> Result<Vec<Folder>, DataError>;
+    async fn delete(&self, folder_id: &Uuid) -> Result<(), DataError>;
+    async fn get_folder_path(&self, folder_id: &Uuid) -> Result<String, DataError>;
 }
 
-pub async fn find_folder_by_id (pool: &PgPool, folder_id: &Uuid) -> Result<Option<Folder>, sqlx::Error> {
-    folder_repository::find_folder_by_id(folder_id, pool).await
+pub struct FolderServiceImpl {
+    folder_repo: Arc<dyn FolderRepository>,
 }
 
-pub async fn find_all_children_folder (pool: &PgPool, folder_id: &Uuid) -> Result<Vec<Folder>, sqlx::Error> {
-    folder_repository::find_all_children_folders(pool, folder_id).await
+impl FolderServiceImpl {
+    pub fn new(folder_repo: Arc<dyn FolderRepository>) -> Self {
+        Self { folder_repo }
+    }
+
+    #[async_recursion]
+    async fn get_parent_folder_name(&self, f_id: &Uuid) -> Result<String, DataError> {
+        let f = self.folder_repo.get_by_id(f_id)
+            .await
+            .map_err(DataError::DatabaseError)?
+            .ok_or_else(|| DataError::EntityNotFoundException("Folder".to_string()))?;
+
+        if let Some(parent_id) = f.parent_folder_id {
+            let parent_path = self.get_parent_folder_name(&parent_id).await?;
+            Ok(format!("{}/{}", parent_path, f.name))
+        } else {
+            Ok(f.name)
+        }
+    }
 }
 
-pub async fn delete_folder (pool: &PgPool, folder_id: &Uuid) -> Result<(), sqlx::Error> {
-    folder_repository::delete_folder_by_id(pool, folder_id).await
-}
+impl FolderService for FolderServiceImpl {
+    async fn get_root(&self, user_id: &Uuid) -> Result<Option<Folder>, DataError> {
+        self.folder_repo.get_root(user_id).await
+    }
 
-pub async fn find_path_to_folder(folder_id: &Uuid, pool: &PgPool) -> Result<String, DataError> {
-    let path = get_parent_folder_name(folder_id, pool).await?;
-    Ok(path)
-}
+    async fn get_by_id(&self, folder_id: &Uuid) -> Result<Option<Folder>, DataError> {
+        self.folder_repo.get_by_id(folder_id).await
+    }
 
-#[async_recursion]
-async fn get_parent_folder_name (f_id: &Uuid, p: &PgPool) -> Result<String, DataError> {
-    let f = folder_repository::find_folder_by_id(f_id, p)
-        .await
-        .map_err(DataError::DatabaseError)?
-        .ok_or_else(|| DataError::EntityNotFoundException("Folder".to_string()))?;
+    async fn get_children_by_id(&self, folder_id: &Uuid) -> Result<Vec<Folder>, DataError> {
+        self.folder_repo.get_children_by_id(folder_id).await
+    }
 
-    if let Some(parent_id) = f.parent_folder_id{
+    async fn delete(&self, folder_id: &Uuid) -> Result<(), DataError> {
+        self.folder_repo.delete_by_id(folder_id).await
+    }
 
-        let parent_path = get_parent_folder_name(&parent_id, p).await?;
-
-        Ok(format!("{}/{}", parent_path, f.name))
-
-    } else {
-        Ok(f.name)
+    async fn get_folder_path(&self, folder_id: &Uuid) -> Result<String, DataError> {
+        let path = self.get_parent_folder_name(folder_id).await?;
+        Ok(path)
     }
 }

@@ -1,46 +1,66 @@
+use async_trait::async_trait;
 use sqlx::PgPool;
 use uuid::Uuid;
 use crate::domain::file::File;
+use crate::exception::data_error::DataError;
 
-pub async fn get_file_by_id(pool: &PgPool, file_id: &Uuid)
-                            -> Result<Option<File>, sqlx::Error> {
-    let file = sqlx::query_as!(
+#[async_trait]
+pub trait FileRepository: Send + Sync {
+    async fn get_by_id(&self, file_id: &Uuid) -> Result<Option<File>, DataError>;
+    async fn get_by_folder_id(&self, folder_id: &Uuid) -> Result<Vec<File>, DataError>;
+    async fn delete_by_id(&self, file_id: &Uuid) -> Result<(), DataError>;
+    async fn upload(&self, file: File) -> Result<File, DataError>;
+}
+
+pub struct FileRepositoryImpl {
+    pool: PgPool,
+}
+
+impl FileRepositoryImpl {
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
+    }
+}
+
+#[async_trait]
+impl FileRepository for FileRepositoryImpl {
+    async fn get_by_id(&self, file_id: &Uuid) -> Result<Option<File>, DataError> {
+        let file = sqlx::query_as!(
         File,
         "SELECT id, name, owner_id, parent_folder_id, file_type as \"file_type: _\" FROM files WHERE id = $1",
         file_id
     )
-        .fetch_optional(pool)
-        .await?;
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| DataError::DatabaseError(e))?;
 
-    Ok(file)
-}
+        Ok(file)
+    }
 
-
-pub async fn get_files_by_folder_id(pool: &PgPool, folder_id: &Uuid)
-                                    -> Result<Vec<File>, sqlx::Error> {
-    let files = sqlx::query_as!(
+    async fn get_by_folder_id(&self, folder_id: &Uuid) -> Result<Vec<File>, DataError> {
+        let files = sqlx::query_as!(
         File,
         "SELECT id, name, owner_id, parent_folder_id, file_type as \"file_type: _\" FROM files WHERE parent_folder_id = $1",
         folder_id
     )
-        .fetch_all(pool)
-        .await?;
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| DataError::DatabaseError(e))?;
 
-    Ok(files)
-}
+        Ok(files)
+    }
 
-pub async fn delete_file_by_id(pool: &PgPool, file_id: &Uuid)
-                               -> Result<(), sqlx::Error> {
-    sqlx::query!("DELETE FROM files WHERE id = $1", file_id)
-        .execute(pool)
-        .await?;
+    async fn delete_by_id(&self, file_id: &Uuid) -> Result<(), DataError> {
+        sqlx::query!("DELETE FROM files WHERE id = $1", file_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| DataError::DatabaseError(e))?;
 
-    Ok(())
-}
+        Ok(())
+    }
 
-pub async fn upload_file(file: File, pool: &PgPool)
-                         -> Result<File, sqlx::Error> {
-    let file = sqlx::query_as!(
+    async fn upload(&self, file: File) -> Result<File, DataError> {
+        let file = sqlx::query_as!(
         File,
         "INSERT INTO files (id, name, owner_id, parent_folder_id, file_type) \
         VALUES ($1,$2, $3, $4, $5::file_type) RETURNING id, name, owner_id,parent_folder_id, file_type as \"file_type: _\"",
@@ -50,8 +70,10 @@ pub async fn upload_file(file: File, pool: &PgPool)
         file.parent_folder_id,
         file.file_type as _
     )
-        .fetch_one(pool)
-        .await?;
+            .fetch_one(&self.pool)
+            .await
+            .map_err(|e| DataError::DatabaseError(e))?;
 
-    Ok(file)
+        Ok(file)
+    }
 }

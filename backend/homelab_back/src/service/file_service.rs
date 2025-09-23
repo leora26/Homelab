@@ -1,56 +1,73 @@
-use sqlx::PgPool;
+use std::sync::Arc;
+use async_trait::async_trait;
 use uuid::Uuid;
 use crate::data::upload_file_command::UploadFileCommand;
-use crate::db::file_repository;
+use crate::db::file_repository::FileRepository;
 use crate::domain::file::{File};
 use crate::domain::folder::Folder;
 use crate::domain::user::User;
 use crate::exception::data_error::{DataError};
-use crate::service::{folder_service, io_service, user_service};
+use crate::service::folder_service::FolderService;
+use crate::service::io_service::IOService;
+use crate::service::user_service::UserService;
 
-pub async fn get_file_by_id(pool: &PgPool, file_id: &Uuid)
-                            -> Result<Option<File>, sqlx::Error> {
-    file_repository::get_file_by_id(pool, file_id).await
+#[async_trait]
+pub trait FileService: Send + Sync {
+    async fn get_by_id(&self, file_id: &Uuid) -> Result<Option<File>, DataError>;
+    async fn get_by_folder(&self, folder_id: &Uuid) -> Result<Vec<File>, DataError>;
+    async fn delete(&self, file_id: &Uuid) -> Result<(), DataError>;
+    async fn upload(&self, command: UploadFileCommand) -> Result<File, DataError>;
 }
 
-pub async fn get_files_by_folder(pool: &PgPool, folder_id: &Uuid)
-                                 -> Result<Vec<File>, sqlx::Error> {
-    file_repository::get_files_by_folder_id(pool, folder_id).await
+pub struct FileServiceImpl {
+    file_repo: Arc<dyn FileRepository>,
+    folder_service: Arc<dyn FolderService>,
+    user_service: Arc<dyn UserService>,
+    io_service: Arc<dyn IOService>,
 }
 
-pub async fn delete_file(pool: &PgPool, file_id: &Uuid)
-                         -> Result<(), sqlx::Error> {
-    file_repository::delete_file_by_id(pool, file_id).await
+impl FileServiceImpl {
+    pub fn new(
+        file_repo: Arc<dyn FileRepository>,
+        folder_service: Arc<dyn FolderService>,
+        user_service: Arc<dyn UserService>,
+        io_service: Arc<dyn IOService>,
+    ) -> Self {
+        Self {
+            file_repo,
+            folder_service,
+            user_service,
+            io_service,
+        }
+    }
 }
 
-pub async fn upload_file(pool: &PgPool, command: UploadFileCommand)
-                         -> Result<File, DataError> {
-    let folder: Folder = match folder_service::find_folder_by_id(pool, &command.destination_folder_id).await {
-        Ok(Some(folder)) => folder,
-        Ok(None) => {
-            return Err(DataError::EntityNotFoundException("Folder".to_string()));
-        }
-        Err(e) => {
-            return Err(DataError::DatabaseError(e));
-        }
-    };
+#[async_trait]
+impl FileService for FileServiceImpl {
+    async fn get_by_id(&self, file_id: &Uuid) -> Result<Option<File>, DataError> {
+        self.file_repo.get_by_id(file_id).await
+    }
 
-    let user: User = match user_service::get_user_by_id(pool, &command.owner_id).await {
-        Ok(Some(user)) => user,
-        Ok(None) => {
-            return Err(DataError::EntityNotFoundException("User".to_string()));
-        }
-        Err(e) => {
-            return Err(DataError::DatabaseError(e))
-        }
-    };
+    async fn get_by_folder(&self, folder_id: &Uuid) -> Result<Vec<File>, DataError> {
+        self.file_repo.get_by_folder_id(folder_id).await
+    }
 
-    let f = File::new(Uuid::new_v4(), command.file.name, user.id, folder.id);
+    async fn delete(&self, file_id: &Uuid) -> Result<(), DataError> {
+        self.file_repo.delete_by_id(file_id).await
+    }
 
-    let _ = io_service::upload_file_to_disk(&command.file.data, &f, pool).await;
+    async fn upload(&self, command: UploadFileCommand) -> Result<File, DataError> {
+        let folder: Folder = self.folder_service.get_by_id(&command.destination_folder_id).await?
+            .ok_or_else(|| DataError::EntityNotFoundException("Folder".to_string()))?;
 
-    match file_repository::upload_file(f, pool).await {
-        Ok(file) => Ok(file),
-        Err(e) => Err(DataError::DatabaseError(e))
+        let user: User = self.user_service.get_by_id(&command.owner_id).await?
+            .ok_or_else(|| DataError::EntityNotFoundException("User".to_string()))?;
+
+
+        let f = File::new(Uuid::new_v4(), command.file.name, user.id, folder.id);
+
+        let _ = self.io_service.upload_file_to_disk(&command.file.data, &f).await;
+
+        self.file_repo.upload(f).await
     }
 }

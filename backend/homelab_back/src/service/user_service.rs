@@ -1,23 +1,45 @@
-use sqlx::PgPool;
+use std::sync::Arc;
+use async_trait::async_trait;
 use uuid::Uuid;
 use crate::data::create_user_command::CreateUserCommand;
 use crate::domain::user::User;
-use crate::db::user_repository;
+use crate::db::user_repository::UserRepository;
+use crate::exception::data_error::DataError;
 
-pub async fn get_user_by_email(pool: &PgPool, email: &str) -> Result<Option<User>, sqlx::Error> {
-    user_repository::get_by_email(pool, email).await
+#[async_trait]
+pub trait UserService: Send + Sync {
+    async fn get_by_email(&self, email: &str) -> Result<Option<User>, DataError>;
+    async fn get_all(&self) -> Result<Vec<User>, DataError>;
+    async fn create(&self, command: CreateUserCommand) -> Result<User, DataError>;
+    async fn get_by_id(&self, id: &Uuid) -> Result<Option<User>, DataError>;
 }
 
-pub async fn get_all_users(pool: &PgPool) -> Result<Vec<User>, sqlx::Error> {
-    user_repository::get_all_users(pool).await
+pub struct UserServiceImpl {
+    user_repo: Arc<dyn UserRepository>,
 }
 
-pub async fn create_user(pool: &PgPool, command: CreateUserCommand) -> Result<User, sqlx::Error> {
-    let u = User::new(Uuid::new_v4(), command.email, command.password, command.role);
-
-    user_repository::create_user(pool, u).await
+impl UserServiceImpl {
+    pub fn new(user_repo: Arc<dyn UserRepository>) -> Self {
+        Self { user_repo }
+    }
 }
 
-pub async fn get_user_by_id(pool: &PgPool, user_id: &Uuid) -> Result<Option<User>, sqlx::Error> {
-    user_repository::get_user_by_id(pool, user_id).await
+impl UserService for UserServiceImpl {
+    async fn get_by_email(&self, email: &str) -> Result<Option<User>, DataError> {
+        self.user_repo.get_by_email(email).await
+    }
+
+    async fn get_all(&self) -> Result<Vec<User>, DataError> {
+        self.user_repo.get_all().await
+    }
+
+    async fn create(&self, command: CreateUserCommand) -> Result<User, DataError> {
+        let u = User::new(Uuid::new_v4(), command.email, command.password, command.role);
+
+        self.user_repo.create(u).await
+    }
+
+    async fn get_by_id(&self, id: &Uuid) -> Result<Option<User>, DataError> {
+        self.user_repo.get_by_id(id).await
+    }
 }
