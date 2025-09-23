@@ -24,3 +24,4 @@ tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 thiserror = "2.0.12"
 async-trait = "0.1.89"
+tempfile = "3.23.0"
