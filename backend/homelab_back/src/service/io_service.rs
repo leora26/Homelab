@@ -36,10 +36,11 @@ impl IOService for IOServiceImpl {
             }
         };
 
-        let full_path = format!("{}/{}", path, f.name);
+        let full_path = format!("{}/{}/{}", self.root_folder_path, path, f.name);
 
         fs::write(&full_path, file_content).await?;
 
         Ok(())
     }
 }
+
