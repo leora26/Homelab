@@ -4,6 +4,7 @@ use sqlx::FromRow;
 use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, sqlx::Type)]
+#[sqlx(type_name = "file_type", rename_all = "lowercase")]
 pub enum FileType {
     Text,
     Image,

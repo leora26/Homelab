@@ -1,8 +1,6 @@
 use crate::service::folder_service;
 use crate::AppState;
 use actix_web::{delete, get, web, HttpResponse, Responder};
-use dotenvy::from_path;
-use tracing_subscriber::fmt::format;
 use uuid::Uuid;
 
 #[get("/folders/{userId}/root")]

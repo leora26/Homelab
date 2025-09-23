@@ -1,7 +1,6 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 use crate::domain::folder::Folder;
-use crate::domain::user::Role::User;
 
 pub async fn find_root_folder(user_id: &Uuid, pool: &PgPool)
                               -> Result<Option<Folder>, sqlx::Error> {

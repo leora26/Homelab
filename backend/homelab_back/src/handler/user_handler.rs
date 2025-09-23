@@ -1,8 +1,7 @@
-use actix_web::{get, post, web, App, HttpResponse, Responder};
+use actix_web::{get, post, web, HttpResponse, Responder};
 use crate::AppState;
 use crate::service::user_service;
 use tracing;
-use tracing_subscriber::fmt::format;
 use crate::data::create_user_command::CreateUserCommand;
 
 #[get("/users/{email}")]
@@ -75,7 +74,3 @@ pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(create_user);
 }
 
-
-fn hash_password(password: &str) -> String {
-    format!("hashed_{}", password)
-}

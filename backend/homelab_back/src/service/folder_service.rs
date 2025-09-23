@@ -1,6 +1,5 @@
 use async_recursion::async_recursion;
 use sqlx::PgPool;
-use tracing_subscriber::fmt::format;
 use uuid::Uuid;
 use crate::db::folder_repository;
 use crate::domain::folder::Folder;

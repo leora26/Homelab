@@ -1,5 +1,4 @@
 use actix_web::{delete, get, post, web, HttpResponse, Responder};
-use tracing_subscriber::fmt::format;
 use uuid::Uuid;
 use crate::AppState;
 use crate::data::upload_file_command::UploadFileCommand;
@@ -90,7 +89,7 @@ pub async fn upload_file (
             HttpResponse::Created().json(file)
         },
         Err(e) => {
-            HttpResponse::InternalServerError().body("Failed while creating a file")
+            HttpResponse::InternalServerError().body(format!("Failed while creating a file: {}", e))
         }
     }
 

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, email, password_hash, created_at, role as \"role: _\" FROM users",
+  "query": "SELECT id, email, password_hash, created_at,  role as \"role: _\" FROM users WHERE email = $1",
   "describe": {
     "columns": [
       {
@@ -40,7 +40,9 @@
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Text"
+      ]
     },
     "nullable": [
       false,
@@ -50,5 +52,5 @@
       false
     ]
   },
-  "hash": "43bbd26d5cc29c73e7dc40edf22f4131577c3b7725e88e94192c742a9426cadc"
+  "hash": "b7a07dd4664458e0f4489ed351a7b77e2b1af37da834c547a9e07d37a81adc05"
 }

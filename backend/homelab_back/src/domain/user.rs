@@ -4,7 +4,7 @@ use serde::{Serialize, Deserialize};
 use sqlx::FromRow;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, sqlx::Type)]
-#[sqlx(type_name = "user_role")]
+#[sqlx(type_name = "user_role", rename_all = "lowercase")]
 pub enum Role {
     #[sqlx(rename = "user")]
     User,
@@ -31,9 +31,14 @@ impl User {
             id,
             email,
             //TODO: Implement bcrypt here or something
-            password_hash: password,
+            password_hash: Self::hash_password(&password),
             created_at: OffsetDateTime::now_utc(),
             role
         }
+    }
+
+
+    fn hash_password(password: &str) -> String {
+        format!("hashed_{}", password)
     }
 }
