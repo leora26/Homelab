@@ -6,6 +6,7 @@ pub mod data;
 pub mod exception;
 
 use std::env;
+use std::path::Path;
 use std::sync::Arc;
 use actix_web::{web, App, HttpServer};
 use dotenvy::dotenv;
@@ -34,6 +35,10 @@ async fn main() -> std::io::Result<()> {
     let database_url = env::var("DATABASE_URL")
         .expect("DATABSE_URL must be set in .env file");
 
+    let root_folder_path = env::var("ROOT_FOLDER_PATH")
+        .expect("ROOT_FOLDER_PATH must be set in .env file");
+
+
     let pool = PgPoolOptions::new()
         .max_connections(5)
         .connect(&database_url)
@@ -41,6 +46,16 @@ async fn main() -> std::io::Result<()> {
         .expect("Failed to create database pool");
 
     println!("🚀 Server started successfully at http://127.0.0.1:8080");
+
+    let root_path = Path::new(&root_folder_path);
+
+    if !root_path.exists() {
+        if let Err(e) = std::fs::create_dir_all(root_path) {
+            panic!("Failed to create root directory at {}: {}", &root_folder_path, e);
+        } else {
+            println!("Root folder was created.");
+        }
+    }
 
     let file_repo = Arc::new(FileRepositoryImpl::new(pool.clone()));
     let user_repo = Arc::new(UserRepositoryImpl::new(pool.clone()));
@@ -56,8 +71,9 @@ async fn main() -> std::io::Result<()> {
             file_service,
             folder_service,
             user_service,
-            io_service
+            io_service,
         });
+
 
     HttpServer::new(move || {
         App::new()
