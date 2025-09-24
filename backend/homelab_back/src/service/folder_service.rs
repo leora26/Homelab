@@ -62,3 +62,74 @@ impl FolderService for FolderServiceImpl {
         Ok(path)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+    use time::OffsetDateTime;
+    use tracing_subscriber::fmt::format;
+    use super::*;
+
+    pub struct MockFolderRepo {
+        folders: HashMap<Uuid, Folder>,
+    }
+
+    impl MockFolderRepo {
+        fn new() -> Self {
+            Self {
+                folders: HashMap::new()
+            }
+        }
+
+        fn add_folder(&mut self, folder: Folder) {
+            self.folders.insert(folder.id, folder);
+        }
+    }
+
+    #[async_trait]
+    impl FolderRepository for MockFolderRepo {
+        async fn get_by_id(&self, folder_id: &Uuid) -> Result<Option<Folder>, DataError> {
+            Ok(self.folders.get(folder_id).map(|f| Folder {
+                id: f.id,
+                parent_folder_id: f.parent_folder_id,
+                name: f.name.clone(),
+                owner_id: f.owner_id,
+                created_at: f.created_at.clone(),
+            }))
+        }
+        async fn get_root(&self, user_id: &Uuid) -> Result<Option<Folder>, DataError> { unimplemented!() }
+        async fn get_children_by_id(&self, folder_id: &Uuid) -> Result<Vec<Folder>, DataError> { unimplemented!() }
+        async fn delete_by_id(&self, folder_id: &Uuid) -> Result<(), DataError> { unimplemented!() }
+    }
+
+    fn create_test_folder(id: Uuid, name: &str, parent_id: Option<Uuid>) -> Folder {
+        Folder {
+            id,
+            parent_folder_id: parent_id,
+            name: name.to_string(),
+            owner_id: Uuid::new_v4(),
+            created_at: OffsetDateTime::now_utc(),
+        }
+    }
+
+    #[tokio::test]
+    async fn should_get_correct_path_to_destination_folder () {
+        let root_id = Uuid::new_v4();
+        let child_id = Uuid::new_v4();
+        let grandchild_id = Uuid::new_v4();
+
+        let mut mock_repo = MockFolderRepo::new();
+        mock_repo.add_folder(create_test_folder(root_id, "root", None));
+        mock_repo.add_folder(create_test_folder(child_id, "child", Some(root_id)));
+        mock_repo.add_folder(create_test_folder(grandchild_id, "grandchild", Some(child_id)));
+
+
+        let folder_service = FolderServiceImpl::new(Arc::new(mock_repo));
+
+        let result = folder_service.get_folder_path(&grandchild_id).await;
+
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "root/child/grandchild")
+    }
+
+}
