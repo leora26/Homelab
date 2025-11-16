@@ -7,13 +7,14 @@ use crate::exception::data_error::DataError;
 
 #[async_trait]
 pub trait FolderRepository: Send + Sync {
-    async fn get_root(&self, user_id: &Uuid) -> Result<Option<Folder>, DataError>;
-    async fn get_by_id(&self, folder_id: &Uuid) -> Result<Option<Folder>, DataError>;
-    async fn get_children_by_id(&self, folder_id: &Uuid) -> Result<Vec<Folder>, DataError>;
-    async fn delete_by_id(&self, folder_id: &Uuid) -> Result<(), DataError>;
-    async fn create(&self, folder: &Folder) -> Result<Folder, DataError>;
-    async fn get_by_folder_id(&self, folder_id: &Uuid) -> Result<Vec<File>, DataError>;
+    async fn get_root (&self, user_id: &Uuid) -> Result<Option<Folder>, DataError>;
+    async fn get_by_id (&self, folder_id: &Uuid) -> Result<Option<Folder>, DataError>;
+    async fn get_children_by_id (&self, folder_id: &Uuid) -> Result<Vec<Folder>, DataError>;
+    async fn delete_by_id (&self, folder_id: &Uuid) -> Result<(), DataError>;
+    async fn create (&self, folder: &Folder) -> Result<Folder, DataError>;
+    async fn get_by_folder_id (&self, folder_id: &Uuid) -> Result<Vec<File>, DataError>;
     async fn update_folder (&self, folder: Folder) -> Result<Folder, DataError>;
+    async fn search_by_name (&self, search_query: String) -> Result<Vec<Folder>, DataError>;
 }
 
 pub struct FolderRepositoryImpl {
@@ -124,5 +125,20 @@ impl FolderRepository for FolderRepositoryImpl {
             .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(f)
+    }
+
+    async fn search_by_name(&self, search_query: String) -> Result<Vec<Folder>, DataError> {
+        let f: Vec<Folder> = sqlx::query_as!(
+            Folder,
+            "SELECT id, name, owner_id, created_at, parent_folder_id FROM folders \
+            WHERE LOWER(name) LIKE LOWER($1)",
+            search_query
+        )
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| DataError::DatabaseError(e))?;
+
+        Ok(f)
+
     }
 }

@@ -105,7 +105,7 @@ pub async fn search_file (
             } else {
                 HttpResponse::Ok().json(f)
             }
-        }
+        },
         Err(e) => {
             HttpResponse::InternalServerError().body(format!("Failed to search for a file: {}", e))
         }

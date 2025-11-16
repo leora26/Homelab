@@ -17,6 +17,7 @@ pub trait FolderService: Send + Sync {
     async fn get_folder_path (&self, folder_id: &Uuid) -> Result<String, DataError>;
     async fn get_by_folder (&self, folder_id: &Uuid) -> Result<Vec<File>, DataError>;
     async fn update_folder_name (&self, command: UpdateFolderNameCommand, folder_id: Uuid) -> Result<Folder, DataError>;
+    async fn search_folder (&self, search_query: String) -> Result<Vec<Folder>, DataError>;
 }
 
 pub struct FolderServiceImpl {
@@ -78,6 +79,10 @@ impl FolderService for FolderServiceImpl {
 
         self.folder_repo.update_folder(folder).await
     }
+
+    async fn search_folder(&self, search_query: String) -> Result<Vec<Folder>, DataError> {
+        self.folder_repo.search_by_name(format!("%{}%", search_query)).await
+    }
 }
 
 #[cfg(test)]
@@ -121,6 +126,10 @@ mod tests {
         async fn get_by_folder_id(&self, folder_id: &Uuid) -> Result<Vec<File>, DataError> { unimplemented!() }
 
         async fn update_folder(&self, folder: Folder) -> Result<Folder, DataError> {
+            unimplemented!()
+        }
+
+        async fn search_by_name(&self, search_query: String) -> Result<Vec<Folder>, DataError> {
             unimplemented!()
         }
     }

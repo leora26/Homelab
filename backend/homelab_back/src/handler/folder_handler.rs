@@ -1,6 +1,7 @@
 use crate::AppState;
 use actix_web::{delete, get, patch, web, HttpResponse, Responder};
 use uuid::Uuid;
+use crate::data::search_query::SearchQuery;
 use crate::data::update_folder_name_command::UpdateFolderNameCommand;
 
 #[get("/folders/{userId}/root")]
@@ -153,6 +154,27 @@ pub async fn rename_folder (
     }
 }
 
+#[get("/folders/search")]
+pub async fn search_folder (
+    app_state: web::Data<AppState>,
+    query: web::Query<SearchQuery>
+) -> impl Responder {
+    let search_term = query.into_inner().q;
+
+    match app_state.folder_service.search_folder(search_term).await {
+        Ok(f) => {
+            if f.is_empty() {
+                HttpResponse::Ok().body("No folders for the given search query")
+            } else {
+                HttpResponse::Ok().json(f)
+            }
+        },
+        Err(e) => {
+            HttpResponse::InternalServerError().body(format!("Failed to search for a folder: {}", e))
+        }
+    }
+}
+
 
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(get_root_folder);
@@ -161,4 +183,5 @@ pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(delete_folder);
     cfg.service(fetch_files_for_folder);
     cfg.service(rename_folder);
+    cfg.service(search_folder);
 }
