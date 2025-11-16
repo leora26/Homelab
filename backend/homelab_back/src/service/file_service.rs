@@ -18,6 +18,7 @@ pub trait FileService: Send + Sync {
     async fn delete(&self, file_id: &Uuid) -> Result<(), DataError>;
     async fn upload(&self, command: UploadFileCommand) -> Result<File, DataError>;
     async fn update_file_name (&self, command: UpdateFileNameCommand, id: Uuid) -> Result<File, DataError>;
+    async fn search_file (&self, search_query: String) -> Result<Vec<File>, DataError>;
 }
 
 pub struct FileServiceImpl {
@@ -74,6 +75,10 @@ impl FileService for FileServiceImpl {
 
         file.rename(command.new_name);
 
-        self.file_repo.update_file(file).await
+        self.file_repo.update(file).await
+    }
+
+    async fn search_file(&self, search_query: String) -> Result<Vec<File>, DataError> {
+        self.file_repo.search_by_name(format!("%{}%", search_query)).await
     }
 }

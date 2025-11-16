@@ -9,7 +9,8 @@ pub trait FileRepository: Send + Sync {
     async fn get_by_id (&self, file_id: &Uuid) -> Result<Option<File>, DataError>;
     async fn delete_by_id (&self, file_id: &Uuid) -> Result<(), DataError>;
     async fn upload (&self, file: File) -> Result<File, DataError>;
-    async fn update_file (&self, file: File) -> Result<File, DataError>;
+    async fn update (&self, file: File) -> Result<File, DataError>;
+    async fn search_by_name (&self, search_query: String) -> Result<Vec<File>, DataError>;
 }
 
 pub struct FileRepositoryImpl {
@@ -65,7 +66,7 @@ impl FileRepository for FileRepositoryImpl {
         Ok(file)
     }
 
-    async fn update_file(&self, file: File) -> Result<File, DataError> {
+    async fn update(&self, file: File) -> Result<File, DataError> {
         let f = sqlx::query_as!(
             File,
             "UPDATE files \
@@ -84,5 +85,19 @@ impl FileRepository for FileRepositoryImpl {
 
         Ok(f)
 
+    }
+
+    async fn search_by_name(&self, search_query: String) -> Result<Vec<File>, DataError> {
+        let f: Vec<File> = sqlx::query_as!(
+            File,
+            "SELECT id, name, owner_id, file_type as \"file_type: _\", parent_folder_id FROM files \
+            WHERE LOWER(name) LIKE LOWER($1)",
+            search_query
+        )
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| DataError::DatabaseError(e))?;
+
+        Ok(f)
     }
 }

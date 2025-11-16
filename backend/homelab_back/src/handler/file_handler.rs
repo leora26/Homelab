@@ -1,6 +1,7 @@
 use actix_web::{delete, get, patch, post, web, HttpResponse, Responder};
 use uuid::Uuid;
 use crate::AppState;
+use crate::data::search_query::SearchQuery;
 use crate::data::update_file_name_command::UpdateFileNameCommand;
 use crate::data::upload_file_command::UploadFileCommand;
 
@@ -90,10 +91,31 @@ pub async fn rename_file (
     }
 }
 
+#[get("/files/search")]
+pub async fn search_file (
+    app_state: web::Data<AppState>,
+    query: web::Query<SearchQuery>
+) -> impl Responder {
+    let search_term = query.into_inner().q;
+
+    match app_state.file_service.search_file(search_term).await {
+        Ok(f) => {
+            if f.is_empty() {
+                HttpResponse::Ok().body("No files for the given search query")
+            } else {
+                HttpResponse::Ok().json(f)
+            }
+        }
+        Err(e) => {
+            HttpResponse::InternalServerError().body(format!("Failed to search for a file: {}", e))
+        }
+    }
+}
 
 pub fn config (c: &mut web::ServiceConfig) {
     c.service(get_file);
     c.service(delete_file);
     c.service(upload_file);
     c.service(rename_file);
+    c.service(search_file);
 }
