@@ -3,6 +3,7 @@ use async_recursion::async_recursion;
 use async_trait::async_trait;
 use uuid::Uuid;
 use crate::db::folder_repository::FolderRepository;
+use crate::domain::file::File;
 use crate::domain::folder::Folder;
 use crate::exception::data_error::DataError;
 
@@ -13,6 +14,8 @@ pub trait FolderService: Send + Sync {
     async fn get_children_by_id(&self, folder_id: &Uuid) -> Result<Vec<Folder>, DataError>;
     async fn delete(&self, folder_id: &Uuid) -> Result<(), DataError>;
     async fn get_folder_path(&self, folder_id: &Uuid) -> Result<String, DataError>;
+    async fn get_by_folder(&self, folder_id: &Uuid) -> Result<Vec<File>, DataError>;
+
 }
 
 pub struct FolderServiceImpl {
@@ -61,6 +64,10 @@ impl FolderService for FolderServiceImpl {
         let path = self.get_parent_folder_name(folder_id).await?;
         Ok(path)
     }
+
+    async fn get_by_folder(&self, folder_id: &Uuid) -> Result<Vec<File>, DataError> {
+        self.folder_repo.get_by_folder_id(folder_id).await
+    }
 }
 
 #[cfg(test)]
@@ -100,6 +107,8 @@ mod tests {
         async fn get_children_by_id(&self, folder_id: &Uuid) -> Result<Vec<Folder>, DataError> { unimplemented!() }
         async fn delete_by_id(&self, folder_id: &Uuid) -> Result<(), DataError> { unimplemented!() }
         async fn create(&self, folder: &Folder) -> Result<Folder, DataError> { unimplemented!() }
+
+        async fn get_by_folder_id(&self, folder_id: &Uuid) -> Result<Vec<File>, DataError> { unimplemented!() }
     }
 
     fn create_test_folder(id: Uuid, name: &str, parent_id: Option<Uuid>) -> Folder {

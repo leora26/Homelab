@@ -3,7 +3,7 @@ use actix_web::{delete, get, web, HttpResponse, Responder};
 use uuid::Uuid;
 
 #[get("/folders/{userId}/root")]
-pub async fn get_foot_folder(
+pub async fn get_root_folder(
     app_state: web::Data<AppState>,
     path: web::Path<String>,
 ) -> impl Responder {
@@ -97,9 +97,41 @@ pub async fn delete_folder(
     }
 }
 
+
+#[get("/{folderId}/file")]
+pub async fn fetch_files_for_folder (
+    app_state: web::Data<AppState>,
+    path: web::Path<String>
+)
+    -> impl Responder {
+    let folder_id = match Uuid::parse_str(&path.into_inner()) {
+        Ok(id) => id,
+        Err(_) => {
+            return HttpResponse::BadRequest().body("Invalid folder ID format");
+        }
+    };
+
+    match app_state.file_service.get_by_folder(&folder_id).await {
+        Ok(files) => {
+            if files.is_empty() {
+                HttpResponse::NotFound().body(format!("There were no files found for the given folder with id: {}", folder_id))
+            } else {
+                HttpResponse::Ok().json(files)
+            }
+        },
+        Err(e) => {
+            tracing::error!("Failed to fetch files inside a folder: {:?}", e);
+            HttpResponse::InternalServerError().finish()
+        }
+
+    }
+}
+
+
 pub fn config(cfg: &mut web::ServiceConfig) {
-    cfg.service(get_foot_folder);
+    cfg.service(get_root_folder);
     cfg.service(get_folder_by_id);
     cfg.service(get_all_subfolders);
     cfg.service(delete_folder);
+    cfg.service(fetch_files_for_folder);
 }

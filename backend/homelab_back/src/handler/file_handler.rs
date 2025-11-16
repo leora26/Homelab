@@ -26,35 +26,6 @@ pub async fn get_file(
     }
 }
 
-#[get("/files/folder/{folderId}")]
-pub async fn fetch_files (
-    app_state: web::Data<AppState>,
-    path: web::Path<String>
-)
--> impl Responder {
-    let folder_id = match Uuid::parse_str(&path.into_inner()) {
-        Ok(id) => id,
-        Err(_) => {
-            return HttpResponse::BadRequest().body("Invalid folder ID format");
-        }
-    };
-
-    match app_state.file_service.get_by_folder(&folder_id).await {
-        Ok(files) => {
-            if files.is_empty() {
-                HttpResponse::NotFound().body(format!("There were no files found for the given folder with id: {}", folder_id))
-            } else {
-                HttpResponse::Ok().json(files)
-            }
-        },
-        Err(e) => {
-            tracing::error!("Failed to fetch files inside a folder: {:?}", e);
-            HttpResponse::InternalServerError().finish()
-        }
-
-    }
-}
-
 #[delete("/files/{id}")]
 pub async fn delete_file (
     app_state: web::Data<AppState>,
@@ -95,7 +66,6 @@ pub async fn upload_file (
 
 
 pub fn config (c: &mut web::ServiceConfig) {
-    c.service(fetch_files);
     c.service(get_file);
     c.service(delete_file);
     c.service(upload_file);
