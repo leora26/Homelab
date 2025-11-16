@@ -10,6 +10,7 @@ pub trait FolderRepository: Send + Sync {
     async fn get_by_id(&self, folder_id: &Uuid) -> Result<Option<Folder>, DataError>;
     async fn get_children_by_id(&self, folder_id: &Uuid) -> Result<Vec<Folder>, DataError>;
     async fn delete_by_id(&self, folder_id: &Uuid) -> Result<(), DataError>;
+    async fn create(&self, folder: &Folder) -> Result<Folder, DataError>;
 }
 
 pub struct FolderRepositoryImpl {
@@ -70,5 +71,23 @@ impl FolderRepository for FolderRepositoryImpl {
             .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(())
+    }
+
+    async fn create(&self, folder: &Folder) -> Result<Folder, DataError> {
+        let folder = sqlx::query_as!(
+            Folder,
+            "INSERT INTO folders (id, name, owner_id, created_at, parent_folder_id) VALUES ($1, $2, $3, $4, $5) \
+            RETURNING id, name, owner_id, created_at, parent_folder_id",
+            folder.id,
+            folder.name,
+            folder.owner_id,
+            folder.created_at,
+            folder.parent_folder_id
+        )
+            .fetch_one(&self.pool)
+            .await
+            .map_err(|e| DataError::DatabaseError(e))?;
+
+        Ok(folder)
     }
 }

@@ -67,7 +67,6 @@ impl FolderService for FolderServiceImpl {
 mod tests {
     use std::collections::HashMap;
     use time::OffsetDateTime;
-    use tracing_subscriber::fmt::format;
     use super::*;
 
     pub struct MockFolderRepo {
@@ -100,6 +99,7 @@ mod tests {
         async fn get_root(&self, user_id: &Uuid) -> Result<Option<Folder>, DataError> { unimplemented!() }
         async fn get_children_by_id(&self, folder_id: &Uuid) -> Result<Vec<Folder>, DataError> { unimplemented!() }
         async fn delete_by_id(&self, folder_id: &Uuid) -> Result<(), DataError> { unimplemented!() }
+        async fn create(&self, folder: &Folder) -> Result<Folder, DataError> { unimplemented!() }
     }
 
     fn create_test_folder(id: Uuid, name: &str, parent_id: Option<Uuid>) -> Folder {
@@ -129,7 +129,26 @@ mod tests {
         let result = folder_service.get_folder_path(&grandchild_id).await;
 
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "root/child/grandchild")
+        assert_eq!(result.unwrap(), "root/child/grandchild");
+    }
+
+    #[tokio::test]
+    async fn should_throw_error_because_of_invalid_folder() {
+        let root_id = Uuid::new_v4();
+        let child_id = Uuid::new_v4();
+        let grandchild_id = Uuid::new_v4();
+
+        let mut mock_repo = MockFolderRepo::new();
+        mock_repo.add_folder(create_test_folder(root_id, "root", None));
+        mock_repo.add_folder(create_test_folder(child_id, "child", Some(root_id)));
+        mock_repo.add_folder(create_test_folder(grandchild_id, "grandchild", Some(child_id)));
+
+
+        let folder_service = FolderServiceImpl::new(Arc::new(mock_repo));
+
+        let result = folder_service.get_folder_path(&Uuid::new_v4()).await;
+
+        assert!(result.is_err());
     }
 
 }
