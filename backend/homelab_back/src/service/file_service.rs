@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use async_trait::async_trait;
 use uuid::Uuid;
+use crate::data::update_file_name_command::UpdateFileNameCommand;
 use crate::data::upload_file_command::UploadFileCommand;
 use crate::db::file_repository::FileRepository;
 use crate::db::folder_repository::FolderRepository;
@@ -16,6 +17,7 @@ pub trait FileService: Send + Sync {
     async fn get_by_id(&self, file_id: &Uuid) -> Result<Option<File>, DataError>;
     async fn delete(&self, file_id: &Uuid) -> Result<(), DataError>;
     async fn upload(&self, command: UploadFileCommand) -> Result<File, DataError>;
+    async fn update_file_name (&self, command: UpdateFileNameCommand, id: Uuid) -> Result<File, DataError>;
 }
 
 pub struct FileServiceImpl {
@@ -64,5 +66,14 @@ impl FileService for FileServiceImpl {
         let _ = self.io_service.upload_file_to_disk(&command.file.data, &f).await;
 
         self.file_repo.upload(f).await
+    }
+
+    async fn update_file_name(&self, command: UpdateFileNameCommand) -> Result<File, DataError> {
+        let file: File = self.file_repo.get_by_id(&command.id).await?
+            .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
+
+        file.name = command.new_name;
+
+        self.file_repo.upload(File)
     }
 }

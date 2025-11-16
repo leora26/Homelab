@@ -1,6 +1,8 @@
-use actix_web::{delete, get, post, web, HttpResponse, Responder};
+use actix_web::{delete, get, patch, post, web, HttpResponse, Responder};
+use tracing_subscriber::fmt::format;
 use uuid::Uuid;
 use crate::AppState;
+use crate::data::update_file_name_command::UpdateFileNameCommand;
 use crate::data::upload_file_command::UploadFileCommand;
 
 #[get("/files/{id}")]
@@ -64,9 +66,35 @@ pub async fn upload_file (
     }
 }
 
+#[patch("/files/{fileId}/name")]
+pub async fn update_file_name (
+    app_state: web::Data<AppState>,
+    path: web::Path<String>,
+    req: web::Json<UpdateFileNameCommand>
+) -> impl Responder {
+    let command =  req.into_inner();
+
+    let file_id = match Uuid::parse_str(&path.into_inner()) {
+        Ok(id) => id,
+        Err(_) => {
+            return HttpResponse::BadRequest().body("Invalid file ID format");
+        }
+    };
+
+    match app_state.file_service.update_file_name(command, file_id).await {
+        Ok(file) => {
+            HttpResponse::Ok().json(file)
+        },
+        Err(e) => {
+            HttpResponse::InternalServerError().body(format!("Failed to update name of a file: {}", e))
+        }
+    }
+}
+
 
 pub fn config (c: &mut web::ServiceConfig) {
     c.service(get_file);
     c.service(delete_file);
     c.service(upload_file);
+    c.service(update_file_name);
 }

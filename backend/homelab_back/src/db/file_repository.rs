@@ -6,9 +6,10 @@ use crate::exception::data_error::DataError;
 
 #[async_trait]
 pub trait FileRepository: Send + Sync {
-    async fn get_by_id(&self, file_id: &Uuid) -> Result<Option<File>, DataError>;
-    async fn delete_by_id(&self, file_id: &Uuid) -> Result<(), DataError>;
-    async fn upload(&self, file: File) -> Result<File, DataError>;
+    async fn get_by_id (&self, file_id: &Uuid) -> Result<Option<File>, DataError>;
+    async fn delete_by_id (&self, file_id: &Uuid) -> Result<(), DataError>;
+    async fn upload (&self, file: File) -> Result<File, DataError>;
+    async fn update_file (&self, file: File) -> Result<File, DataError>;
 }
 
 pub struct FileRepositoryImpl {
@@ -61,5 +62,25 @@ impl FileRepository for FileRepositoryImpl {
             .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(file)
+    }
+
+    async fn update_file(&self, file: File) -> Result<File, DataError> {
+        let file = sqlx::query_as!(
+            File,
+            "UPDATE files \
+            SET name = $1, owner_id = $2, file_type = $3 as \"file_type: _ \", parent_folder_id = $4 \
+            WHERE id = $5",
+            file.name,
+            file.owner_id,
+            file.file_type as _,
+            file.parent_folder_id,
+            file.id
+        )
+            .fetch_one(&self.pool)
+            .await
+            .map_err(|e| DataError::DatabaseError(e))?;
+
+        Ok(file)
+
     }
 }

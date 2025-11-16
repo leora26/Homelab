@@ -75,6 +75,10 @@ mod tests {
         async fn get_children_by_id(&self, folder_id: &Uuid) -> std::result::Result<Vec<Folder>, DataError> { unimplemented!() }
 
         async fn delete(&self, folder_id: &Uuid) -> std::result::Result<(), DataError> { unimplemented!() }
+
+        async fn get_by_folder(&self, folder_id: &Uuid) -> std::result::Result<Vec<File>, DataError> {
+            unimplemented!()
+        }
     }
 
     #[tokio::test]

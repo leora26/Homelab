@@ -98,7 +98,7 @@ pub async fn delete_folder(
 }
 
 
-#[get("/{folderId}/file")]
+#[get("folders/{folderId}/file")]
 pub async fn fetch_files_for_folder (
     app_state: web::Data<AppState>,
     path: web::Path<String>
@@ -111,7 +111,7 @@ pub async fn fetch_files_for_folder (
         }
     };
 
-    match app_state.file_service.get_by_folder(&folder_id).await {
+    match app_state.folder_service.get_by_folder(&folder_id).await {
         Ok(files) => {
             if files.is_empty() {
                 HttpResponse::NotFound().body(format!("There were no files found for the given folder with id: {}", folder_id))
