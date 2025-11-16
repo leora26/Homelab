@@ -1,5 +1,4 @@
 use actix_web::{delete, get, patch, post, web, HttpResponse, Responder};
-use tracing_subscriber::fmt::format;
 use uuid::Uuid;
 use crate::AppState;
 use crate::data::update_file_name_command::UpdateFileNameCommand;
@@ -67,7 +66,7 @@ pub async fn upload_file (
 }
 
 #[patch("/files/{fileId}/name")]
-pub async fn update_file_name (
+pub async fn rename_file (
     app_state: web::Data<AppState>,
     path: web::Path<String>,
     req: web::Json<UpdateFileNameCommand>
@@ -96,5 +95,5 @@ pub fn config (c: &mut web::ServiceConfig) {
     c.service(get_file);
     c.service(delete_file);
     c.service(upload_file);
-    c.service(update_file_name);
+    c.service(rename_file);
 }

@@ -57,4 +57,10 @@ impl File {
             file_type,
         }
     }
+
+    pub fn rename(&mut self, new_name: String) {
+        self.file_type = File::get_file_type(&new_name);
+
+        self.name = new_name;
+    }
 }

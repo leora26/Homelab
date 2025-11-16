@@ -68,12 +68,12 @@ impl FileService for FileServiceImpl {
         self.file_repo.upload(f).await
     }
 
-    async fn update_file_name(&self, command: UpdateFileNameCommand) -> Result<File, DataError> {
-        let file: File = self.file_repo.get_by_id(&command.id).await?
+    async fn update_file_name(&self, command: UpdateFileNameCommand, file_id: Uuid) -> Result<File, DataError> {
+        let mut file: File = self.file_repo.get_by_id(&file_id).await?
             .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
 
-        file.name = command.new_name;
+        file.rename(command.new_name);
 
-        self.file_repo.upload(File)
+        self.file_repo.update_file(file).await
     }
 }

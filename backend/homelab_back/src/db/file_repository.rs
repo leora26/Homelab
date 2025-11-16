@@ -50,7 +50,8 @@ impl FileRepository for FileRepositoryImpl {
         let file = sqlx::query_as!(
         File,
         "INSERT INTO files (id, name, owner_id, parent_folder_id, file_type) \
-        VALUES ($1,$2, $3, $4, $5::file_type) RETURNING id, name, owner_id,parent_folder_id, file_type as \"file_type: _\"",
+        VALUES ($1,$2, $3, $4, $5::file_type) \
+        RETURNING id, name, owner_id,parent_folder_id, file_type as \"file_type: _\"",
         file.id,
         file.name,
         file.owner_id,
@@ -65,11 +66,12 @@ impl FileRepository for FileRepositoryImpl {
     }
 
     async fn update_file(&self, file: File) -> Result<File, DataError> {
-        let file = sqlx::query_as!(
+        let f = sqlx::query_as!(
             File,
             "UPDATE files \
-            SET name = $1, owner_id = $2, file_type = $3 as \"file_type: _ \", parent_folder_id = $4 \
-            WHERE id = $5",
+            SET name = $1, owner_id = $2, file_type = $3, parent_folder_id = $4 \
+            WHERE id = $5 \
+            RETURNING id, name, owner_id, file_type as \"file_type: _\", parent_folder_id",
             file.name,
             file.owner_id,
             file.file_type as _,
@@ -80,7 +82,7 @@ impl FileRepository for FileRepositoryImpl {
             .await
             .map_err(|e| DataError::DatabaseError(e))?;
 
-        Ok(file)
+        Ok(f)
 
     }
 }

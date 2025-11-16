@@ -1,6 +1,7 @@
 use crate::AppState;
-use actix_web::{delete, get, web, HttpResponse, Responder};
+use actix_web::{delete, get, patch, web, HttpResponse, Responder};
 use uuid::Uuid;
+use crate::data::update_folder_name_command::UpdateFolderNameCommand;
 
 #[get("/folders/{userId}/root")]
 pub async fn get_root_folder(
@@ -127,6 +128,31 @@ pub async fn fetch_files_for_folder (
     }
 }
 
+#[patch("/folders/{id}/name")]
+pub async fn rename_folder (
+    app_state: web::Data<AppState>,
+    path: web::Path<String>,
+    req: web::Json<UpdateFolderNameCommand>
+) -> impl Responder {
+    let command: UpdateFolderNameCommand = req.into_inner();
+
+    let folder_id = match Uuid::parse_str(&path.into_inner()) {
+        Ok(id) => id,
+        Err(_) => {
+            return HttpResponse::BadRequest().body("Invalid folder id format");
+        }
+    };
+
+    match app_state.folder_service.update_folder_name(command, folder_id).await {
+        Ok(f) => {
+            HttpResponse::Ok().json(f)
+        },
+        Err(e) => {
+            HttpResponse::InternalServerError().body(format!("Failed to update name of a foler: {}", e))
+        }
+    }
+}
+
 
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(get_root_folder);
@@ -134,4 +160,5 @@ pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(get_all_subfolders);
     cfg.service(delete_folder);
     cfg.service(fetch_files_for_folder);
+    cfg.service(rename_folder);
 }

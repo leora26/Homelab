@@ -32,4 +32,8 @@ impl Folder {
             created_at: OffsetDateTime::now_utc(),
         }
     }
+
+    pub fn rename (&mut self, new_name: String) {
+        self.name = new_name;
+    }
 }

@@ -2,6 +2,7 @@ use std::sync::Arc;
 use async_recursion::async_recursion;
 use async_trait::async_trait;
 use uuid::Uuid;
+use crate::data::update_folder_name_command::UpdateFolderNameCommand;
 use crate::db::folder_repository::FolderRepository;
 use crate::domain::file::File;
 use crate::domain::folder::Folder;
@@ -9,13 +10,13 @@ use crate::exception::data_error::DataError;
 
 #[async_trait]
 pub trait FolderService: Send + Sync {
-    async fn get_root(&self, user_id: &Uuid) -> Result<Option<Folder>, DataError>;
-    async fn get_by_id(&self, folder_id: &Uuid) -> Result<Option<Folder>, DataError>;
-    async fn get_children_by_id(&self, folder_id: &Uuid) -> Result<Vec<Folder>, DataError>;
-    async fn delete(&self, folder_id: &Uuid) -> Result<(), DataError>;
-    async fn get_folder_path(&self, folder_id: &Uuid) -> Result<String, DataError>;
-    async fn get_by_folder(&self, folder_id: &Uuid) -> Result<Vec<File>, DataError>;
-
+    async fn get_root (&self, user_id: &Uuid) -> Result<Option<Folder>, DataError>;
+    async fn get_by_id (&self, folder_id: &Uuid) -> Result<Option<Folder>, DataError>;
+    async fn get_children_by_id (&self, folder_id: &Uuid) -> Result<Vec<Folder>, DataError>;
+    async fn delete (&self, folder_id: &Uuid) -> Result<(), DataError>;
+    async fn get_folder_path (&self, folder_id: &Uuid) -> Result<String, DataError>;
+    async fn get_by_folder (&self, folder_id: &Uuid) -> Result<Vec<File>, DataError>;
+    async fn update_folder_name (&self, command: UpdateFolderNameCommand, folder_id: Uuid) -> Result<Folder, DataError>;
 }
 
 pub struct FolderServiceImpl {
@@ -68,6 +69,15 @@ impl FolderService for FolderServiceImpl {
     async fn get_by_folder(&self, folder_id: &Uuid) -> Result<Vec<File>, DataError> {
         self.folder_repo.get_by_folder_id(folder_id).await
     }
+
+    async fn update_folder_name(&self, command: UpdateFolderNameCommand, folder_id: Uuid) -> Result<Folder, DataError> {
+        let mut folder: Folder = self.folder_repo.get_by_id(&folder_id).await?
+            .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
+
+        folder.rename(command.new_name);
+
+        self.folder_repo.update_folder(folder).await
+    }
 }
 
 #[cfg(test)]
@@ -109,6 +119,10 @@ mod tests {
         async fn create(&self, folder: &Folder) -> Result<Folder, DataError> { unimplemented!() }
 
         async fn get_by_folder_id(&self, folder_id: &Uuid) -> Result<Vec<File>, DataError> { unimplemented!() }
+
+        async fn update_folder(&self, folder: Folder) -> Result<Folder, DataError> {
+            unimplemented!()
+        }
     }
 
     fn create_test_folder(id: Uuid, name: &str, parent_id: Option<Uuid>) -> Folder {
