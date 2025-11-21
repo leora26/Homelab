@@ -7,5 +7,6 @@ use uuid::Uuid;
 pub struct WhiteListedUser {
     pub id: Uuid,
     pub email: String,
+    pub full_name: String,
     pub created_at: OffsetDateTime
 }
