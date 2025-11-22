@@ -1,21 +1,20 @@
 use crate::AppState;
 use actix_web::{delete, get, patch, web, HttpResponse, Responder};
+use actix_web::web::{Data, Json, Path, Query};
 use uuid::Uuid;
 use crate::data::search_query::SearchQuery;
 use crate::data::update_folder_name_command::UpdateFolderNameCommand;
+use crate::helpers::error_mapping::map_data_err_to_http;
 
 #[get("/folders/{userId}/root")]
 pub async fn get_root_folder(
-    app_state: web::Data<AppState>,
-    path: web::Path<String>,
+    app_state: Data<AppState>,
+    id: Path<Uuid>,
 ) -> impl Responder {
-    let user_id = match Uuid::parse_str(&path.into_inner()) {
-        Ok(id) => id,
-        Err(_) => {
-            return HttpResponse::BadRequest().body("Invalid folder ID format");
-        }
-    };
-    match app_state.folder_service.get_root(&user_id).await {
+
+    let user_id = id.into_inner();
+
+    match app_state.folder_service.get_root(user_id).await {
         Ok(Some(folder)) => HttpResponse::Ok().json(folder),
         Ok(None) => HttpResponse::NotFound().body(format!(
             "No root folder was found for user with id: {}",
@@ -23,23 +22,20 @@ pub async fn get_root_folder(
         )),
         Err(e) => {
             tracing::error!("Failed to fetch root folder: {:?}", e);
-            HttpResponse::InternalServerError().finish()
+            map_data_err_to_http(e)
         }
     }
 }
 
-#[get("/folders/{id}")]
+#[get("/folders/{folderId}")]
 pub async fn get_folder_by_id(
-    app_state: web::Data<AppState>,
-    path: web::Path<String>,
+    app_state: Data<AppState>,
+    id: Path<Uuid>,
 ) -> impl Responder {
-    let folder_id = match Uuid::parse_str(&path.into_inner()) {
-        Ok(id) => id,
-        Err(_) => {
-            return HttpResponse::BadRequest().body("Invalid folder ID format");
-        }
-    };
-    match app_state.folder_service.get_by_id(&folder_id).await {
+
+    let folder_id = id.into_inner();
+
+    match app_state.folder_service.get_by_id(folder_id).await {
         Ok(Some(folder)) => HttpResponse::Ok().json(folder),
         Ok(None) => HttpResponse::NotFound().body(format!(
             "Could not find record of folder with an id of {}",
@@ -47,24 +43,18 @@ pub async fn get_folder_by_id(
         )),
         Err(e) => {
             tracing::error!("Failed to find folder: {:?}", e);
-            HttpResponse::InternalServerError().finish()
+            map_data_err_to_http(e)
         }
     }
 }
 
-#[get("/folders/{id}/subfolders")]
+#[get("/folders/{folderId}/subfolders")]
 pub async fn get_all_subfolders(
-    app_state: web::Data<AppState>,
-    path: web::Path<String>,
+    app_state: Data<AppState>,
+    folder_id: Path<Uuid>,
 ) -> impl Responder {
-    let folder_id = match Uuid::parse_str(&path.into_inner()) {
-        Ok(id) => id,
-        Err(_) => {
-            return HttpResponse::BadRequest().body("Invalid folder ID format");
-        }
-    };
 
-    match app_state.folder_service.get_children_by_id(&folder_id).await {
+    match app_state.folder_service.get_children_by_id(folder_id.into_inner()).await {
         Ok(folders) => {
             if folders.is_empty() {
                 HttpResponse::NotFound().body("No subfolders were found")
@@ -74,27 +64,22 @@ pub async fn get_all_subfolders(
         }
         Err(e) => {
             tracing::error!("Failed to fetch subfolders: {:?}", e);
-            HttpResponse::InternalServerError().finish()
+            map_data_err_to_http(e)
         }
     }
 }
 
 #[delete("/folders/{id}")]
 pub async fn delete_folder(
-    app_state: web::Data<AppState>,
-    path: web::Path<String>,
+    app_state: Data<AppState>,
+    folder_id: Path<Uuid>,
 ) -> impl Responder {
-    let folder_id = match Uuid::parse_str(&path.into_inner()) {
-        Ok(id) => id,
-        Err(_) => {
-            return HttpResponse::BadRequest().body("Invalid folder ID format");
-        }
-    };
-    match app_state.folder_service.delete(&folder_id).await {
+
+    match app_state.folder_service.delete(folder_id.into_inner()).await {
         Ok(_) => HttpResponse::NoContent().finish(),
         Err(e) => {
             tracing::error!("Failed to delete a folder: {:?}", e);
-            HttpResponse::InternalServerError().finish()
+            map_data_err_to_http(e)
         }
     }
 }
@@ -102,28 +87,23 @@ pub async fn delete_folder(
 
 #[get("folders/{folderId}/file")]
 pub async fn fetch_files_for_folder (
-    app_state: web::Data<AppState>,
-    path: web::Path<String>
-)
-    -> impl Responder {
-    let folder_id = match Uuid::parse_str(&path.into_inner()) {
-        Ok(id) => id,
-        Err(_) => {
-            return HttpResponse::BadRequest().body("Invalid folder ID format");
-        }
-    };
+    app_state: Data<AppState>,
+    id: Path<Uuid>
+) -> impl Responder {
 
-    match app_state.folder_service.get_by_folder(&folder_id).await {
+    let folder_id = id.into_inner();
+
+    match app_state.folder_service.get_by_folder(folder_id).await {
         Ok(files) => {
             if files.is_empty() {
-                HttpResponse::NotFound().body(format!("There were no files found for the given folder with id: {}", folder_id))
+                HttpResponse::NotFound().body(format!("There were no files found for the given folder with id: {}", folder_id.clone()))
             } else {
                 HttpResponse::Ok().json(files)
             }
         },
         Err(e) => {
             tracing::error!("Failed to fetch files inside a folder: {:?}", e);
-            HttpResponse::InternalServerError().finish()
+            map_data_err_to_http(e)
         }
 
     }
@@ -131,33 +111,27 @@ pub async fn fetch_files_for_folder (
 
 #[patch("/folders/{id}/name")]
 pub async fn rename_folder (
-    app_state: web::Data<AppState>,
-    path: web::Path<String>,
-    req: web::Json<UpdateFolderNameCommand>
+    app_state: Data<AppState>,
+    folder_id: Path<Uuid>,
+    req: Json<UpdateFolderNameCommand>
 ) -> impl Responder {
     let command: UpdateFolderNameCommand = req.into_inner();
 
-    let folder_id = match Uuid::parse_str(&path.into_inner()) {
-        Ok(id) => id,
-        Err(_) => {
-            return HttpResponse::BadRequest().body("Invalid folder id format");
-        }
-    };
-
-    match app_state.folder_service.update_folder_name(command, folder_id).await {
+    match app_state.folder_service.update_folder_name(command, folder_id.into_inner()).await {
         Ok(f) => {
             HttpResponse::Ok().json(f)
         },
         Err(e) => {
-            HttpResponse::InternalServerError().body(format!("Failed to update name of a foler: {}", e))
+            tracing::error!("Failed to rename a folder: {}", e);
+            map_data_err_to_http(e)
         }
     }
 }
 
 #[get("/folders/search")]
 pub async fn search_folder (
-    app_state: web::Data<AppState>,
-    query: web::Query<SearchQuery>
+    app_state: Data<AppState>,
+    query: Query<SearchQuery>
 ) -> impl Responder {
     let search_term = query.into_inner().q;
 
@@ -170,7 +144,8 @@ pub async fn search_folder (
             }
         },
         Err(e) => {
-            HttpResponse::InternalServerError().body(format!("Failed to search for a folder: {}", e))
+            tracing::error!("Failed to search for a folder: {}", e);
+            map_data_err_to_http(e)
         }
     }
 }

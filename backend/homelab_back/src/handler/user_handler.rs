@@ -1,13 +1,15 @@
 use actix_web::{get, post, web, HttpResponse, Responder};
+use actix_web::web::{Data, Json, Path};
 use crate::AppState;
 use tracing;
 use crate::data::create_user_command::CreateUserCommand;
 use crate::exception::data_error::DataError::DatabaseError;
+use crate::helpers::error_mapping::map_data_err_to_http;
 
 #[get("/users/{email}")]
 pub async fn get_user_by_email(
-    app_state: web::Data<AppState>,
-    path: web::Path<String>,
+    app_state: Data<AppState>,
+    path: Path<String>,
 ) -> impl Responder {
     let email = path.into_inner();
 
@@ -16,34 +18,30 @@ pub async fn get_user_by_email(
         Ok(None) => HttpResponse::NotFound().body(format!("No user was found with email {}", email)),
         Err(e) => {
             tracing::error!("Failed to fetch user: {:?}", e);
-            HttpResponse::InternalServerError().finish()
+            map_data_err_to_http(e)
         }
     }
 }
 
 #[get("/users")]
 pub async fn get_users(
-    app_state: web::Data<AppState>
+    app_state: Data<AppState>
 ) -> impl Responder {
     match app_state.user_service.get_all().await {
         Ok(users) => {
-            if users.is_empty() {
-                HttpResponse::NotFound().body("No users were found in the system")
-            } else {
-                HttpResponse::Ok().json(users)
-            }
+            HttpResponse::Ok().json(users)
         }
         Err(e) => {
             tracing::error!("Failed to fetch users: {:?}", e);
-            HttpResponse::InternalServerError().finish()
+            map_data_err_to_http(e)
         }
     }
 }
 
 #[post("/users")]
 pub async fn create_user(
-    app_state: web::Data<AppState>,
-    req: web::Json<CreateUserCommand>,
+    app_state: Data<AppState>,
+    req: Json<CreateUserCommand>,
 ) -> impl Responder {
     let command = req.into_inner();
 
@@ -52,16 +50,8 @@ pub async fn create_user(
             HttpResponse::Created().json(user)
         }
         Err(e) => {
-            match e {
-                DatabaseError(db_err) => {
-                    tracing::error!("Database constraint error: {:?}", db_err);
-                    HttpResponse::Conflict().body(format!("Database error: {}", db_err))
-                },
-                _ => {
-                    tracing::error!("Failed to create user: {:?}", e);
-                    HttpResponse::InternalServerError().body(format!("{}", e))
-                }
-            }
+            tracing::error!("Failed to create a user: {}", e);
+            map_data_err_to_http(e)
         }
     }
 }

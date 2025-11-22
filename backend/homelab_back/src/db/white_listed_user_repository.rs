@@ -6,7 +6,7 @@ use crate::exception::data_error::DataError;
 
 #[async_trait]
 pub trait WhiteListedUserRepository: Send + Sync {
-    async fn insert (&self, user: WhiteListedUser) -> Result<WhiteListedUser, DataError>;
+    async fn create (&self, user: WhiteListedUser) -> Result<WhiteListedUser, DataError>;
     async fn get_all (&self) -> Result<Vec<WhiteListedUser>, DataError>;
     async fn delete_by_id (&self, user_id: Uuid) -> Result<(), DataError>;
     async fn get_by_id (&self, user_id: Uuid) -> Result<Option<WhiteListedUser>, DataError>;
@@ -22,18 +22,18 @@ impl WhiteListedUserRepositoryImpl {
 
 #[async_trait]
 impl WhiteListedUserRepository for WhiteListedUserRepositoryImpl {
-    async fn insert(&self, user: WhiteListedUser) -> Result<WhiteListedUser, DataError> {
+    async fn create(&self, user: WhiteListedUser) -> Result<WhiteListedUser, DataError> {
         let user = sqlx::query_as!(
             WhiteListedUser,
-            "INSERT INTO white_listed_users (id, email, full_name) VALUES ($1, $2, $3) \
+            "INSERT INTO white_listed_users (id, email, full_name, created_at) VALUES ($1, $2, $3, $4) \
             RETURNING id, email, full_name, created_at",
             user.id,
             user.email,
-            user.full_name
+            user.full_name,
+            user.created_at
         )
             .fetch_one(&self.pool)
-            .await
-            .map_err(|e| DataError::DatabaseError(e))?;
+            .await?;
 
         Ok(user)
     }
@@ -44,8 +44,7 @@ impl WhiteListedUserRepository for WhiteListedUserRepositoryImpl {
             "SELECT id, email, full_name, created_at FROM white_listed_users"
         )
             .fetch_all(&self.pool)
-            .await
-            .map_err(|e| DataError::DatabaseError(e))?;
+            .await?;
 
         Ok(users)
     }
@@ -53,8 +52,7 @@ impl WhiteListedUserRepository for WhiteListedUserRepositoryImpl {
     async fn delete_by_id(&self, user_id: Uuid) -> Result<(), DataError> {
         sqlx::query!("DELETE FROM white_listed_users WHERE id = $1", user_id)
             .execute(&self.pool)
-            .await
-            .map_err(|e| DataError::DatabaseError(e))?;
+            .await?;
 
         Ok(())
     }
@@ -67,8 +65,7 @@ impl WhiteListedUserRepository for WhiteListedUserRepositoryImpl {
             user_id
         )
             .fetch_optional(&self.pool)
-            .await
-            .map_err(|e| DataError::DatabaseError(e))?;
+            .await?;
 
         Ok(user)
     }

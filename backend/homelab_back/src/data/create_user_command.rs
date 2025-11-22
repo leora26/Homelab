@@ -5,5 +5,6 @@ use crate::domain::user::Role;
 pub struct CreateUserCommand {
     pub email: String,
     pub password: String,
-    pub role: Role
+    pub role: Role,
+    pub full_name: String
 }

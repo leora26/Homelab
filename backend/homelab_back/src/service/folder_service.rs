@@ -10,12 +10,12 @@ use crate::exception::data_error::DataError;
 
 #[async_trait]
 pub trait FolderService: Send + Sync {
-    async fn get_root (&self, user_id: &Uuid) -> Result<Option<Folder>, DataError>;
-    async fn get_by_id (&self, folder_id: &Uuid) -> Result<Option<Folder>, DataError>;
-    async fn get_children_by_id (&self, folder_id: &Uuid) -> Result<Vec<Folder>, DataError>;
-    async fn delete (&self, folder_id: &Uuid) -> Result<(), DataError>;
-    async fn get_folder_path (&self, folder_id: &Uuid) -> Result<String, DataError>;
-    async fn get_by_folder (&self, folder_id: &Uuid) -> Result<Vec<File>, DataError>;
+    async fn get_root (&self, user_id: Uuid) -> Result<Option<Folder>, DataError>;
+    async fn get_by_id (&self, folder_id: Uuid) -> Result<Option<Folder>, DataError>;
+    async fn get_children_by_id (&self, folder_id: Uuid) -> Result<Vec<Folder>, DataError>;
+    async fn delete (&self, folder_id: Uuid) -> Result<(), DataError>;
+    async fn get_folder_path (&self, folder_id: Uuid) -> Result<String, DataError>;
+    async fn get_by_folder (&self, folder_id: Uuid) -> Result<Vec<File>, DataError>;
     async fn update_folder_name (&self, command: UpdateFolderNameCommand, folder_id: Uuid) -> Result<Folder, DataError>;
     async fn search_folder (&self, search_query: String) -> Result<Vec<Folder>, DataError>;
 }

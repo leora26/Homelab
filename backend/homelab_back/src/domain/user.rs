@@ -16,8 +16,9 @@ pub enum Role {
 pub struct User {
     pub id: Uuid,
     pub email: String,
+    pub full_name: String,
     #[serde(skip_serializing)]
-    pub password_hash: String,
+    pub password_hash: Option<String>,
 
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
@@ -26,15 +27,35 @@ pub struct User {
 }
 
 impl User {
-    pub fn new(id: Uuid, email: String, password: String, role: Role) -> User {
+    pub fn new_complete(id: Uuid, email: String, full_name: String, password: String) -> User {
         User {
             id,
             email,
+            full_name,
             //TODO: Implement bcrypt here or something
-            password_hash: Self::hash_password(&password),
+            password_hash: Some(Self::hash_password(&password)),
             created_at: OffsetDateTime::now_utc(),
-            role
+            role: Role::User
         }
+    }
+
+    pub fn new_pending (id: Uuid, email: String, full_name: String) -> User {
+        User {
+            id,
+            email,
+            full_name,
+            password_hash: None,
+            created_at: OffsetDateTime::now_utc(),
+            role: Role::User
+        }
+    }
+
+    pub fn is_active (&self) -> bool {
+        self.password_hash.is_some()
+    }
+
+    pub fn set_password (&mut self, pass: &str) {
+        self.password_hash = Some(Self::hash_password(pass))
     }
 
 

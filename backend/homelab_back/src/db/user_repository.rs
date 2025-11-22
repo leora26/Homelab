@@ -28,7 +28,7 @@ impl UserRepository for UserRepositoryImpl {
     async fn get_by_email(&self, email: &str) -> Result<Option<User>, DataError> {
         let user = sqlx::query_as!(
         User,
-        "SELECT id, email, password_hash, created_at,  role as \"role: _\" FROM users WHERE email = $1",
+        "SELECT id, email, full_name, password_hash, created_at,  role as \"role: _\" FROM users WHERE email = $1",
         email
     )
             .fetch_optional(&self.pool)
@@ -41,7 +41,7 @@ impl UserRepository for UserRepositoryImpl {
     async fn get_all(&self) -> Result<Vec<User>, DataError> {
         let users = sqlx::query_as!(
         User,
-        "SELECT id, email, password_hash, created_at,  role as \"role: _\" FROM users"
+        "SELECT id, email, full_name, password_hash, created_at,  role as \"role: _\" FROM users"
     )
             .fetch_all(&self.pool)
             .await
@@ -53,16 +53,16 @@ impl UserRepository for UserRepositoryImpl {
     async fn create(&self, user: User) -> Result<User, DataError> {
         let user = sqlx::query_as!(
         User,
-        "INSERT INTO users (id, email, password_hash, role) VALUES ($1, $2, $3, $4) \
-        RETURNING id, email, password_hash, created_at, role as \"role: _\"",
+        "INSERT INTO users (id, email, full_name, password_hash, role) VALUES ($1, $2, $3, $4, $5) \
+        RETURNING id, email, full_name, password_hash, created_at, role as \"role: _\"",
         user.id,
         user.email,
+        user.full_name,
         user.password_hash,
         user.role as Role
     )
             .fetch_one(&self.pool)
-            .await
-            .map_err(|e| DataError::DatabaseError(e))?;
+            .await?;
 
         Ok(user)
     }
@@ -70,7 +70,7 @@ impl UserRepository for UserRepositoryImpl {
     async fn get_by_id(&self, id: &Uuid) -> Result<Option<User>, DataError> {
         let user = sqlx::query_as!(
         User,
-        "SELECT id, email, password_hash, created_at,  role as \"role: _\" FROM users WHERE id = $1",
+        "SELECT id, email, full_name, password_hash, created_at,  role as \"role: _\" FROM users WHERE id = $1",
         id
     )
             .fetch_optional(&self.pool)

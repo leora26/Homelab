@@ -5,6 +5,7 @@ use crate::data::create_user_command::CreateUserCommand;
 use crate::domain::user::User;
 use crate::db::user_repository::UserRepository;
 use crate::exception::data_error::DataError;
+use crate::types::user_email::UserEmail;
 
 #[async_trait]
 pub trait UserService: Send + Sync {
@@ -35,7 +36,13 @@ impl UserService for UserServiceImpl {
     }
 
     async fn create(&self, command: CreateUserCommand) -> Result<User, DataError> {
-        let u = User::new(Uuid::new_v4(), command.email, command.password, command.role);
+
+        let valid_email = UserEmail::parse(command.email)
+            .map_err(|e| DataError::ValidationError(e))?;
+
+        let cleaned_name = command.full_name.trim().to_string();
+
+        let u = User::new_complete(Uuid::new_v4(), valid_email.into_inner(), command.password, cleaned_name);
 
         self.user_repo.create(u).await
     }

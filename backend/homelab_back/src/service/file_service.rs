@@ -14,8 +14,8 @@ use crate::service::io_service::IOService;
 
 #[async_trait]
 pub trait FileService: Send + Sync {
-    async fn get_by_id(&self, file_id: &Uuid) -> Result<Option<File>, DataError>;
-    async fn delete(&self, file_id: &Uuid) -> Result<(), DataError>;
+    async fn get_by_id(&self, file_id: Uuid) -> Result<Option<File>, DataError>;
+    async fn delete(&self, file_id: Uuid) -> Result<(), DataError>;
     async fn upload(&self, command: UploadFileCommand) -> Result<File, DataError>;
     async fn update_file_name (&self, command: UpdateFileNameCommand, id: Uuid) -> Result<File, DataError>;
     async fn search_file (&self, search_query: String) -> Result<Vec<File>, DataError>;

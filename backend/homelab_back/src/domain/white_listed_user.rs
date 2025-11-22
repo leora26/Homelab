@@ -10,3 +10,18 @@ pub struct WhiteListedUser {
     pub full_name: String,
     pub created_at: OffsetDateTime
 }
+
+impl WhiteListedUser {
+    pub fn new (
+        id: Uuid,
+        email: String,
+        full_name: String
+    ) -> WhiteListedUser {
+        WhiteListedUser{
+            id,
+            email,
+            full_name,
+            created_at: OffsetDateTime::now_utc()
+        }
+    }
+}
