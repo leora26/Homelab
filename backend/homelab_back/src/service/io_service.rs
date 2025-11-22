@@ -48,6 +48,7 @@ impl IOService for IOServiceImpl {
 mod tests {
     use tempfile::tempdir;
     use uuid::Uuid;
+    use crate::data::file_folder::update_folder_name_command::UpdateFolderNameCommand;
     use crate::domain::folder::Folder;
     use crate::exception::data_error::DataError;
     use super::*;
@@ -76,9 +77,11 @@ mod tests {
 
         async fn delete(&self, folder_id: &Uuid) -> std::result::Result<(), DataError> { unimplemented!() }
 
-        async fn get_by_folder(&self, folder_id: &Uuid) -> std::result::Result<Vec<File>, DataError> {
-            unimplemented!()
-        }
+        async fn get_by_folder(&self, folder_id: &Uuid) -> std::result::Result<Vec<File>, DataError> { unimplemented!() }
+
+        async fn update_folder_name(&self, command: UpdateFolderNameCommand, folder_id: Uuid) -> std::result::Result<Folder, DataError> { unimplemented!() }
+
+        async fn search_folder(&self, search_query: String) -> std::result::Result<Vec<Folder>, DataError> { unimplemented!() }
     }
 
     #[tokio::test]

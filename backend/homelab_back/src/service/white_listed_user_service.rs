@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use async_trait::async_trait;
 use uuid::Uuid;
-use crate::data::create_white_listed_user_command::CreateWhiteListedUserCommand;
+use crate::data::user::create_white_listed_user_command::CreateWhiteListedUserCommand;
 use crate::db::user_repository::UserRepository;
 use crate::db::white_listed_user_repository::WhiteListedUserRepository;
 use crate::domain::user::User;

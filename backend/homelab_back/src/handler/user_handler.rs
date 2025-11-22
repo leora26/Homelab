@@ -1,8 +1,10 @@
-use actix_web::{get, post, web, HttpResponse, Responder};
+use actix_web::{get, patch, post, web, HttpResponse, Responder};
 use actix_web::web::{Data, Json, Path};
 use crate::AppState;
 use tracing;
-use crate::data::create_user_command::CreateUserCommand;
+use uuid::Uuid;
+use crate::data::user::create_user_command::CreateUserCommand;
+use crate::data::user::update_password_command::UpdatePasswordCommand;
 use crate::helpers::error_mapping::map_data_err_to_http;
 
 #[get("/users/{email}")]
@@ -14,7 +16,7 @@ pub async fn get_user_by_email(
 
     match app_state.user_service.get_by_email(&email).await {
         Ok(Some(user)) => HttpResponse::Ok().json(user),
-        Ok(None) => HttpResponse::NotFound().body(format!("No user was found with email {}", email)),
+        Ok(None) => HttpResponse::NotFound().body(format!("No user was found with email {}", &email)),
         Err(e) => {
             tracing::error!("Failed to fetch user: {:?}", e);
             map_data_err_to_http(e)
@@ -55,10 +57,30 @@ pub async fn create_user(
     }
 }
 
+#[patch("/users/{id}/password")]
+pub async fn update_password (
+    app_state: Data<AppState>,
+    id: Path<Uuid>,
+    req: Json<UpdatePasswordCommand>
+) -> impl Responder {
+    let command = req.into_inner();
+
+    let user_id = id.into_inner();
+    
+    match app_state.user_service.update_password(user_id, &command.password).await {
+        Ok(_) => HttpResponse::Ok().finish(),
+        Err(e) => {
+            tracing::error!("Failed to update password for user: {}", user_id);
+            map_data_err_to_http(e)
+        }
+    }
+}
+
 
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(get_user_by_email);
     cfg.service(get_users);
     cfg.service(create_user);
+    cfg.service(update_password);
 }
 

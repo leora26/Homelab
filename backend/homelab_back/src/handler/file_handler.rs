@@ -2,9 +2,9 @@ use actix_web::{delete, get, patch, post, web, HttpResponse, Responder};
 use actix_web::web::{Data, Json, Path, Query};
 use uuid::Uuid;
 use crate::AppState;
-use crate::data::search_query::SearchQuery;
-use crate::data::update_file_name_command::UpdateFileNameCommand;
-use crate::data::upload_file_command::UploadFileCommand;
+use crate::data::file_folder::search_query::SearchQuery;
+use crate::data::file_folder::update_file_name_command::UpdateFileNameCommand;
+use crate::data::file_folder::upload_file_command::UploadFileCommand;
 use crate::helpers::error_mapping::map_data_err_to_http;
 
 #[get("/files/{id}")]

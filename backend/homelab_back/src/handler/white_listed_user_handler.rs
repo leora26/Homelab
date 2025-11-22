@@ -2,7 +2,7 @@ use actix_web::{get, post, web, HttpResponse, Responder};
 use actix_web::web::{Data, Json, Path};
 use uuid::Uuid;
 use crate::AppState;
-use crate::data::create_white_listed_user_command::CreateWhiteListedUserCommand;
+use crate::data::user::create_white_listed_user_command::CreateWhiteListedUserCommand;
 use crate::helpers::error_mapping::map_data_err_to_http;
 
 #[get("/white_listed_users")]

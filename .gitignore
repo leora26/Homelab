@@ -2,3 +2,4 @@
 /backend/homelab_back/target
 /backend/.idea
 /backend/homelab_back/.env
+/postgres_data

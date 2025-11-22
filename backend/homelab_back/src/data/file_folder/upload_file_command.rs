@@ -1,6 +1,6 @@
 use serde::Deserialize;
 use uuid::Uuid;
-use crate::data::file_data::FileData;
+use crate::data::file_folder::file_data::FileData;
 
 #[derive(Debug, Deserialize)]
 pub struct UploadFileCommand {

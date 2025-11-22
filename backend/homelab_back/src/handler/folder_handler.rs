@@ -2,8 +2,8 @@ use crate::AppState;
 use actix_web::{delete, get, patch, web, HttpResponse, Responder};
 use actix_web::web::{Data, Json, Path, Query};
 use uuid::Uuid;
-use crate::data::search_query::SearchQuery;
-use crate::data::update_folder_name_command::UpdateFolderNameCommand;
+use crate::data::file_folder::search_query::SearchQuery;
+use crate::data::file_folder::update_folder_name_command::UpdateFolderNameCommand;
 use crate::helpers::error_mapping::map_data_err_to_http;
 
 #[get("/folders/{userId}/root")]

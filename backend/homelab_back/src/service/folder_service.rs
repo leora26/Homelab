@@ -2,7 +2,7 @@ use std::sync::Arc;
 use async_recursion::async_recursion;
 use async_trait::async_trait;
 use uuid::Uuid;
-use crate::data::update_folder_name_command::UpdateFolderNameCommand;
+use crate::data::file_folder::update_folder_name_command::UpdateFolderNameCommand;
 use crate::db::folder_repository::FolderRepository;
 use crate::domain::file::File;
 use crate::domain::folder::Folder;

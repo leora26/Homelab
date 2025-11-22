@@ -1,8 +1,8 @@
 use std::sync::Arc;
 use async_trait::async_trait;
 use uuid::Uuid;
-use crate::data::update_file_name_command::UpdateFileNameCommand;
-use crate::data::upload_file_command::UploadFileCommand;
+use crate::data::file_folder::update_file_name_command::UpdateFileNameCommand;
+use crate::data::file_folder::upload_file_command::UploadFileCommand;
 use crate::db::file_repository::FileRepository;
 use crate::db::folder_repository::FolderRepository;
 use crate::db::user_repository::UserRepository;
@@ -61,7 +61,7 @@ impl FileService for FileServiceImpl {
         let folder: Folder = self.folder_repo.get_by_id(folder_id).await?
             .ok_or_else(|| DataError::EntityNotFoundException("Folder".to_string()))?;
 
-        let user: User = self.user_repo.get_by_id(&command.owner_id).await?
+        let user: User = self.user_repo.get_by_id(command.owner_id).await?
             .ok_or_else(|| DataError::EntityNotFoundException("User".to_string()))?;
 
 
