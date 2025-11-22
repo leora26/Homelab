@@ -6,8 +6,8 @@ use crate::exception::data_error::DataError;
 
 #[async_trait]
 pub trait FileRepository: Send + Sync {
-    async fn get_by_id (&self, file_id: &Uuid) -> Result<Option<File>, DataError>;
-    async fn delete_by_id (&self, file_id: &Uuid) -> Result<(), DataError>;
+    async fn get_by_id (&self, file_id: Uuid) -> Result<Option<File>, DataError>;
+    async fn delete_by_id (&self, file_id: Uuid) -> Result<(), DataError>;
     async fn upload (&self, file: File) -> Result<File, DataError>;
     async fn update (&self, file: File) -> Result<File, DataError>;
     async fn search_by_name (&self, search_query: String) -> Result<Vec<File>, DataError>;
@@ -25,7 +25,7 @@ impl FileRepositoryImpl {
 
 #[async_trait]
 impl FileRepository for FileRepositoryImpl {
-    async fn get_by_id(&self, file_id: &Uuid) -> Result<Option<File>, DataError> {
+    async fn get_by_id(&self, file_id: Uuid) -> Result<Option<File>, DataError> {
         let file = sqlx::query_as!(
         File,
         "SELECT id, name, owner_id, parent_folder_id, file_type as \"file_type: _\" FROM files WHERE id = $1",
@@ -38,7 +38,7 @@ impl FileRepository for FileRepositoryImpl {
         Ok(file)
     }
 
-    async fn delete_by_id(&self, file_id: &Uuid) -> Result<(), DataError> {
+    async fn delete_by_id(&self, file_id: Uuid) -> Result<(), DataError> {
         sqlx::query!("DELETE FROM files WHERE id = $1", file_id)
             .execute(&self.pool)
             .await

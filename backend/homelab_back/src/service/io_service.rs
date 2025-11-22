@@ -29,7 +29,7 @@ impl IOServiceImpl {
 #[async_trait]
 impl IOService for IOServiceImpl {
     async fn upload_file_to_disk(&self, file_content: &Vec<u8>, f: &File) -> Result<()> {
-        let path = match self.folder_service.get_folder_path(&f.parent_folder_id).await {
+        let path = match self.folder_service.get_folder_path(f.parent_folder_id).await {
             Ok(p) => p,
             Err(e) => {
                 return Err(std::io::Error::new(std::io::ErrorKind::NotFound, format!("Path not found: {}", e)));

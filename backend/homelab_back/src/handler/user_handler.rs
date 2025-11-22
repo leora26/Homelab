@@ -3,7 +3,6 @@ use actix_web::web::{Data, Json, Path};
 use crate::AppState;
 use tracing;
 use crate::data::create_user_command::CreateUserCommand;
-use crate::exception::data_error::DataError::DatabaseError;
 use crate::helpers::error_mapping::map_data_err_to_http;
 
 #[get("/users/{email}")]

@@ -30,13 +30,13 @@ impl FolderServiceImpl {
     }
 
     #[async_recursion]
-    async fn get_parent_folder_name(&self, f_id: &Uuid) -> Result<String, DataError> {
+    async fn get_parent_folder_name(&self, f_id: Uuid) -> Result<String, DataError> {
         let f = self.folder_repo.get_by_id(f_id)
             .await?
             .ok_or_else(|| DataError::EntityNotFoundException("Folder".to_string()))?;
 
         if let Some(parent_id) = f.parent_folder_id {
-            let parent_path = self.get_parent_folder_name(&parent_id).await?;
+            let parent_path = self.get_parent_folder_name(parent_id).await?;
             Ok(format!("{}/{}", parent_path, f.name))
         } else {
             Ok(f.name)
@@ -46,33 +46,33 @@ impl FolderServiceImpl {
 
 #[async_trait]
 impl FolderService for FolderServiceImpl {
-    async fn get_root(&self, user_id: &Uuid) -> Result<Option<Folder>, DataError> {
+    async fn get_root(&self, user_id: Uuid) -> Result<Option<Folder>, DataError> {
         self.folder_repo.get_root(user_id).await
     }
 
-    async fn get_by_id(&self, folder_id: &Uuid) -> Result<Option<Folder>, DataError> {
+    async fn get_by_id(&self, folder_id: Uuid) -> Result<Option<Folder>, DataError> {
         self.folder_repo.get_by_id(folder_id).await
     }
 
-    async fn get_children_by_id(&self, folder_id: &Uuid) -> Result<Vec<Folder>, DataError> {
+    async fn get_children_by_id(&self, folder_id: Uuid) -> Result<Vec<Folder>, DataError> {
         self.folder_repo.get_children_by_id(folder_id).await
     }
 
-    async fn delete(&self, folder_id: &Uuid) -> Result<(), DataError> {
+    async fn delete(&self, folder_id: Uuid) -> Result<(), DataError> {
         self.folder_repo.delete_by_id(folder_id).await
     }
 
-    async fn get_folder_path(&self, folder_id: &Uuid) -> Result<String, DataError> {
+    async fn get_folder_path(&self, folder_id: Uuid) -> Result<String, DataError> {
         let path = self.get_parent_folder_name(folder_id).await?;
         Ok(path)
     }
 
-    async fn get_by_folder(&self, folder_id: &Uuid) -> Result<Vec<File>, DataError> {
+    async fn get_by_folder(&self, folder_id: Uuid) -> Result<Vec<File>, DataError> {
         self.folder_repo.get_by_folder_id(folder_id).await
     }
 
     async fn update_folder_name(&self, command: UpdateFolderNameCommand, folder_id: Uuid) -> Result<Folder, DataError> {
-        let mut folder: Folder = self.folder_repo.get_by_id(&folder_id).await?
+        let mut folder: Folder = self.folder_repo.get_by_id(folder_id).await?
             .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
 
         folder.rename(command.new_name);
@@ -158,7 +158,7 @@ mod tests {
 
         let folder_service = FolderServiceImpl::new(Arc::new(mock_repo));
 
-        let result = folder_service.get_folder_path(&grandchild_id).await;
+        let result = folder_service.get_folder_path(grandchild_id).await;
 
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "root/child/grandchild");
@@ -178,7 +178,7 @@ mod tests {
 
         let folder_service = FolderServiceImpl::new(Arc::new(mock_repo));
 
-        let result = folder_service.get_folder_path(&Uuid::new_v4()).await;
+        let result = folder_service.get_folder_path(Uuid::new_v4()).await;
 
         assert!(result.is_err());
     }

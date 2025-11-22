@@ -46,16 +46,19 @@ impl FileServiceImpl {
 
 #[async_trait]
 impl FileService for FileServiceImpl {
-    async fn get_by_id(&self, file_id: &Uuid) -> Result<Option<File>, DataError> {
+    async fn get_by_id(&self, file_id: Uuid) -> Result<Option<File>, DataError> {
         self.file_repo.get_by_id(file_id).await
     }
 
-    async fn delete(&self, file_id: &Uuid) -> Result<(), DataError> {
+    async fn delete(&self, file_id: Uuid) -> Result<(), DataError> {
         self.file_repo.delete_by_id(file_id).await
     }
 
     async fn upload(&self, command: UploadFileCommand) -> Result<File, DataError> {
-        let folder: Folder = self.folder_repo.get_by_id(&command.destination_folder_id).await?
+
+        let folder_id = command.destination_folder_id;
+
+        let folder: Folder = self.folder_repo.get_by_id(folder_id).await?
             .ok_or_else(|| DataError::EntityNotFoundException("Folder".to_string()))?;
 
         let user: User = self.user_repo.get_by_id(&command.owner_id).await?
@@ -70,7 +73,7 @@ impl FileService for FileServiceImpl {
     }
 
     async fn update_file_name(&self, command: UpdateFileNameCommand, file_id: Uuid) -> Result<File, DataError> {
-        let mut file: File = self.file_repo.get_by_id(&file_id).await?
+        let mut file: File = self.file_repo.get_by_id(file_id).await?
             .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
 
         file.rename(command.new_name);
