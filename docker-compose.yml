@@ -1,10 +1,18 @@
 services:
-  homelab-db:
-    image: postgres:16.1-alpine
-    restart: always
-    environment:
-      POSTGRES_DB: 'homelab-db'
-      POSTGRES_USER: 'homelab'
-      POSTGRES_PASSWORD: 'homelab'
+  postgres:
+    image: postgres:16-alpine
+    container_name: nas_db
     ports:
-      - '5432:5432'
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: nas_system
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+    networks:
+      - nas_net
+
+networks:
+  nas_net:
+    driver: bridge
