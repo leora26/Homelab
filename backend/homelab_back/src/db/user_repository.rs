@@ -74,8 +74,8 @@ impl UserRepository for UserRepositoryImpl {
         "SELECT id, email, full_name, password_hash, created_at,  role as \"role: _\" FROM users WHERE id = $1",
         id
     )
-            .fetch_optional(&self.pool)
-            .await
+                .fetch_optional(&self.pool)
+                .await
             .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(user)
