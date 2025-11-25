@@ -92,6 +92,7 @@ async fn main() -> std::io::Result<()> {
                     .configure(handler::folder_handler::config)
                     .configure(handler::file_handler::config)
                     .configure(handler::white_listed_user_handler::config)
+                    .configure(handler::test::config)
             )
     })
         .bind(("0.0.0.0", 8080))?
