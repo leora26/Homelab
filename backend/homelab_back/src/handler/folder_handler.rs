@@ -3,6 +3,7 @@ use actix_web::{delete, get, patch, web, HttpResponse, Responder};
 use actix_web::web::{Data, Json, Path, Query};
 use uuid::Uuid;
 use crate::data::file_folder::delete_chosen_folders_command::DeleteChosenFoldersCommand;
+use crate::data::file_folder::filter_files_by_filetype_command::FilterFilesByFileTypeCommand;
 use crate::data::file_folder::search_query::SearchQuery;
 use crate::data::file_folder::update_folder_name_command::UpdateFolderNameCommand;
 use crate::helpers::error_mapping::map_data_err_to_http;
@@ -167,6 +168,30 @@ pub async fn delete_chosen_folders (
     }
 }
 
+#[get("/folders/{id}/files/filter")]
+pub async fn filter_files_in_folder (
+    app_state: Data<AppState>,
+    req: Json<FilterFilesByFileTypeCommand>,
+    folder_id: Path<Uuid>
+) -> impl Responder {
+    let command: FilterFilesByFileTypeCommand = req.into_inner();
+
+    match app_state.folder_service.filter_files_by_folder(&command.file_types, folder_id.into_inner()).await {
+        Ok(f) => {
+            if f.is_empty() {
+                HttpResponse::Ok().body("No files were found based on file types")
+            } else {
+                HttpResponse::Ok().json(f)
+            }
+        },
+
+        Err(e) => {
+            tracing::error!("Failed to filter out files in a folder: {}", e);
+            map_data_err_to_http(e)
+        }
+    }
+}
+
 
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(get_root_folder);
@@ -177,4 +202,5 @@ pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(rename_folder);
     cfg.service(search_folder);
     cfg.service(delete_chosen_folders);
+    cfg.service(filter_files_in_folder);
 }

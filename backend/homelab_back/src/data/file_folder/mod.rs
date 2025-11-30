@@ -5,3 +5,4 @@ pub mod update_folder_name_command;
 pub mod upload_file_command;
 pub mod delete_chosen_folders_command;
 pub mod delete_chosen_files_command;
+pub mod filter_files_by_filetype_command;

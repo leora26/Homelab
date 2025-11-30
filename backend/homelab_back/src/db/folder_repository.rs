@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use sqlx::PgPool;
 use uuid::Uuid;
-use crate::domain::file::File;
+use crate::domain::file::{File, FileType};
 use crate::domain::folder::Folder;
 use crate::exception::data_error::DataError;
 
@@ -16,6 +16,7 @@ pub trait FolderRepository: Send + Sync {
     async fn update_folder (&self, folder: Folder) -> Result<Folder, DataError>;
     async fn search_by_name (&self, search_query: String) -> Result<Vec<Folder>, DataError>;
     async fn delete_all(&self, folder_ids: &[Uuid]) -> Result<(), DataError>;
+    async fn filter_files_in_folder (&self, file_types: &[FileType], folder_id: Uuid) -> Result<Vec<File>, DataError>;
 }
 
 pub struct FolderRepositoryImpl {
@@ -153,5 +154,20 @@ impl FolderRepository for FolderRepositoryImpl {
             .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(())
+    }
+
+    async fn filter_files_in_folder(&self, file_types: &[FileType], folder_id: Uuid) -> Result<Vec<File>, DataError> {
+        let files = sqlx::query_as!(
+            File,
+            "SELECT id, name, owner_id, parent_folder_id, file_type as \"file_type: _\" FROM files \
+            WHERE parent_folder_id = $1 AND file_type = ANY($2::file_type[])",
+            folder_id,
+            file_types as &[FileType]
+        )
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| DataError::DatabaseError(e))?;
+
+        Ok(files)
     }
 }

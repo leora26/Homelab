@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use uuid::Uuid;
 use crate::data::file_folder::update_folder_name_command::UpdateFolderNameCommand;
 use crate::db::folder_repository::FolderRepository;
-use crate::domain::file::File;
+use crate::domain::file::{File, FileType};
 use crate::domain::folder::Folder;
 use crate::exception::data_error::DataError;
 
@@ -19,6 +19,7 @@ pub trait FolderService: Send + Sync {
     async fn update_folder_name (&self, command: UpdateFolderNameCommand, folder_id: Uuid) -> Result<Folder, DataError>;
     async fn search_folder (&self, search_query: String) -> Result<Vec<Folder>, DataError>;
     async fn delete_chosen_folders (&self, folder_ids: &[Uuid]) -> Result<(), DataError>;
+    async fn filter_files_by_folder (&self, file_types: &[FileType], folder_id: Uuid) -> Result<Vec<File>, DataError>;
 }
 
 pub struct FolderServiceImpl {
@@ -88,12 +89,17 @@ impl FolderService for FolderServiceImpl {
     async fn delete_chosen_folders(&self, folder_ids: &[Uuid]) -> Result<(), DataError> {
         self.folder_repo.delete_all(folder_ids).await
     }
+
+    async fn filter_files_by_folder(&self, file_types: &[FileType], folder_id: Uuid) -> Result<Vec<File>, DataError> {
+        self.folder_repo.filter_files_in_folder(file_types, folder_id).await
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
     use time::OffsetDateTime;
+    use crate::domain::file::FileType;
     use super::*;
 
     pub struct MockFolderRepo {
@@ -135,6 +141,14 @@ mod tests {
         }
 
         async fn search_by_name(&self, search_query: String) -> Result<Vec<Folder>, DataError> {
+            unimplemented!()
+        }
+
+        async fn delete_all(&self, folder_ids: &[Uuid]) -> Result<(), DataError> {
+            unimplemented!()
+        }
+
+        async fn filter_files_in_folder(&self, file_types: &[FileType], folder_id: Uuid) -> Result<Vec<File>, DataError> {
             unimplemented!()
         }
     }
