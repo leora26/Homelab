@@ -11,6 +11,7 @@ pub trait FileRepository: Send + Sync {
     async fn upload (&self, file: File) -> Result<File, DataError>;
     async fn update (&self, file: File) -> Result<File, DataError>;
     async fn search_by_name (&self, search_query: String) -> Result<Vec<File>, DataError>;
+    async fn delete_all (&self, file_ids: &[Uuid]) -> Result<(), DataError>;
 }
 
 pub struct FileRepositoryImpl {
@@ -99,5 +100,17 @@ impl FileRepository for FileRepositoryImpl {
             .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(f)
+    }
+
+    async fn delete_all(&self, file_ids: &[Uuid]) -> Result<(), DataError> {
+        sqlx::query!(
+            "DELETE FROM files WHERE id = ANY($1)",
+            file_ids
+        )
+            .execute(&self.pool)
+            .await
+            .map_err(|e| DataError::DatabaseError(e))?;
+
+        Ok(())
     }
 }

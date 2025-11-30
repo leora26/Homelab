@@ -2,6 +2,7 @@ use actix_web::{delete, get, patch, post, web, HttpResponse, Responder};
 use actix_web::web::{Data, Json, Path, Query};
 use uuid::Uuid;
 use crate::AppState;
+use crate::data::file_folder::delete_chosen_files_command::DeleteChosenFilesCommand;
 use crate::data::file_folder::search_query::SearchQuery;
 use crate::data::file_folder::update_file_name_command::UpdateFileNameCommand;
 use crate::data::file_folder::upload_file_command::UploadFileCommand;
@@ -89,6 +90,22 @@ pub async fn search_file(
         }
         Err(e) => {
             tracing::error!("Failed to search for a file: {}", e);
+            map_data_err_to_http(e)
+        }
+    }
+}
+
+#[delete("/files/all")]
+pub async fn delete_chosen_files (
+    app_state: Data<AppState>,
+    req: Json<DeleteChosenFilesCommand>
+) -> impl Responder {
+    let command: DeleteChosenFilesCommand = req.into_inner();
+
+    match app_state.file_service.delete_chosen_files(&command.files_ids).await {
+        Ok(_) => HttpResponse::NoContent().finish(),
+        Err(e) => {
+            tracing::error!("Failed to delete chosen files: {}", e);
             map_data_err_to_http(e)
         }
     }

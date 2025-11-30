@@ -15,6 +15,7 @@ pub trait FolderRepository: Send + Sync {
     async fn get_by_folder_id (&self, folder_id: Uuid) -> Result<Vec<File>, DataError>;
     async fn update_folder (&self, folder: Folder) -> Result<Folder, DataError>;
     async fn search_by_name (&self, search_query: String) -> Result<Vec<Folder>, DataError>;
+    async fn delete_all(&self, folder_ids: &[Uuid]) -> Result<(), DataError>;
 }
 
 pub struct FolderRepositoryImpl {
@@ -140,5 +141,17 @@ impl FolderRepository for FolderRepositoryImpl {
 
         Ok(f)
 
+    }
+
+    async fn delete_all(&self, folder_ids: &[Uuid]) -> Result<(), DataError> {
+        sqlx::query!(
+            "DELETE FROM folders WHERE id = ANY($1)",
+            folder_ids
+        )
+            .execute(&self.pool)
+            .await
+            .map_err(|e| DataError::DatabaseError(e))?;
+
+        Ok(())
     }
 }

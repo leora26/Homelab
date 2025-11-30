@@ -2,6 +2,7 @@ use crate::AppState;
 use actix_web::{delete, get, patch, web, HttpResponse, Responder};
 use actix_web::web::{Data, Json, Path, Query};
 use uuid::Uuid;
+use crate::data::file_folder::delete_chosen_folders_command::DeleteChosenFoldersCommand;
 use crate::data::file_folder::search_query::SearchQuery;
 use crate::data::file_folder::update_folder_name_command::UpdateFolderNameCommand;
 use crate::helpers::error_mapping::map_data_err_to_http;
@@ -150,6 +151,22 @@ pub async fn search_folder (
     }
 }
 
+#[delete("/folders/all")]
+pub async fn delete_chosen_folders (
+    app_state: Data<AppState>,
+    req: Json<DeleteChosenFoldersCommand>
+) -> impl Responder {
+    let command: DeleteChosenFoldersCommand = req.into_inner();
+
+    match app_state.folder_service.delete_chosen_folders(&command.folder_ids).await {
+        Ok(_) => HttpResponse::NoContent().finish(),
+        Err(e) => {
+            tracing::error!("Failed to delete chosen folders: {}", e);
+            map_data_err_to_http(e)
+        }
+    }
+}
+
 
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(get_root_folder);
@@ -159,4 +176,5 @@ pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(fetch_files_for_folder);
     cfg.service(rename_folder);
     cfg.service(search_folder);
+    cfg.service(delete_chosen_folders);
 }
