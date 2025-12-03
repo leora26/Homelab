@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO users (id, email, full_name, password_hash, role) VALUES ($1, $2, $3, $4, $5) RETURNING id, email, full_name, password_hash, created_at, role as \"role: _\"",
+  "query": "\n        INSERT INTO files (id, name, owner_id, parent_folder_id, file_type)\n        VALUES ($1,$2, $3, $4, $5)\n        RETURNING id, name, owner_id,parent_folder_id, file_type as \"file_type: _\"\n        ",
   "describe": {
     "columns": [
       {
@@ -10,34 +10,31 @@
       },
       {
         "ordinal": 1,
-        "name": "email",
+        "name": "name",
         "type_info": "Text"
       },
       {
         "ordinal": 2,
-        "name": "full_name",
-        "type_info": "Text"
+        "name": "owner_id",
+        "type_info": "Uuid"
       },
       {
         "ordinal": 3,
-        "name": "password_hash",
-        "type_info": "Text"
+        "name": "parent_folder_id",
+        "type_info": "Uuid"
       },
       {
         "ordinal": 4,
-        "name": "created_at",
-        "type_info": "Timestamptz"
-      },
-      {
-        "ordinal": 5,
-        "name": "role: _",
+        "name": "file_type: _",
         "type_info": {
           "Custom": {
-            "name": "user_role",
+            "name": "file_type",
             "kind": {
               "Enum": [
-                "user",
-                "admin"
+                "Text",
+                "Image",
+                "Video",
+                "Unknown"
               ]
             }
           }
@@ -48,15 +45,17 @@
       "Left": [
         "Uuid",
         "Text",
-        "Text",
-        "Text",
+        "Uuid",
+        "Uuid",
         {
           "Custom": {
-            "name": "user_role",
+            "name": "file_type",
             "kind": {
               "Enum": [
-                "user",
-                "admin"
+                "Text",
+                "Image",
+                "Video",
+                "Unknown"
               ]
             }
           }
@@ -68,9 +67,8 @@
       false,
       false,
       false,
-      false,
       false
     ]
   },
-  "hash": "a5f709a83ad9e00b083a7969769e247c6b711ae00092c927c90fab5e2100e2ad"
+  "hash": "fccec7e8f7aaccb6a5b97eac6d2676497f48f20c2468b019eb38104eaca5b79e"
 }

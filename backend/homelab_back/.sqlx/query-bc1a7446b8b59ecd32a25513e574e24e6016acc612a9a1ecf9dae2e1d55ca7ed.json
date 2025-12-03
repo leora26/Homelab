@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE files SET name = $1, owner_id = $2, file_type = $3, parent_folder_id = $4 WHERE id = $5 RETURNING id, name, owner_id, file_type as \"file_type: _\", parent_folder_id",
+  "query": "\n        SELECT id, name, owner_id, parent_folder_id, file_type as \"file_type: _\"\n        FROM files\n        WHERE parent_folder_id = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -20,6 +20,11 @@
       },
       {
         "ordinal": 3,
+        "name": "parent_folder_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
         "name": "file_type: _",
         "type_info": {
           "Custom": {
@@ -34,31 +39,10 @@
             }
           }
         }
-      },
-      {
-        "ordinal": 4,
-        "name": "parent_folder_id",
-        "type_info": "Uuid"
       }
     ],
     "parameters": {
       "Left": [
-        "Text",
-        "Uuid",
-        {
-          "Custom": {
-            "name": "file_type",
-            "kind": {
-              "Enum": [
-                "Text",
-                "Image",
-                "Video",
-                "Unknown"
-              ]
-            }
-          }
-        },
-        "Uuid",
         "Uuid"
       ]
     },
@@ -70,5 +54,5 @@
       false
     ]
   },
-  "hash": "880f777fa7fc784c1e11d59f06a8fce14fe87787ca572c5aa699c1fe3784af92"
+  "hash": "bc1a7446b8b59ecd32a25513e574e24e6016acc612a9a1ecf9dae2e1d55ca7ed"
 }

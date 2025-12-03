@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO files (id, name, owner_id, parent_folder_id, file_type) VALUES ($1,$2, $3, $4, $5::file_type) RETURNING id, name, owner_id,parent_folder_id, file_type as \"file_type: _\"",
+  "query": "\n        INSERT INTO users (id, email, full_name, password_hash, role)\n        VALUES ($1, $2, $3, $4, $5)\n        RETURNING id, email, full_name, password_hash, created_at, role as \"role: _\"\n        ",
   "describe": {
     "columns": [
       {
@@ -10,31 +10,34 @@
       },
       {
         "ordinal": 1,
-        "name": "name",
+        "name": "email",
         "type_info": "Text"
       },
       {
         "ordinal": 2,
-        "name": "owner_id",
-        "type_info": "Uuid"
+        "name": "full_name",
+        "type_info": "Text"
       },
       {
         "ordinal": 3,
-        "name": "parent_folder_id",
-        "type_info": "Uuid"
+        "name": "password_hash",
+        "type_info": "Text"
       },
       {
         "ordinal": 4,
-        "name": "file_type: _",
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "role: _",
         "type_info": {
           "Custom": {
-            "name": "file_type",
+            "name": "user_role",
             "kind": {
               "Enum": [
-                "Text",
-                "Image",
-                "Video",
-                "Unknown"
+                "user",
+                "admin"
               ]
             }
           }
@@ -45,17 +48,15 @@
       "Left": [
         "Uuid",
         "Text",
-        "Uuid",
-        "Uuid",
+        "Text",
+        "Text",
         {
           "Custom": {
-            "name": "file_type",
+            "name": "user_role",
             "kind": {
               "Enum": [
-                "Text",
-                "Image",
-                "Video",
-                "Unknown"
+                "user",
+                "admin"
               ]
             }
           }
@@ -67,8 +68,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "24e140d146afcc45b3e69efc4a9ff3183fc365df35d941a3325584519a2847d9"
+  "hash": "8c82c430d0beb39d08e0be997e305096ebd8c9c1d281f1b90f0ae644bf434485"
 }

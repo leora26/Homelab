@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO shared_file (id, user_id, owner_id, file_id, access_type) VALUES ($1, $2, $3, $4, $5) RETURNING id, user_id, owner_id, file_id, access_type as \"access_type: _\"",
+  "query": "\n            INSERT INTO shared_file (id, user_id, owner_id, file_id, access_type)\n            VALUES ($1, $2, $3, $4, $5)\n            RETURNING id, user_id, owner_id, file_id, access_type as \"access_type: _\"\n            ",
   "describe": {
     "columns": [
       {
@@ -66,5 +66,5 @@
       false
     ]
   },
-  "hash": "fe1855ad0cc528389835115250e1aa4f31949115097d4f3b19895f1c3c614ac6"
+  "hash": "910f5fc639add5883cf66030369c174bb112543efc201b8b4fd97285ec05e11e"
 }

@@ -29,7 +29,11 @@ impl UserRepository for UserRepositoryImpl {
     async fn get_by_email(&self, email: String) -> Result<Option<User>, DataError> {
         let user = sqlx::query_as!(
         User,
-        "SELECT id, email, full_name, password_hash, created_at,  role as \"role: _\" FROM users WHERE email = $1",
+        r#"
+        SELECT id, email, full_name, password_hash, created_at,  role as "role: _"
+        FROM users
+        WHERE email = $1
+        "#,
         email
     )
             .fetch_optional(&self.pool)
@@ -42,7 +46,10 @@ impl UserRepository for UserRepositoryImpl {
     async fn get_all(&self) -> Result<Vec<User>, DataError> {
         let users = sqlx::query_as!(
         User,
-        "SELECT id, email, full_name, password_hash, created_at,  role as \"role: _\" FROM users"
+        r#"
+        SELECT id, email, full_name, password_hash, created_at,  role as "role: _"
+        FROM users
+        "#
     )
             .fetch_all(&self.pool)
             .await
@@ -54,8 +61,11 @@ impl UserRepository for UserRepositoryImpl {
     async fn create(&self, user: User) -> Result<User, DataError> {
         let user = sqlx::query_as!(
         User,
-        "INSERT INTO users (id, email, full_name, password_hash, role) VALUES ($1, $2, $3, $4, $5) \
-        RETURNING id, email, full_name, password_hash, created_at, role as \"role: _\"",
+        r#"
+        INSERT INTO users (id, email, full_name, password_hash, role)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING id, email, full_name, password_hash, created_at, role as "role: _"
+        "#,
         user.id,
         user.email,
         user.full_name,
@@ -71,7 +81,11 @@ impl UserRepository for UserRepositoryImpl {
     async fn get_by_id(&self, id: Uuid) -> Result<Option<User>, DataError> {
         let user = sqlx::query_as!(
         User,
-        "SELECT id, email, full_name, password_hash, created_at,  role as \"role: _\" FROM users WHERE id = $1",
+        r#"
+        SELECT id, email, full_name, password_hash, created_at,  role as "role: _"
+        FROM users
+        WHERE id = $1
+        "#,
         id
     )
                 .fetch_optional(&self.pool)
@@ -83,12 +97,11 @@ impl UserRepository for UserRepositoryImpl {
 
     async fn save(&self, user: User) -> Result<(), DataError> {
         sqlx::query!(
-            "UPDATE users \
-            SET email = $1, \
-            full_name = $2, \
-            role = $3, \
-            password_hash = $4 \
-            WHERE id = $5",
+            r#"
+            UPDATE users
+            SET email = $1, full_name = $2, role = $3, password_hash = $4
+            WHERE id = $5
+            "#,
             user.email,
             user.full_name,
             user.role as Role,

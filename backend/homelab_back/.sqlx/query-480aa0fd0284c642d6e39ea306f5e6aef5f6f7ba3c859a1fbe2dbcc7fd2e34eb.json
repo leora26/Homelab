@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, email, full_name, created_at FROM white_listed_users",
+  "query": "\n        SELECT id, parent_folder_id, name, owner_id, created_at\n        FROM folders\n        WHERE parent_folder_id IS NULL AND owner_id = $1",
   "describe": {
     "columns": [
       {
@@ -10,29 +10,37 @@
       },
       {
         "ordinal": 1,
-        "name": "email",
-        "type_info": "Text"
+        "name": "parent_folder_id",
+        "type_info": "Uuid"
       },
       {
         "ordinal": 2,
-        "name": "full_name",
+        "name": "name",
         "type_info": "Text"
       },
       {
         "ordinal": 3,
+        "name": "owner_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
         "name": "created_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Uuid"
+      ]
     },
     "nullable": [
+      false,
       false,
       false,
       false,
       false
     ]
   },
-  "hash": "94a4cf1419ab298b00a9011ebe45fa43cb616444e5c9263a947d11f54a6da11e"
+  "hash": "480aa0fd0284c642d6e39ea306f5e6aef5f6f7ba3c859a1fbe2dbcc7fd2e34eb"
 }

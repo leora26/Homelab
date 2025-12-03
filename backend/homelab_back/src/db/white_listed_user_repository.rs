@@ -25,8 +25,11 @@ impl WhiteListedUserRepository for WhiteListedUserRepositoryImpl {
     async fn create(&self, user: WhiteListedUser) -> Result<WhiteListedUser, DataError> {
         let user = sqlx::query_as!(
             WhiteListedUser,
-            "INSERT INTO white_listed_users (id, email, full_name, created_at) VALUES ($1, $2, $3, $4) \
-            RETURNING id, email, full_name, created_at",
+            r#"
+            INSERT INTO white_listed_users (id, email, full_name, created_at)
+            VALUES ($1, $2, $3, $4)
+            RETURNING id, email, full_name, created_at
+            "#,
             user.id,
             user.email,
             user.full_name,
@@ -41,7 +44,10 @@ impl WhiteListedUserRepository for WhiteListedUserRepositoryImpl {
     async fn get_all(&self) -> Result<Vec<WhiteListedUser>, DataError> {
         let users: Vec<WhiteListedUser> = sqlx::query_as!(
             WhiteListedUser,
-            "SELECT id, email, full_name, created_at FROM white_listed_users"
+            r#"
+            SELECT id, email, full_name, created_at
+            FROM white_listed_users
+            "#
         )
             .fetch_all(&self.pool)
             .await?;
@@ -50,7 +56,12 @@ impl WhiteListedUserRepository for WhiteListedUserRepositoryImpl {
     }
 
     async fn delete_by_id(&self, user_id: Uuid) -> Result<(), DataError> {
-        sqlx::query!("DELETE FROM white_listed_users WHERE id = $1", user_id)
+        sqlx::query!(
+            r#"
+            DELETE FROM white_listed_users
+            WHERE id = $1
+            "#,
+            user_id)
             .execute(&self.pool)
             .await?;
 
@@ -60,8 +71,11 @@ impl WhiteListedUserRepository for WhiteListedUserRepositoryImpl {
     async fn get_by_id(&self, user_id: Uuid) -> Result<Option<WhiteListedUser>, DataError> {
         let user = sqlx::query_as!(
             WhiteListedUser,
-            "SELECT id, email, full_name, created_at FROM white_listed_users \
-            WHERE id = $1",
+            r#"
+            SELECT id, email, full_name, created_at
+            FROM white_listed_users
+            WHERE id = $1
+            "#,
             user_id
         )
             .fetch_optional(&self.pool)

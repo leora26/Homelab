@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, email, full_name, password_hash, created_at,  role as \"role: _\" FROM users",
+  "query": "\n        SELECT id, email, full_name, password_hash, created_at,  role as \"role: _\"\n        FROM users\n        ",
   "describe": {
     "columns": [
       {
@@ -56,5 +56,5 @@
       false
     ]
   },
-  "hash": "6c71d5f75081b04b4dc570a542510336d7a82fc120da43107056807bd53572fb"
+  "hash": "7e3cd00899c51293ac311a9f806e16e6da68af2d0edfbefd8d2311a68c02f763"
 }

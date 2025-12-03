@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE folders SET name = $1, owner_id = $2, parent_folder_id = $3 WHERE id = $4 RETURNING id, name, owner_id, created_at, parent_folder_id",
+  "query": "\n        SELECT id, parent_folder_id, name, owner_id, created_at\n        FROM folders\n        WHERE parent_folder_id = $1",
   "describe": {
     "columns": [
       {
@@ -10,30 +10,27 @@
       },
       {
         "ordinal": 1,
+        "name": "parent_folder_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
         "name": "name",
         "type_info": "Text"
       },
       {
-        "ordinal": 2,
+        "ordinal": 3,
         "name": "owner_id",
         "type_info": "Uuid"
       },
       {
-        "ordinal": 3,
+        "ordinal": 4,
         "name": "created_at",
         "type_info": "Timestamptz"
-      },
-      {
-        "ordinal": 4,
-        "name": "parent_folder_id",
-        "type_info": "Uuid"
       }
     ],
     "parameters": {
       "Left": [
-        "Text",
-        "Uuid",
-        "Uuid",
         "Uuid"
       ]
     },
@@ -45,5 +42,5 @@
       false
     ]
   },
-  "hash": "0ad9c7bf674677b68adbaa11880202d7bc17897283727f402a9f11317df34d44"
+  "hash": "5f07aef06c0ac96a48c06b0c26e146ce6fd68c20d53cb47ee5d4fe0eba6597f7"
 }

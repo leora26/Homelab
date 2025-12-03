@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, name, owner_id, parent_folder_id, file_type as \"file_type: _\" FROM files WHERE parent_folder_id = $1",
+  "query": "\n            SELECT id, name, owner_id, parent_folder_id, file_type as \"file_type: _\"\n            FROM files\n            WHERE parent_folder_id = $1 AND file_type = ANY($2::file_type[])\n            ",
   "describe": {
     "columns": [
       {
@@ -43,7 +43,27 @@
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "Uuid",
+        {
+          "Custom": {
+            "name": "file_type[]",
+            "kind": {
+              "Array": {
+                "Custom": {
+                  "name": "file_type",
+                  "kind": {
+                    "Enum": [
+                      "Text",
+                      "Image",
+                      "Video",
+                      "Unknown"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
       ]
     },
     "nullable": [
@@ -54,5 +74,5 @@
       false
     ]
   },
-  "hash": "fd11b9ff8ccd82b32133925afbd8cdc9b921430b4713ae82880b23f9ca4eea40"
+  "hash": "b0afc306dc9d0a6819daf00853c3065367e009710970412b1982568a81f170af"
 }

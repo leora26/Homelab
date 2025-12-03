@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, name, owner_id, file_type as \"file_type: _\", parent_folder_id FROM files WHERE LOWER(name) LIKE LOWER($1)",
+  "query": "\n            SELECT id, name, owner_id, parent_folder_id, file_type as \"file_type: _\"\n            FROM files\n            WHERE id = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -20,6 +20,11 @@
       },
       {
         "ordinal": 3,
+        "name": "parent_folder_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
         "name": "file_type: _",
         "type_info": {
           "Custom": {
@@ -34,16 +39,11 @@
             }
           }
         }
-      },
-      {
-        "ordinal": 4,
-        "name": "parent_folder_id",
-        "type_info": "Uuid"
       }
     ],
     "parameters": {
       "Left": [
-        "Text"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -54,5 +54,5 @@
       false
     ]
   },
-  "hash": "999e954e5ea8a20d162f06e8c58f654ced1b312534a8e35e77235c0bc3317b4c"
+  "hash": "47a3e5ca679068ac70675ea6d6cccf76c6c8f0e99877586cfc6355ec4e5cc002"
 }

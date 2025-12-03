@@ -34,7 +34,10 @@ impl FolderRepository for FolderRepositoryImpl {
     async fn get_root(&self, user_id: Uuid) -> Result<Option<Folder>, DataError> {
         let folder = sqlx::query_as!(
         Folder,
-        "SELECT id, parent_folder_id, name, owner_id, created_at FROM folders WHERE parent_folder_id IS NULL AND owner_id = $1",
+        r#"
+        SELECT id, parent_folder_id, name, owner_id, created_at
+        FROM folders
+        WHERE parent_folder_id IS NULL AND owner_id = $1"#,
         user_id
     )
             .fetch_optional(&self.pool)
@@ -47,7 +50,10 @@ impl FolderRepository for FolderRepositoryImpl {
     async fn get_by_id(&self, folder_id: Uuid) -> Result<Option<Folder>, DataError> {
         let folder = sqlx::query_as!(
         Folder,
-        "SELECT id, parent_folder_id, name, owner_id, created_at FROM folders WHERE id = $1",
+        r#"
+        SELECT id, parent_folder_id, name, owner_id, created_at
+        FROM folders
+        WHERE id = $1"#,
         folder_id
     )
             .fetch_optional(&self.pool)
@@ -60,7 +66,10 @@ impl FolderRepository for FolderRepositoryImpl {
     async fn get_children_by_id(&self, folder_id: Uuid) -> Result<Vec<Folder>, DataError> {
         let folders = sqlx::query_as!(
         Folder,
-        "SELECT id, parent_folder_id, name, owner_id, created_at FROM folders WHERE parent_folder_id = $1",
+        r#"
+        SELECT id, parent_folder_id, name, owner_id, created_at
+        FROM folders
+        WHERE parent_folder_id = $1"#,
         folder_id
     )
             .fetch_all(&self.pool)
@@ -71,7 +80,12 @@ impl FolderRepository for FolderRepositoryImpl {
     }
 
     async fn delete_by_id(&self, folder_id: Uuid) -> Result<(), DataError> {
-        sqlx::query!("DELETE FROM folders WHERE id = $1", folder_id)
+        sqlx::query!(
+            r#"
+            DELETE FROM folders
+            WHERE id = $1
+            "#,
+            folder_id)
             .execute(&self.pool)
             .await
             .map_err(|e| DataError::DatabaseError(e))?;
@@ -82,8 +96,11 @@ impl FolderRepository for FolderRepositoryImpl {
     async fn create(&self, folder: &Folder) -> Result<Folder, DataError> {
         let folder = sqlx::query_as!(
             Folder,
-            "INSERT INTO folders (id, name, owner_id, created_at, parent_folder_id) VALUES ($1, $2, $3, $4, $5) \
-            RETURNING id, name, owner_id, created_at, parent_folder_id",
+            r#"
+            INSERT INTO folders (id, name, owner_id, created_at, parent_folder_id)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING id, name, owner_id, created_at, parent_folder_id
+            "#,
             folder.id,
             folder.name,
             folder.owner_id,
@@ -100,7 +117,11 @@ impl FolderRepository for FolderRepositoryImpl {
     async fn get_by_folder_id(&self, folder_id: Uuid) -> Result<Vec<File>, DataError> {
         let files = sqlx::query_as!(
         File,
-        "SELECT id, name, owner_id, parent_folder_id, file_type as \"file_type: _\" FROM files WHERE parent_folder_id = $1",
+        r#"
+        SELECT id, name, owner_id, parent_folder_id, file_type as "file_type: _"
+        FROM files
+        WHERE parent_folder_id = $1
+        "#,
         folder_id
     )
             .fetch_all(&self.pool)
@@ -113,10 +134,12 @@ impl FolderRepository for FolderRepositoryImpl {
     async fn update_folder(&self, folder: Folder) -> Result<Folder, DataError> {
         let f = sqlx::query_as!(
             Folder,
-            "UPDATE folders \
-            SET name = $1, owner_id = $2, parent_folder_id = $3 \
-            WHERE id = $4 \
-            RETURNING id, name, owner_id, created_at, parent_folder_id",
+            r#"
+            UPDATE folders
+            SET name = $1, owner_id = $2, parent_folder_id = $3
+            WHERE id = $4
+            RETURNING id, name, owner_id, created_at, parent_folder_id
+            "#,
             folder.name,
             folder.owner_id,
             folder.parent_folder_id,
@@ -132,8 +155,11 @@ impl FolderRepository for FolderRepositoryImpl {
     async fn search_by_name(&self, search_query: String) -> Result<Vec<Folder>, DataError> {
         let f: Vec<Folder> = sqlx::query_as!(
             Folder,
-            "SELECT id, name, owner_id, created_at, parent_folder_id FROM folders \
-            WHERE LOWER(name) LIKE LOWER($1)",
+            r#"
+            SELECT id, name, owner_id, created_at, parent_folder_id
+            FROM folders
+            WHERE LOWER(name) LIKE LOWER($1)
+            "#,
             search_query
         )
             .fetch_all(&self.pool)
@@ -146,7 +172,10 @@ impl FolderRepository for FolderRepositoryImpl {
 
     async fn delete_all(&self, folder_ids: &[Uuid]) -> Result<(), DataError> {
         sqlx::query!(
-            "DELETE FROM folders WHERE id = ANY($1)",
+            r#"
+            DELETE FROM folders
+            WHERE id = ANY($1)
+            "#,
             folder_ids
         )
             .execute(&self.pool)
@@ -159,8 +188,11 @@ impl FolderRepository for FolderRepositoryImpl {
     async fn filter_files_in_folder(&self, file_types: &[FileType], folder_id: Uuid) -> Result<Vec<File>, DataError> {
         let files = sqlx::query_as!(
             File,
-            "SELECT id, name, owner_id, parent_folder_id, file_type as \"file_type: _\" FROM files \
-            WHERE parent_folder_id = $1 AND file_type = ANY($2::file_type[])",
+            r#"
+            SELECT id, name, owner_id, parent_folder_id, file_type as "file_type: _"
+            FROM files
+            WHERE parent_folder_id = $1 AND file_type = ANY($2::file_type[])
+            "#,
             folder_id,
             file_types as &[FileType]
         )

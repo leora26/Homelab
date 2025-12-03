@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, name, owner_id, parent_folder_id, file_type as \"file_type: _\" FROM files WHERE parent_folder_id = $1 AND file_type = ANY($2::file_type[])",
+  "query": "\n            UPDATE files\n            SET name = $1, owner_id = $2, file_type = $3, parent_folder_id = $4\n            WHERE id = $5\n            RETURNING id, name, owner_id, file_type as \"file_type: _\", parent_folder_id\n            ",
   "describe": {
     "columns": [
       {
@@ -20,11 +20,6 @@
       },
       {
         "ordinal": 3,
-        "name": "parent_folder_id",
-        "type_info": "Uuid"
-      },
-      {
-        "ordinal": 4,
         "name": "file_type: _",
         "type_info": {
           "Custom": {
@@ -39,31 +34,32 @@
             }
           }
         }
+      },
+      {
+        "ordinal": 4,
+        "name": "parent_folder_id",
+        "type_info": "Uuid"
       }
     ],
     "parameters": {
       "Left": [
+        "Text",
         "Uuid",
         {
           "Custom": {
-            "name": "file_type[]",
+            "name": "file_type",
             "kind": {
-              "Array": {
-                "Custom": {
-                  "name": "file_type",
-                  "kind": {
-                    "Enum": [
-                      "Text",
-                      "Image",
-                      "Video",
-                      "Unknown"
-                    ]
-                  }
-                }
-              }
+              "Enum": [
+                "Text",
+                "Image",
+                "Video",
+                "Unknown"
+              ]
             }
           }
-        }
+        },
+        "Uuid",
+        "Uuid"
       ]
     },
     "nullable": [
@@ -74,5 +70,5 @@
       false
     ]
   },
-  "hash": "1ffe26f89684659ad3746d4dce7bddac008fb3c16e250043bd1a25b70522745d"
+  "hash": "a8c38337c3f8dec8c28acec8921445525bc85218b6965ed220040892612b15da"
 }

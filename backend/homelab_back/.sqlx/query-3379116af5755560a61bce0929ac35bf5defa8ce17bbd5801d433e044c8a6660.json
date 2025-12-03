@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "DELETE FROM files WHERE id = ANY($1)",
+  "query": "\n            DELETE FROM files WHERE id = ANY($1)\n            ",
   "describe": {
     "columns": [],
     "parameters": {
@@ -10,5 +10,5 @@
     },
     "nullable": []
   },
-  "hash": "8a1209773909d0c033e065a4f1f35cbd7a7135ceadbaf4f72d81e2e84dea2dba"
+  "hash": "3379116af5755560a61bce0929ac35bf5defa8ce17bbd5801d433e044c8a6660"
 }
