@@ -13,6 +13,7 @@ use crate::exception::data_error::DataError;
 #[async_trait]
 pub trait SharedFileService: Send + Sync {
     async fn create_shared_file(&self, command: CreateSharedFileCommand) -> Result<SharedFile, DataError>;
+    async fn get_all_shared_files_per_user (&self, user_id: Uuid) -> Result<Vec<SharedFile>, DataError>;
 }
 
 pub struct SharedFileServiceImpl {
@@ -51,5 +52,9 @@ impl SharedFileService for SharedFileServiceImpl {
         let shared_file = SharedFile::new(Uuid::new_v4(), shared_file.id, shared_user.id, owner_user.id, SharedFileAccessType::ReadOnly);
 
         self.shared_file_repository.create_shared_file(&shared_file).await
+    }
+
+    async fn get_all_shared_files_per_user(&self, user_id: Uuid) -> Result<Vec<SharedFile>, DataError> {
+        self.shared_file_repository.get_all_for_user(user_id).await
     }
 }

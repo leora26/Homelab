@@ -1,5 +1,6 @@
-use actix_web::{post, HttpResponse, Responder};
-use actix_web::web::{Data, Json, ServiceConfig};
+use actix_web::{get, post, HttpResponse, Responder};
+use actix_web::web::{Data, Json, Path, ServiceConfig};
+use uuid::Uuid;
 use crate::AppState;
 use crate::data::file_folder::create_shared_file_command::CreateSharedFileCommand;
 use crate::helpers::error_mapping::map_data_err_to_http;
@@ -22,7 +23,28 @@ pub async fn create_shared_file_record (
     }
 }
 
+#[get("/shared")]
+pub async fn get_all (
+    app_state: Data<AppState>,
+    user_id: Path<Uuid>
+) -> impl Responder {
+    match app_state.shared_file_service.get_all_shared_files_per_user(user_id.into_inner()).await {
+        Ok(sf) => {
+            if sf.is_empty() {
+                HttpResponse::Ok().body("No shared files were found")
+            } else {
+                HttpResponse::Ok().json(sf)
+            }
+        },
+        Err(e) => {
+            tracing::error!("Failed while retrieving files for user");
+            map_data_err_to_http(e)
+        }
+    }
+}
+
 
 pub fn config(c: &mut ServiceConfig) {
     c.service(create_shared_file_record);
+    c.service(get_all);
 }
