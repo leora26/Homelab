@@ -1,0 +1,70 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO shared_file (id, user_id, owner_id, file_id, access_type) VALUES ($1, $2, $3, $4, $5) RETURNING id, user_id, owner_id, file_id, access_type as \"access_type: _\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "owner_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "file_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "access_type: _",
+        "type_info": {
+          "Custom": {
+            "name": "access_type",
+            "kind": {
+              "Enum": [
+                "ReadOnly",
+                "Edit"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        {
+          "Custom": {
+            "name": "access_type",
+            "kind": {
+              "Enum": [
+                "ReadOnly",
+                "Edit"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "fe1855ad0cc528389835115250e1aa4f31949115097d4f3b19895f1c3c614ac6"
+}
