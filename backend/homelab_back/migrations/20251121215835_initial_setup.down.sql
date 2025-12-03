@@ -1,14 +1,16 @@
 -- The order matters! We must drop tables with foreign keys first.
 DROP TABLE IF EXISTS action_logs;
+DROP TABLE IF EXISTS shared_file;
 DROP TABLE IF EXISTS files;
-DROP TABLE IF EXISTS folders; -- Drops the self-referencing table
+DROP TABLE IF EXISTS folders;
 DROP TABLE IF EXISTS white_listed_users;
 DROP TABLE IF EXISTS users;
 
--- Finally, drop the custom types
+
 DROP TYPE IF EXISTS action_log_type;
 DROP TYPE IF EXISTS file_type;
-DROP TYPE IF EXISTS user_role;-- Add down migration script here
+DROP TYPE IF EXISTS user_role;
+DROP TYPE IF EXISTS shared_file_access_type;
 
 -- If you make a mistake or want to change a table, do not delete the Docker container.
 --

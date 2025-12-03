@@ -1,5 +1,5 @@
-use actix_web::{delete, get, patch, post, web, HttpResponse, Responder};
-use actix_web::web::{Data, Json, Path, Query};
+use actix_web::{delete, get, patch, post, HttpResponse, Responder};
+use actix_web::web::{Data, Json, Path, Query, ServiceConfig};
 use uuid::Uuid;
 use crate::AppState;
 use crate::data::file_folder::delete_chosen_files_command::DeleteChosenFilesCommand;
@@ -111,7 +111,7 @@ pub async fn delete_chosen_files (
     }
 }
 
-pub fn config(c: &mut web::ServiceConfig) {
+pub fn config(c: &mut ServiceConfig) {
     c.service(get_file);
     c.service(delete_file);
     c.service(upload_file);

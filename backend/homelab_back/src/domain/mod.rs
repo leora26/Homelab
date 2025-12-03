@@ -3,3 +3,4 @@ pub mod folder;
 pub mod file;
 pub mod action_log;
 pub mod white_listed_user;
+pub mod shared_file;

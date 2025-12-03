@@ -11,6 +11,20 @@ CREATE TYPE user_role AS ENUM (
     'admin'
     );
 
+CREATE TYPE action_log_type AS ENUM (
+    'FileUpload',
+    'FileDeletion',
+    'FolderCreation',
+    'FolderDeletion',
+    'UserCreation',
+    'AccountCompletion'
+);
+
+CREATE TYPE access_type AS ENUM (
+    'ReadOnly',
+    'Edit'
+);
+
 CREATE TABLE users
 (
     id            UUID PRIMARY KEY,
@@ -48,14 +62,6 @@ CREATE TABLE files
     parent_folder_id UUID      NOT NULL REFERENCES folders (id) ON DELETE CASCADE
 );
 
-CREATE TYPE action_log_type AS ENUM (
-    'FileUpload',
-    'FileDeletion',
-    'FolderCreation',
-    'FolderDeletion',
-    'UserCreation',
-    'AccountCompletion'
-    );
 
 CREATE TABLE action_logs
 (
@@ -67,4 +73,12 @@ CREATE TABLE action_logs
     created_at TIMESTAMPTZ     NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE shared_file
+(
+    id                      UUID PRIMARY KEY,
+    user_id                 UUID                    NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    owner_id                UUID                    NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    file_id                 UUID                    NOT NULL REFERENCES files (id) ON DELETE CASCADE,
+    access_type access_type NOT NULL
+)
 
