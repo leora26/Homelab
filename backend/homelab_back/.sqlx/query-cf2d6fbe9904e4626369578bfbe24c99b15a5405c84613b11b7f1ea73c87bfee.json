@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id, name, owner_id, parent_folder_id, file_type as \"file_type: _\"\n        FROM files\n        WHERE parent_folder_id = $1\n        ",
+  "query": "\n            SELECT id, name, owner_id, file_type as \"file_type: _\", parent_folder_id, is_deleted, ttl\n            FROM files\n            WHERE is_deleted = TRUE\n            ",
   "describe": {
     "columns": [
       {
@@ -20,11 +20,6 @@
       },
       {
         "ordinal": 3,
-        "name": "parent_folder_id",
-        "type_info": "Uuid"
-      },
-      {
-        "ordinal": 4,
         "name": "file_type: _",
         "type_info": {
           "Custom": {
@@ -39,20 +34,35 @@
             }
           }
         }
+      },
+      {
+        "ordinal": 4,
+        "name": "parent_folder_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "is_deleted",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 6,
+        "name": "ttl",
+        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
-      "Left": [
-        "Uuid"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
       false,
       false,
       false,
-      false
+      false,
+      false,
+      true
     ]
   },
-  "hash": "bc1a7446b8b59ecd32a25513e574e24e6016acc612a9a1ecf9dae2e1d55ca7ed"
+  "hash": "cf2d6fbe9904e4626369578bfbe24c99b15a5405c84613b11b7f1ea73c87bfee"
 }

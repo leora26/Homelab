@@ -59,7 +59,9 @@ CREATE TABLE files
     name             TEXT      NOT NULL,
     owner_id         UUID      NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     file_type        file_type NOT NULL,
-    parent_folder_id UUID      NOT NULL REFERENCES folders (id) ON DELETE CASCADE
+    parent_folder_id UUID      NOT NULL REFERENCES folders (id) ON DELETE CASCADE,
+    is_deleted       BOOLEAN   NOT NULL DEFAULT FALSE,
+    ttl              TIMESTAMPTZ
 );
 
 
@@ -75,10 +77,10 @@ CREATE TABLE action_logs
 
 CREATE TABLE shared_file
 (
-    id                      UUID PRIMARY KEY,
-    user_id                 UUID                    NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-    owner_id                UUID                    NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-    file_id                 UUID                    NOT NULL REFERENCES files (id) ON DELETE CASCADE,
+    id          UUID PRIMARY KEY,
+    user_id     UUID        NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    owner_id    UUID        NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    file_id     UUID        NOT NULL REFERENCES files (id) ON DELETE CASCADE,
     access_type access_type NOT NULL
 )
 

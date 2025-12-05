@@ -1,6 +1,7 @@
 use std::path::Path;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, sqlx::Type)]
@@ -39,6 +40,8 @@ pub struct File {
     pub owner_id: Uuid,
     pub parent_folder_id: Uuid,
     pub file_type: FileType,
+    pub is_deleted: bool,
+    pub ttl: Option<OffsetDateTime>
 }
 
 impl File {
@@ -46,7 +49,7 @@ impl File {
         FileType::from_filename(name)
     }
 
-    pub fn new(id: Uuid, name: String, owner_id: Uuid, parent_folder_id: Uuid) -> Self {
+    pub fn new(id: Uuid, name: String, owner_id: Uuid, parent_folder_id: Uuid, is_deleted: bool) -> Self {
         let file_type: FileType = File::get_file_type(&name);
 
         Self {
@@ -55,6 +58,8 @@ impl File {
             owner_id,
             parent_folder_id,
             file_type,
+            is_deleted,
+            ttl: None
         }
     }
 
@@ -62,5 +67,15 @@ impl File {
         self.file_type = File::get_file_type(&new_name);
 
         self.name = new_name;
+    }
+
+    pub fn set_as_deleted(&mut self) {
+        self.is_deleted = true;
+        self.ttl = Some(OffsetDateTime::now_utc() + Duration::days(30));
+    }
+
+    pub fn set_as_undeleted(&mut self) {
+        self.is_deleted = false;
+        self.ttl = None;
     }
 }

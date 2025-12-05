@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT id, name, owner_id, parent_folder_id, file_type as \"file_type: _\"\n            FROM files\n            WHERE id = $1\n            ",
+  "query": "\n        SELECT id, name, owner_id, parent_folder_id, file_type as \"file_type: _\", is_deleted, ttl\n        FROM files\n        WHERE parent_folder_id = $1 AND is_deleted = FALSE\n        ",
   "describe": {
     "columns": [
       {
@@ -39,6 +39,16 @@
             }
           }
         }
+      },
+      {
+        "ordinal": 5,
+        "name": "is_deleted",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 6,
+        "name": "ttl",
+        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
@@ -51,8 +61,10 @@
       false,
       false,
       false,
-      false
+      false,
+      false,
+      true
     ]
   },
-  "hash": "47a3e5ca679068ac70675ea6d6cccf76c6c8f0e99877586cfc6355ec4e5cc002"
+  "hash": "df1dc48541ba41ad4fe64b7acd0f3fecf52ae655371ea85a90370f4549a9882c"
 }

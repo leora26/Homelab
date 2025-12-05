@@ -13,13 +13,13 @@ pub trait FolderService: Send + Sync {
     async fn get_root (&self, user_id: Uuid) -> Result<Option<Folder>, DataError>;
     async fn get_by_id (&self, folder_id: Uuid) -> Result<Option<Folder>, DataError>;
     async fn get_children_by_id (&self, folder_id: Uuid) -> Result<Vec<Folder>, DataError>;
-    async fn delete (&self, folder_id: Uuid) -> Result<(), DataError>;
+    async fn search_folder (&self, search_query: String) -> Result<Vec<Folder>, DataError>;
+    async fn filter_files_by_folder (&self, file_types: &[FileType], folder_id: Uuid) -> Result<Vec<File>, DataError>;
     async fn get_folder_path (&self, folder_id: Uuid) -> Result<String, DataError>;
     async fn get_by_folder (&self, folder_id: Uuid) -> Result<Vec<File>, DataError>;
     async fn update_folder_name (&self, command: UpdateFolderNameCommand, folder_id: Uuid) -> Result<Folder, DataError>;
-    async fn search_folder (&self, search_query: String) -> Result<Vec<Folder>, DataError>;
     async fn delete_chosen_folders (&self, folder_ids: &[Uuid]) -> Result<(), DataError>;
-    async fn filter_files_by_folder (&self, file_types: &[FileType], folder_id: Uuid) -> Result<Vec<File>, DataError>;
+    async fn delete (&self, folder_id: Uuid) -> Result<(), DataError>;
 }
 
 pub struct FolderServiceImpl {
@@ -60,8 +60,12 @@ impl FolderService for FolderServiceImpl {
         self.folder_repo.get_children_by_id(folder_id).await
     }
 
-    async fn delete(&self, folder_id: Uuid) -> Result<(), DataError> {
-        self.folder_repo.delete_by_id(folder_id).await
+    async fn search_folder(&self, search_query: String) -> Result<Vec<Folder>, DataError> {
+        self.folder_repo.search_by_name(format!("%{}%", search_query)).await
+    }
+
+    async fn filter_files_by_folder(&self, file_types: &[FileType], folder_id: Uuid) -> Result<Vec<File>, DataError> {
+        self.folder_repo.filter_files_in_folder(file_types, folder_id).await
     }
 
     async fn get_folder_path(&self, folder_id: Uuid) -> Result<String, DataError> {
@@ -82,16 +86,12 @@ impl FolderService for FolderServiceImpl {
         self.folder_repo.update_folder(folder).await
     }
 
-    async fn search_folder(&self, search_query: String) -> Result<Vec<Folder>, DataError> {
-        self.folder_repo.search_by_name(format!("%{}%", search_query)).await
-    }
-
     async fn delete_chosen_folders(&self, folder_ids: &[Uuid]) -> Result<(), DataError> {
         self.folder_repo.delete_all(folder_ids).await
     }
 
-    async fn filter_files_by_folder(&self, file_types: &[FileType], folder_id: Uuid) -> Result<Vec<File>, DataError> {
-        self.folder_repo.filter_files_in_folder(file_types, folder_id).await
+    async fn delete(&self, folder_id: Uuid) -> Result<(), DataError> {
+        self.folder_repo.delete_by_id(folder_id).await
     }
 }
 

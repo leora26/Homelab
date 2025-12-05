@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT id, name, owner_id, file_type as \"file_type: _\", parent_folder_id\n            FROM files\n            WHERE LOWER(name) LIKE LOWER($1)\n            ",
+  "query": "\n            SELECT id, name, owner_id, file_type as \"file_type: _\", parent_folder_id, is_deleted, ttl\n            FROM files\n            WHERE LOWER(name) LIKE LOWER($1) AND is_deleted = FALSE\n            ",
   "describe": {
     "columns": [
       {
@@ -39,6 +39,16 @@
         "ordinal": 4,
         "name": "parent_folder_id",
         "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "is_deleted",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 6,
+        "name": "ttl",
+        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
@@ -51,8 +61,10 @@
       false,
       false,
       false,
-      false
+      false,
+      false,
+      true
     ]
   },
-  "hash": "850b63f020aeca835875f605410d4666194fe1a3589b3e5c87a375b62e867b0d"
+  "hash": "493e0bae24404630788c6dc477fb3aa562ae161d30b1bc3a4bb753bde48d8a66"
 }

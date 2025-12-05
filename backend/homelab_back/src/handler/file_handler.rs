@@ -26,15 +26,38 @@ pub async fn get_file(
     }
 }
 
-#[delete("/files/{id}")]
-pub async fn delete_file(
+#[get("/files/search")]
+pub async fn search_file(
     app_state: Data<AppState>,
-    file_id: Path<Uuid>,
+    query: Query<SearchQuery>,
 ) -> impl Responder {
-    match app_state.file_service.delete(file_id.into_inner()).await {
-        Ok(_) => HttpResponse::NoContent().finish(),
+    let search_term = query.into_inner().q;
+
+    match app_state.file_service.search_file(search_term).await {
+        Ok(f) => {
+            HttpResponse::Ok().json(f)
+        }
         Err(e) => {
-            tracing::error!("Failed to delete a file: {:?}", e);
+            tracing::error!("Failed to search for a file: {}", e);
+            map_data_err_to_http(e)
+        }
+    }
+}
+
+#[get("/files/deleted")]
+pub async fn get_all_deleted_files (
+    app_state: Data<AppState>
+) -> impl Responder {
+    match app_state.file_service.get_all_deleted_files().await {
+        Ok(f) => {
+            if f.is_empty() {
+                HttpResponse::NoContent().body("No deleted files were found")
+            } else {
+                HttpResponse::Ok().json(f)
+            }
+        },
+        Err(e) => {
+            tracing::error!("Failed to get all deleted files");
             map_data_err_to_http(e)
         }
     }
@@ -77,23 +100,20 @@ pub async fn rename_file(
     }
 }
 
-#[get("/files/search")]
-pub async fn search_file(
+#[patch("/files/{id}/undelete")]
+pub async fn undelete_file (
     app_state: Data<AppState>,
-    query: Query<SearchQuery>,
+    id: Path<Uuid>
 ) -> impl Responder {
-    let search_term = query.into_inner().q;
-
-    match app_state.file_service.search_file(search_term).await {
-        Ok(f) => {
-            HttpResponse::Ok().json(f)
-        }
+    match app_state.file_service.update_deleted_file(id.into_inner()).await {
+        Ok(f) => HttpResponse::Ok().json(f),
         Err(e) => {
-            tracing::error!("Failed to search for a file: {}", e);
+            tracing::error!("Failed to undelete a file");
             map_data_err_to_http(e)
         }
     }
 }
+
 
 #[delete("/files/all")]
 pub async fn delete_chosen_files (
@@ -111,10 +131,26 @@ pub async fn delete_chosen_files (
     }
 }
 
+#[delete("/files/{id}")]
+pub async fn delete_file(
+    app_state: Data<AppState>,
+    file_id: Path<Uuid>,
+) -> impl Responder {
+    match app_state.file_service.delete(file_id.into_inner()).await {
+        Ok(_) => HttpResponse::NoContent().finish(),
+        Err(e) => {
+            tracing::error!("Failed to delete a file: {:?}", e);
+            map_data_err_to_http(e)
+        }
+    }
+}
+
+
 pub fn config(c: &mut ServiceConfig) {
     c.service(get_file);
     c.service(delete_file);
     c.service(upload_file);
     c.service(rename_file);
     c.service(search_file);
+    c.service(get_all_deleted_files);
 }

@@ -10,13 +10,13 @@ pub trait FolderRepository: Send + Sync {
     async fn get_root (&self, user_id: Uuid) -> Result<Option<Folder>, DataError>;
     async fn get_by_id (&self, folder_id: Uuid) -> Result<Option<Folder>, DataError>;
     async fn get_children_by_id (&self, folder_id: Uuid) -> Result<Vec<Folder>, DataError>;
-    async fn delete_by_id (&self, folder_id: Uuid) -> Result<(), DataError>;
-    async fn create (&self, folder: &Folder) -> Result<Folder, DataError>;
-    async fn get_by_folder_id (&self, folder_id: Uuid) -> Result<Vec<File>, DataError>;
-    async fn update_folder (&self, folder: Folder) -> Result<Folder, DataError>;
     async fn search_by_name (&self, search_query: String) -> Result<Vec<Folder>, DataError>;
-    async fn delete_all(&self, folder_ids: &[Uuid]) -> Result<(), DataError>;
     async fn filter_files_in_folder (&self, file_types: &[FileType], folder_id: Uuid) -> Result<Vec<File>, DataError>;
+    async fn get_by_folder_id (&self, folder_id: Uuid) -> Result<Vec<File>, DataError>;
+    async fn create (&self, folder: &Folder) -> Result<Folder, DataError>;
+    async fn update_folder (&self, folder: Folder) -> Result<Folder, DataError>;
+    async fn delete_all(&self, folder_ids: &[Uuid]) -> Result<(), DataError>;
+    async fn delete_by_id (&self, folder_id: Uuid) -> Result<(), DataError>;
 }
 
 pub struct FolderRepositoryImpl {
@@ -79,18 +79,57 @@ impl FolderRepository for FolderRepositoryImpl {
         Ok(folders)
     }
 
-    async fn delete_by_id(&self, folder_id: Uuid) -> Result<(), DataError> {
-        sqlx::query!(
+    async fn search_by_name(&self, search_query: String) -> Result<Vec<Folder>, DataError> {
+        let f: Vec<Folder> = sqlx::query_as!(
+            Folder,
             r#"
-            DELETE FROM folders
-            WHERE id = $1
+            SELECT id, name, owner_id, created_at, parent_folder_id
+            FROM folders
+            WHERE LOWER(name) LIKE LOWER($1)
             "#,
-            folder_id)
-            .execute(&self.pool)
+            search_query
+        )
+            .fetch_all(&self.pool)
             .await
             .map_err(|e| DataError::DatabaseError(e))?;
 
-        Ok(())
+        Ok(f)
+
+    }
+
+    async fn filter_files_in_folder(&self, file_types: &[FileType], folder_id: Uuid) -> Result<Vec<File>, DataError> {
+        let files = sqlx::query_as!(
+            File,
+            r#"
+            SELECT id, name, owner_id, parent_folder_id, file_type as "file_type: _", is_deleted, ttl
+            FROM files
+            WHERE parent_folder_id = $1 AND file_type = ANY($2::file_type[]) AND is_deleted = FALSE
+            "#,
+            folder_id,
+            file_types as &[FileType]
+        )
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| DataError::DatabaseError(e))?;
+
+        Ok(files)
+    }
+
+    async fn get_by_folder_id(&self, folder_id: Uuid) -> Result<Vec<File>, DataError> {
+        let files = sqlx::query_as!(
+        File,
+        r#"
+        SELECT id, name, owner_id, parent_folder_id, file_type as "file_type: _", is_deleted, ttl
+        FROM files
+        WHERE parent_folder_id = $1 AND is_deleted = FALSE
+        "#,
+        folder_id
+    )
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| DataError::DatabaseError(e))?;
+
+        Ok(files)
     }
 
     async fn create(&self, folder: &Folder) -> Result<Folder, DataError> {
@@ -114,23 +153,6 @@ impl FolderRepository for FolderRepositoryImpl {
         Ok(folder)
     }
 
-    async fn get_by_folder_id(&self, folder_id: Uuid) -> Result<Vec<File>, DataError> {
-        let files = sqlx::query_as!(
-        File,
-        r#"
-        SELECT id, name, owner_id, parent_folder_id, file_type as "file_type: _"
-        FROM files
-        WHERE parent_folder_id = $1
-        "#,
-        folder_id
-    )
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| DataError::DatabaseError(e))?;
-
-        Ok(files)
-    }
-
     async fn update_folder(&self, folder: Folder) -> Result<Folder, DataError> {
         let f = sqlx::query_as!(
             Folder,
@@ -152,24 +174,6 @@ impl FolderRepository for FolderRepositoryImpl {
         Ok(f)
     }
 
-    async fn search_by_name(&self, search_query: String) -> Result<Vec<Folder>, DataError> {
-        let f: Vec<Folder> = sqlx::query_as!(
-            Folder,
-            r#"
-            SELECT id, name, owner_id, created_at, parent_folder_id
-            FROM folders
-            WHERE LOWER(name) LIKE LOWER($1)
-            "#,
-            search_query
-        )
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| DataError::DatabaseError(e))?;
-
-        Ok(f)
-
-    }
-
     async fn delete_all(&self, folder_ids: &[Uuid]) -> Result<(), DataError> {
         sqlx::query!(
             r#"
@@ -185,21 +189,17 @@ impl FolderRepository for FolderRepositoryImpl {
         Ok(())
     }
 
-    async fn filter_files_in_folder(&self, file_types: &[FileType], folder_id: Uuid) -> Result<Vec<File>, DataError> {
-        let files = sqlx::query_as!(
-            File,
+    async fn delete_by_id(&self, folder_id: Uuid) -> Result<(), DataError> {
+        sqlx::query!(
             r#"
-            SELECT id, name, owner_id, parent_folder_id, file_type as "file_type: _"
-            FROM files
-            WHERE parent_folder_id = $1 AND file_type = ANY($2::file_type[])
+            DELETE FROM folders
+            WHERE id = $1
             "#,
-            folder_id,
-            file_types as &[FileType]
-        )
-            .fetch_all(&self.pool)
+            folder_id)
+            .execute(&self.pool)
             .await
             .map_err(|e| DataError::DatabaseError(e))?;
 
-        Ok(files)
+        Ok(())
     }
 }
