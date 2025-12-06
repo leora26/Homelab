@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT id, name, owner_id, file_type as \"file_type: _\", parent_folder_id, is_deleted, ttl\n            FROM files\n            WHERE LOWER(name) LIKE LOWER($1) AND is_deleted = FALSE\n            ",
+  "query": "\n            SELECT id, name, owner_id, parent_folder_id, file_type as \"file_type: _\", is_deleted, ttl, size, upload_status as \"upload_status: _\"\n            FROM files\n            WHERE id = $1 AND is_deleted = FALSE\n            ",
   "describe": {
     "columns": [
       {
@@ -20,6 +20,11 @@
       },
       {
         "ordinal": 3,
+        "name": "parent_folder_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
         "name": "file_type: _",
         "type_info": {
           "Custom": {
@@ -36,11 +41,6 @@
         }
       },
       {
-        "ordinal": 4,
-        "name": "parent_folder_id",
-        "type_info": "Uuid"
-      },
-      {
         "ordinal": 5,
         "name": "is_deleted",
         "type_info": "Bool"
@@ -49,11 +49,32 @@
         "ordinal": 6,
         "name": "ttl",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "size",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 8,
+        "name": "upload_status: _",
+        "type_info": {
+          "Custom": {
+            "name": "upload_status",
+            "kind": {
+              "Enum": [
+                "Pending",
+                "Completed",
+                "Failed"
+              ]
+            }
+          }
+        }
       }
     ],
     "parameters": {
       "Left": [
-        "Text"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -63,8 +84,10 @@
       false,
       false,
       false,
-      true
+      true,
+      false,
+      false
     ]
   },
-  "hash": "493e0bae24404630788c6dc477fb3aa562ae161d30b1bc3a4bb753bde48d8a66"
+  "hash": "815eb596cd839c20342078b47673f1ad818796943aa27a3437c98661536c6fd4"
 }

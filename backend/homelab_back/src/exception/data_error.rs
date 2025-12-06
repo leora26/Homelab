@@ -12,4 +12,12 @@ pub enum DataError {
     EntityCreationError(String),
     #[error("Failed to validate data")]
     ValidationError(String),
+    #[error("Out of available storage")]
+    NoFreeStorageError,
+    #[error("Failed during I/O operation: {0}")]
+    IOError(String),
+    #[error("Failed while uploading file: {0}")]
+    UploadInterrupter(String),
+    #[error("Not matching byte size")]
+    NotMatchingByteSizeError,
 }

@@ -6,5 +6,6 @@ pub struct CreateUserCommand {
     pub email: String,
     pub password: String,
     pub role: Role,
-    pub full_name: String
+    pub full_name: String,
+    pub storage: i64
 }

@@ -42,7 +42,7 @@ impl UserService for UserServiceImpl {
 
         let cleaned_name = command.full_name.trim().to_string();
 
-        let u = User::new_complete(Uuid::new_v4(), valid_email.into_inner(), command.password, cleaned_name);
+        let u = User::new_complete(Uuid::new_v4(), valid_email.into_inner(), command.password, cleaned_name, command.storage);
 
         self.user_repo.create(u).await
     }

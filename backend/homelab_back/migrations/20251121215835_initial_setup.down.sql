@@ -11,6 +11,7 @@ DROP TYPE IF EXISTS action_log_type;
 DROP TYPE IF EXISTS file_type;
 DROP TYPE IF EXISTS user_role;
 DROP TYPE IF EXISTS access_type;
+DROP TYPE IF EXISTS upload_status;
 
 -- If you make a mistake or want to change a table, do not delete the Docker container.
 --

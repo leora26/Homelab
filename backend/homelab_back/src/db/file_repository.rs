@@ -31,7 +31,7 @@ impl FileRepository for FileRepositoryImpl {
         let file = sqlx::query_as!(
         File,
             r#"
-            SELECT id, name, owner_id, parent_folder_id, file_type as "file_type: _", is_deleted, ttl
+            SELECT id, name, owner_id, parent_folder_id, file_type as "file_type: _", is_deleted, ttl, size, upload_status as "upload_status: _"
             FROM files
             WHERE id = $1 AND is_deleted = FALSE
             "#,
@@ -48,7 +48,7 @@ impl FileRepository for FileRepositoryImpl {
         let f: Vec<File> = sqlx::query_as!(
             File,
             r#"
-            SELECT id, name, owner_id, file_type as "file_type: _", parent_folder_id, is_deleted, ttl
+            SELECT id, name, owner_id, file_type as "file_type: _", parent_folder_id, is_deleted, ttl, size, upload_status as "upload_status: _"
             FROM files
             WHERE is_deleted = TRUE
             "#,
@@ -64,7 +64,7 @@ impl FileRepository for FileRepositoryImpl {
         let f: Vec<File> = sqlx::query_as!(
             File,
             r#"
-            SELECT id, name, owner_id, file_type as "file_type: _", parent_folder_id, is_deleted, ttl
+            SELECT id, name, owner_id, file_type as "file_type: _", parent_folder_id, is_deleted, ttl, size, upload_status as "upload_status: _"
             FROM files
             WHERE LOWER(name) LIKE LOWER($1) AND is_deleted = FALSE
             "#,
@@ -81,16 +81,18 @@ impl FileRepository for FileRepositoryImpl {
         let file = sqlx::query_as!(
         File,
         r#"
-        INSERT INTO files (id, name, owner_id, parent_folder_id, file_type, is_deleted)
-        VALUES ($1,$2, $3, $4, $5, $6)
-        RETURNING id, name, owner_id,parent_folder_id, file_type as "file_type: _", is_deleted, ttl
+        INSERT INTO files (id, name, owner_id, parent_folder_id, file_type, is_deleted, size, upload_status)
+        VALUES ($1,$2, $3, $4, $5, $6, $7, $8)
+        RETURNING id, name, owner_id,parent_folder_id, file_type as "file_type: _", is_deleted, ttl, size, upload_status as "upload_status: _"
         "#,
-        file.id,
-        file.name,
-        file.owner_id,
-        file.parent_folder_id,
-        file.file_type as _,
-            file.is_deleted
+            file.id,
+            file.name,
+            file.owner_id,
+            file.parent_folder_id,
+            file.file_type as _,
+            file.is_deleted,
+            file.size,
+            file.upload_status as _
     )
             .fetch_one(&self.pool)
             .await
@@ -104,9 +106,9 @@ impl FileRepository for FileRepositoryImpl {
             File,
             r#"
             UPDATE files
-            SET name = $1, owner_id = $2, file_type = $3, parent_folder_id = $4, is_deleted = $5, ttl = $6
-            WHERE id = $7 and is_deleted = FALSE
-            RETURNING id, name, owner_id, file_type as "file_type: _", parent_folder_id, is_deleted, ttl
+            SET name = $1, owner_id = $2, file_type = $3, parent_folder_id = $4, is_deleted = $5, ttl = $6, size = $7, upload_status = $8
+            WHERE id = $9 and is_deleted = FALSE
+            RETURNING id, name, owner_id, file_type as "file_type: _", parent_folder_id, is_deleted, ttl, size, upload_status as "upload_status: _"
             "#,
             file.name,
             file.owner_id,
@@ -114,6 +116,8 @@ impl FileRepository for FileRepositoryImpl {
             file.parent_folder_id,
             file.is_deleted,
             file.ttl,
+            file.size,
+            file.upload_status as _,
             file.id
         )
             .fetch_one(&self.pool)

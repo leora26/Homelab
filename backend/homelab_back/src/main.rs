@@ -6,6 +6,7 @@ pub mod data;
 pub mod exception;
 pub mod types;
 pub mod helpers;
+mod constants;
 
 use std::env;
 use std::path::Path;
@@ -13,14 +14,13 @@ use std::sync::Arc;
 use actix_web::{web, App, HttpServer};
 use dotenvy::dotenv;
 use sqlx::postgres::PgPoolOptions;
-use crate::db::file_repository::FileRepositoryImpl;
+use crate::db::file_repository::{FileRepository, FileRepositoryImpl};
 use crate::db::white_listed_user_repository::WhiteListedUserRepositoryImpl;
 use crate::db::folder_repository::FolderRepositoryImpl;
 use crate::db::shared_file_repository::SharedFileRepositoryImpl;
 use crate::db::user_repository::UserRepositoryImpl;
 use crate::service::file_service::{FileService, FileServiceImpl};
 use crate::service::folder_service::{FolderService, FolderServiceImpl};
-use crate::service::io_service::{IOService, IOServiceImpl};
 use crate::service::shared_file_service::{SharedFileService, SharedFileServiceImpl};
 use crate::service::user_service::{UserService, UserServiceImpl};
 use crate::service::white_listed_user_service::{WhiteListedServiceImpl, WhiteListedUserService};
@@ -29,9 +29,9 @@ pub struct AppState {
     pub file_service: Arc<dyn FileService>,
     pub folder_service: Arc<dyn FolderService>,
     pub user_service: Arc<dyn UserService>,
-    pub io_service: Arc<dyn IOService>,
     pub white_listed_user_service: Arc<dyn WhiteListedUserService>,
-    pub shared_file_service: Arc<dyn SharedFileService>
+    pub shared_file_service: Arc<dyn SharedFileService>,
+    pub file_repo: Arc<dyn FileRepository>,
 }
 
 #[actix_web::main]
@@ -72,8 +72,7 @@ async fn main() -> std::io::Result<()> {
     let share_file_repo = Arc::new(SharedFileRepositoryImpl::new(pool.clone()));
 
     let folder_service = Arc::new(FolderServiceImpl::new(folder_repo.clone()));
-    let io_service = Arc::new(IOServiceImpl::new(folder_service.clone()));
-    let file_service = Arc::new(FileServiceImpl::new(file_repo.clone(), folder_repo.clone(), user_repo.clone(), io_service.clone()));
+    let file_service = Arc::new(FileServiceImpl::new(file_repo.clone(), folder_repo.clone(), user_repo.clone()));
     let user_service = Arc::new(UserServiceImpl::new(user_repo.clone()));
     let wlu_service = Arc::new(WhiteListedServiceImpl::new(wlu_repo.clone(), user_repo.clone()));
     let shared_file_service = Arc::new(SharedFileServiceImpl::new(share_file_repo.clone(), user_repo.clone(), file_repo.clone()));
@@ -83,9 +82,9 @@ async fn main() -> std::io::Result<()> {
             file_service,
             folder_service,
             user_service,
-            io_service,
             white_listed_user_service: wlu_service,
-            shared_file_service
+            shared_file_service,
+            file_repo: file_repo.clone(),
         });
 
 

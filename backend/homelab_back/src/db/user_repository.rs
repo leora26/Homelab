@@ -30,7 +30,7 @@ impl UserRepository for UserRepositoryImpl {
         let user = sqlx::query_as!(
         User,
         r#"
-        SELECT id, email, full_name, password_hash, created_at,  role as "role: _"
+        SELECT id, email, full_name, password_hash, created_at,  role as "role: _", allowed_storage, taken_storage
         FROM users
         WHERE email = $1
         "#,
@@ -47,7 +47,7 @@ impl UserRepository for UserRepositoryImpl {
         let users = sqlx::query_as!(
         User,
         r#"
-        SELECT id, email, full_name, password_hash, created_at,  role as "role: _"
+        SELECT id, email, full_name, password_hash, created_at,  role as "role: _", allowed_storage, taken_storage
         FROM users
         "#
     )
@@ -62,15 +62,17 @@ impl UserRepository for UserRepositoryImpl {
         let user = sqlx::query_as!(
         User,
         r#"
-        INSERT INTO users (id, email, full_name, password_hash, role)
-        VALUES ($1, $2, $3, $4, $5)
-        RETURNING id, email, full_name, password_hash, created_at, role as "role: _"
+        INSERT INTO users (id, email, full_name, password_hash, role, allowed_storage, taken_storage)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING id, email, full_name, password_hash, created_at, role as "role: _", allowed_storage, taken_storage
         "#,
-        user.id,
-        user.email,
-        user.full_name,
-        user.password_hash,
-        user.role as Role
+            user.id,
+            user.email,
+            user.full_name,
+            user.password_hash,
+            user.role as Role,
+            user.allowed_storage,
+            user.taken_storage
     )
             .fetch_one(&self.pool)
             .await?;
@@ -82,7 +84,7 @@ impl UserRepository for UserRepositoryImpl {
         let user = sqlx::query_as!(
         User,
         r#"
-        SELECT id, email, full_name, password_hash, created_at,  role as "role: _"
+        SELECT id, email, full_name, password_hash, created_at,  role as "role: _", allowed_storage, taken_storage
         FROM users
         WHERE id = $1
         "#,
@@ -99,13 +101,15 @@ impl UserRepository for UserRepositoryImpl {
         sqlx::query!(
             r#"
             UPDATE users
-            SET email = $1, full_name = $2, role = $3, password_hash = $4
-            WHERE id = $5
+            SET email = $1, full_name = $2, role = $3, password_hash = $4, allowed_storage = $5, taken_storage = $6
+            WHERE id = $7
             "#,
             user.email,
             user.full_name,
             user.role as Role,
             user.password_hash,
+            user.allowed_storage,
+            user.taken_storage,
             user.id
         )
             .execute(&self.pool)

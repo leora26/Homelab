@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id, email, full_name, password_hash, created_at,  role as \"role: _\"\n        FROM users\n        ",
+  "query": "\n        INSERT INTO users (id, email, full_name, password_hash, role, allowed_storage, taken_storage)\n        VALUES ($1, $2, $3, $4, $5, $6, $7)\n        RETURNING id, email, full_name, password_hash, created_at, role as \"role: _\", allowed_storage, taken_storage\n        ",
   "describe": {
     "columns": [
       {
@@ -42,12 +42,42 @@
             }
           }
         }
+      },
+      {
+        "ordinal": 6,
+        "name": "allowed_storage",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 7,
+        "name": "taken_storage",
+        "type_info": "Int8"
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        {
+          "Custom": {
+            "name": "user_role",
+            "kind": {
+              "Enum": [
+                "user",
+                "admin"
+              ]
+            }
+          }
+        },
+        "Int8",
+        "Int8"
+      ]
     },
     "nullable": [
+      false,
+      false,
       false,
       false,
       false,
@@ -56,5 +86,5 @@
       false
     ]
   },
-  "hash": "7e3cd00899c51293ac311a9f806e16e6da68af2d0edfbefd8d2311a68c02f763"
+  "hash": "5a25b7e9bafb01daa560f04045ebca435f3a1ccc0a814ad5bf77d69f2027c147"
 }

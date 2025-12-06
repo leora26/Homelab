@@ -25,14 +25,22 @@ CREATE TYPE access_type AS ENUM (
     'Edit'
 );
 
+CREATE TYPE upload_status AS ENUM (
+    'Pending',
+    'Completed',
+    'Failed'
+);
+
 CREATE TABLE users
 (
-    id            UUID PRIMARY KEY,
-    email         TEXT UNIQUE NOT NULL,
-    full_name     TEXT UNIQUE NOT NULL,
-    password_hash TEXT        NOT NULL,
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    role          user_role   NOT NULL
+    id              UUID PRIMARY KEY,
+    email           TEXT UNIQUE NOT NULL,
+    full_name       TEXT UNIQUE NOT NULL,
+    password_hash   TEXT        NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    role            user_role   NOT NULL,
+    allowed_storage BIGINT      NOT NULL,
+    taken_storage   BIGINT      NOT NULL
 );
 
 CREATE TABLE white_listed_users
@@ -56,12 +64,14 @@ CREATE TABLE folders
 CREATE TABLE files
 (
     id               UUID PRIMARY KEY,
-    name             TEXT      NOT NULL,
-    owner_id         UUID      NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-    file_type        file_type NOT NULL,
-    parent_folder_id UUID      NOT NULL REFERENCES folders (id) ON DELETE CASCADE,
-    is_deleted       BOOLEAN   NOT NULL DEFAULT FALSE,
-    ttl              TIMESTAMPTZ
+    name             TEXT          NOT NULL,
+    owner_id         UUID          NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    file_type        file_type     NOT NULL,
+    parent_folder_id UUID          NOT NULL REFERENCES folders (id) ON DELETE CASCADE,
+    is_deleted       BOOLEAN       NOT NULL DEFAULT FALSE,
+    ttl              TIMESTAMPTZ,
+    size             BIGINT        NOT NULL,
+    upload_status            upload_status NOT NULL
 );
 
 

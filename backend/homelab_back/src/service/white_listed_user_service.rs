@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use async_trait::async_trait;
 use uuid::Uuid;
+use crate::data::user::confirm_user_command::ConfirmUserCommand;
 use crate::data::user::create_white_listed_user_command::CreateWhiteListedUserCommand;
 use crate::db::user_repository::UserRepository;
 use crate::db::white_listed_user_repository::WhiteListedUserRepository;
@@ -12,7 +13,7 @@ use crate::types::user_email::UserEmail;
 #[async_trait]
 pub trait WhiteListedUserService: Send + Sync {
     async fn get_all(&self) -> Result<Vec<WhiteListedUser>, DataError>;
-    async fn confirm(&self, user_id: Uuid) -> Result<User, DataError>;
+    async fn confirm(&self, user_id: Uuid, command: ConfirmUserCommand) -> Result<User, DataError>;
     async fn create(&self, command: CreateWhiteListedUserCommand) -> Result<WhiteListedUser, DataError>;
 }
 
@@ -36,17 +37,15 @@ impl WhiteListedUserService for WhiteListedServiceImpl {
         self.white_listed_repo.get_all().await
     }
 
-    async fn confirm(&self, user_id: Uuid) -> Result<User, DataError> {
-        let wlu_option = self.white_listed_repo.get_by_id(user_id).await?;
-
-        let wlu = wlu_option.ok_or_else(||
-            DataError::EntityNotFoundException(format!("WhiteListedUser with id {}", user_id))
-        )?;
+    async fn confirm(&self, user_id: Uuid, command: ConfirmUserCommand) -> Result<User, DataError> {
+        let wlu = self.white_listed_repo.get_by_id(user_id).await?
+            .ok_or_else(|| DataError::EntityNotFoundException("WhiteListedUser".to_string()))?;
 
         let new_user_entity = User::new_pending(
             Uuid::new_v4(),
             wlu.email,
             wlu.full_name,
+            command.allowed_storage
         );
 
         let saved_user = self.user_repo.create(new_user_entity)

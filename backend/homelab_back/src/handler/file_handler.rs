@@ -1,12 +1,15 @@
 use actix_web::{delete, get, patch, post, HttpResponse, Responder};
+use actix_web::web::Payload;
 use actix_web::web::{Data, Json, Path, Query, ServiceConfig};
 use uuid::Uuid;
 use crate::AppState;
 use crate::data::file_folder::delete_chosen_files_command::DeleteChosenFilesCommand;
 use crate::data::file_folder::search_query::SearchQuery;
 use crate::data::file_folder::update_file_name_command::UpdateFileNameCommand;
-use crate::data::file_folder::upload_file_command::UploadFileCommand;
+use crate::data::file_folder::init_file_command::InitFileCommand;
 use crate::helpers::error_mapping::map_data_err_to_http;
+use futures::StreamExt;
+use crate::service::file_uploader::FileUploader;
 
 #[get("/files/{id}")]
 pub async fn get_file(
@@ -45,7 +48,7 @@ pub async fn search_file(
 }
 
 #[get("/files/deleted")]
-pub async fn get_all_deleted_files (
+pub async fn get_all_deleted_files(
     app_state: Data<AppState>
 ) -> impl Responder {
     match app_state.file_service.get_all_deleted_files().await {
@@ -55,24 +58,22 @@ pub async fn get_all_deleted_files (
             } else {
                 HttpResponse::Ok().json(f)
             }
-        },
+        }
         Err(e) => {
-            tracing::error!("Failed to get all deleted files");
+            tracing::error!("Failed to get all deleted files: {}", e);
             map_data_err_to_http(e)
         }
     }
 }
 
 #[post("/files")]
-pub async fn upload_file(
+pub async fn init_file(
     app_state: Data<AppState>,
-    req: Json<UploadFileCommand>,
+    req: Json<InitFileCommand>,
 ) -> impl Responder {
-    let command = req.into_inner();
-
-    match app_state.file_service.upload(command).await {
+    match app_state.file_service.upload(req.into_inner()).await {
         Ok(file) => {
-            HttpResponse::Created().json(file)
+            HttpResponse::Created().json(file.id)
         }
         Err(e) => {
             tracing::error!("Failed while creating a file: {}", e);
@@ -80,6 +81,27 @@ pub async fn upload_file(
         }
     }
 }
+
+#[patch("/files/{file_id}/content")]
+pub async fn upload_content(
+    app_state: Data<AppState>,
+    id: Path<Uuid>,
+    payload: Payload,
+) -> impl Responder {
+
+    let uploader = FileUploader::new(
+        app_state.file_repo.clone()
+    );
+
+    match uploader.upload_content(id.into_inner(), payload).await {
+        Ok(_) => HttpResponse::Ok().finish(),
+        Err(e) => {
+            tracing::error!("Failed when uploading file content: {}", e);
+            map_data_err_to_http(e)
+        }
+    }
+}
+
 
 #[patch("/files/{fileId}")]
 pub async fn rename_file(
@@ -101,9 +123,9 @@ pub async fn rename_file(
 }
 
 #[patch("/files/{id}/undelete")]
-pub async fn undelete_file (
+pub async fn undelete_file(
     app_state: Data<AppState>,
-    id: Path<Uuid>
+    id: Path<Uuid>,
 ) -> impl Responder {
     match app_state.file_service.update_deleted_file(id.into_inner()).await {
         Ok(f) => HttpResponse::Ok().json(f),
@@ -116,9 +138,9 @@ pub async fn undelete_file (
 
 
 #[delete("/files/all")]
-pub async fn delete_chosen_files (
+pub async fn delete_chosen_files(
     app_state: Data<AppState>,
-    req: Json<DeleteChosenFilesCommand>
+    req: Json<DeleteChosenFilesCommand>,
 ) -> impl Responder {
     let command: DeleteChosenFilesCommand = req.into_inner();
 
@@ -149,8 +171,9 @@ pub async fn delete_file(
 pub fn config(c: &mut ServiceConfig) {
     c.service(get_file);
     c.service(delete_file);
-    c.service(upload_file);
+    c.service(init_file);
     c.service(rename_file);
     c.service(search_file);
     c.service(get_all_deleted_files);
+    c.service(upload_content);
 }
