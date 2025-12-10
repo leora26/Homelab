@@ -7,13 +7,16 @@ pub mod exception;
 pub mod types;
 pub mod helpers;
 mod constants;
+mod pb;
 
 use std::env;
+use std::error::Error;
 use std::path::Path;
 use std::sync::Arc;
 use actix_web::{web, App, HttpServer};
 use dotenvy::dotenv;
 use sqlx::postgres::PgPoolOptions;
+use tonic::transport::Server;
 use crate::db::file_repository::{FileRepository, FileRepositoryImpl};
 use crate::db::white_listed_user_repository::WhiteListedUserRepositoryImpl;
 use crate::db::folder_repository::FolderRepositoryImpl;
@@ -35,10 +38,11 @@ pub struct AppState {
 }
 
 #[actix_web::main]
-async fn main() -> std::io::Result<()> {
+async fn main() -> Result<(), Box<dyn Error>> {
     env_logger::init();
-
     dotenv().ok();
+
+    let server_mode = env::var("SERVER_MODE").unwrap_or_else(|_| "hybrid".to_string()).to_lowercase();
 
     let database_url = env::var("DATABASE_URL")
         .expect("DATABSE_URL must be set in .env file");
@@ -87,21 +91,70 @@ async fn main() -> std::io::Result<()> {
             file_repo: file_repo.clone(),
         });
 
+    let rest_addr = ("0.0.0.0", 8080);
+    let grpc_addr = "[::1]:50051".parse().unwrap();
 
-    HttpServer::new(move || {
-        App::new()
-            .app_data(app_state.clone())
-            .service(
-                web::scope("/api")
-                    .configure(handler::user_handler::config)
-                    .configure(handler::folder_handler::config)
-                    .configure(handler::file_handler::config)
-                    .configure(handler::white_listed_user_handler::config)
-                    .configure(handler::shared_file_handler::config)
-                    .configure(handler::test::config)
-            )
-    })
-        .bind(("0.0.0.0", 8080))?
-        .run()
-        .await
+    println!("System starting in [{}] mode...", server_mode.to_uppercase());
+
+    match server_mode.as_str() {
+        "rest" => {
+            println!("🚀 Starting REST Server only at http://{}:{}", rest_addr.0, rest_addr.1);
+            HttpServer::new(move || {
+                App::new()
+                    .app_data(app_state.clone())
+                    .configure(handler_config)
+            })
+                .bind(rest_addr)?
+                .run()
+                .await?;
+        }
+        "grpc" => {
+            // println!("🚀 Starting gRPC Server only at {}", grpc_addr);
+            // // let grpc_service = MyNasServiceImpl::new(user_service, file_service, ...);
+            //
+            // Server::builder()
+            //     // .add_service(NasServiceServer::new(grpc_service))
+            //     .serve(grpc_addr)
+            //     .await?;
+        }
+        "hybrid" => {
+            println!("🚀 Starting Hybrid Mode (REST + gRPC)");
+
+            // let grpc_handle = tokio::spawn(async move {
+            //     // let grpc_service = MyNasServiceImpl::new(...);
+            //     println!("   - gRPC listening at {}", grpc_addr);
+            //     Server::builder()
+            //         // .add_service(...)
+            //         .serve(grpc_addr)
+            //         .await
+            //         .unwrap();
+            // });
+
+            println!("   - REST listening at http://{}:{}", rest_addr.0, rest_addr.1);
+            HttpServer::new(move || {
+                App::new()
+                    .app_data(app_state.clone())
+                    .configure(handler_config)
+            })
+                .bind(rest_addr)?
+                .run()
+                .await?;
+
+            // let _ = grpc_handle.await;
+        }
+        _ => panic!("Invalid SERVER_MODE: {}. Use 'rest', 'grpc', or 'hybrid'", server_mode),
+    }
+
+    Ok(())
+}
+
+fn handler_config(cfg: &mut web::ServiceConfig) {
+    cfg.service(
+        web::scope("/api")
+            .configure(crate::handler::user_handler::config)
+            .configure(crate::handler::folder_handler::config)
+            .configure(crate::handler::file_handler::config)
+            .configure(crate::handler::white_listed_user_handler::config)
+            .configure(crate::handler::shared_file_handler::config)
+    );
 }

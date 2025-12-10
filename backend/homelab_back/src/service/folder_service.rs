@@ -2,6 +2,7 @@ use std::sync::Arc;
 use async_recursion::async_recursion;
 use async_trait::async_trait;
 use uuid::Uuid;
+use crate::data::file_folder::create_folder_command::CreateFolderCommand;
 use crate::data::file_folder::update_folder_name_command::UpdateFolderNameCommand;
 use crate::db::folder_repository::FolderRepository;
 use crate::domain::file::{File, FileType};
@@ -20,6 +21,7 @@ pub trait FolderService: Send + Sync {
     async fn update_folder_name (&self, command: UpdateFolderNameCommand, folder_id: Uuid) -> Result<Folder, DataError>;
     async fn delete_chosen_folders (&self, folder_ids: &[Uuid]) -> Result<(), DataError>;
     async fn delete (&self, folder_id: Uuid) -> Result<(), DataError>;
+    async fn create(&self, command: CreateFolderCommand) -> Result<Folder, DataError>;
 }
 
 pub struct FolderServiceImpl {
@@ -92,6 +94,13 @@ impl FolderService for FolderServiceImpl {
 
     async fn delete(&self, folder_id: Uuid) -> Result<(), DataError> {
         self.folder_repo.delete_by_id(folder_id).await
+    }
+
+    async fn create(&self, command: CreateFolderCommand) -> Result<Folder, DataError> {
+
+        let f = Folder::new(Uuid::new_v4(), Some(command.parent_folder_id), command.name, command.owner_id);
+
+        self.folder_repo.create(f).await
     }
 }
 

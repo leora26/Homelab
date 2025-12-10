@@ -13,7 +13,7 @@ pub trait FolderRepository: Send + Sync {
     async fn search_by_name (&self, search_query: String) -> Result<Vec<Folder>, DataError>;
     async fn filter_files_in_folder (&self, file_types: &[FileType], folder_id: Uuid) -> Result<Vec<File>, DataError>;
     async fn get_by_folder_id (&self, folder_id: Uuid) -> Result<Vec<File>, DataError>;
-    async fn create (&self, folder: &Folder) -> Result<Folder, DataError>;
+    async fn create (&self, folder: Folder) -> Result<Folder, DataError>;
     async fn update_folder (&self, folder: Folder) -> Result<Folder, DataError>;
     async fn delete_all(&self, folder_ids: &[Uuid]) -> Result<(), DataError>;
     async fn delete_by_id (&self, folder_id: Uuid) -> Result<(), DataError>;
@@ -132,7 +132,7 @@ impl FolderRepository for FolderRepositoryImpl {
         Ok(files)
     }
 
-    async fn create(&self, folder: &Folder) -> Result<Folder, DataError> {
+    async fn create(&self, folder: Folder) -> Result<Folder, DataError> {
         let folder = sqlx::query_as!(
             Folder,
             r#"
