@@ -92,7 +92,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         });
 
     let rest_addr = ("0.0.0.0", 8080);
-    let grpc_addr = "[::1]:50051".parse().unwrap();
+    let grpc_addr: std::net::SocketAddr = "[::1]:50051".parse().unwrap();
 
     println!("System starting in [{}] mode...", server_mode.to_uppercase());
 

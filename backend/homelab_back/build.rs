@@ -2,15 +2,18 @@ use std::error::Error;
 
 fn main() -> Result<(), Box<dyn Error>> {
 
-    unsafe { std::env::set_var("PROTOC", protobuf_src::protoc()); }
+    std::env::set_var("PROTOC", protoc_bin_vendored::protoc_bin_path().unwrap());
 
-    println!("cargo:rerun-if-changed=proto/nas.proto");
+    println!("cargo:rerun-if-changed=proto/white_listed_user.proto");
+    println!("cargo:rerun-if-changed=proto/user.proto");
+    println!("cargo:rerun-if-changed=proto/file.proto");
+    println!("cargo:rerun-if-changed=proto/folder.proto");
+    println!("cargo:rerun-if-changed=proto/types.proto");
 
     tonic_build::configure()
         .type_attribute(".", "#[derive(serde::Serialize, serde::Deserialize)]")
         .compile_protos(
             &[
-                "proto/nas.proto",
                 "proto/white_listed_user.proto",
                 "proto/user.proto",
                 "proto/file.proto",
