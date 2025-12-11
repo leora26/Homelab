@@ -8,7 +8,6 @@ use crate::data::file_folder::search_query::SearchQuery;
 use crate::data::file_folder::update_file_name_command::UpdateFileNameCommand;
 use crate::data::file_folder::init_file_command::InitFileCommand;
 use crate::helpers::error_mapping::map_data_err_to_http;
-use futures::StreamExt;
 use crate::service::file_uploader::FileUploader;
 
 #[get("/files/{id}")]

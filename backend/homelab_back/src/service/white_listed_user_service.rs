@@ -45,7 +45,7 @@ impl WhiteListedUserService for WhiteListedServiceImpl {
             Uuid::new_v4(),
             wlu.email,
             wlu.full_name,
-            command.allowed_storage
+            command.allowed_storage,
         );
 
         let saved_user = self.user_repo.create(new_user_entity)

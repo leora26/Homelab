@@ -6,7 +6,8 @@ pub mod data;
 pub mod exception;
 pub mod types;
 pub mod helpers;
-mod constants;
+pub mod constants;
+pub mod grpc;
 mod pb;
 
 use std::env;
@@ -22,6 +23,8 @@ use crate::db::white_listed_user_repository::WhiteListedUserRepositoryImpl;
 use crate::db::folder_repository::FolderRepositoryImpl;
 use crate::db::shared_file_repository::SharedFileRepositoryImpl;
 use crate::db::user_repository::UserRepositoryImpl;
+use crate::grpc::white_listed_user_grpc_service::GrpcWhiteListedUserService;
+use crate::pb::white_listed_user_service_server::WhiteListedUserServiceServer;
 use crate::service::file_service::{FileService, FileServiceImpl};
 use crate::service::folder_service::{FolderService, FolderServiceImpl};
 use crate::service::shared_file_service::{SharedFileService, SharedFileServiceImpl};
@@ -109,26 +112,24 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 .await?;
         }
         "grpc" => {
-            // println!("🚀 Starting gRPC Server only at {}", grpc_addr);
-            // // let grpc_service = MyNasServiceImpl::new(user_service, file_service, ...);
-            //
-            // Server::builder()
-            //     // .add_service(NasServiceServer::new(grpc_service))
-            //     .serve(grpc_addr)
-            //     .await?;
+            println!("🚀 Starting gRPC Server only at {}", grpc_addr);
+            let app_state_arc = app_state.clone().into_inner();
+            let wlu_impl = GrpcWhiteListedUserService::new(app_state_arc.clone());
+
+            Server::builder()
+                .add_service(WhiteListedUserServiceServer::new(wlu_impl))
+                .serve(grpc_addr)
+                .await?;
         }
         "hybrid" => {
             println!("🚀 Starting Hybrid Mode (REST + gRPC)");
 
-            // let grpc_handle = tokio::spawn(async move {
-            //     // let grpc_service = MyNasServiceImpl::new(...);
-            //     println!("   - gRPC listening at {}", grpc_addr);
-            //     Server::builder()
-            //         // .add_service(...)
-            //         .serve(grpc_addr)
-            //         .await
-            //         .unwrap();
-            // });
+            let app_state_arc = app_state.clone().into_inner();
+            let wlu_impl = GrpcWhiteListedUserService::new(app_state_arc.clone());
+
+            let grpc_handle = Server::builder()
+                .add_service(WhiteListedUserServiceServer::new(wlu_impl))
+                .serve(grpc_addr);
 
             println!("   - REST listening at http://{}:{}", rest_addr.0, rest_addr.1);
             HttpServer::new(move || {
@@ -140,7 +141,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 .run()
                 .await?;
 
-            // let _ = grpc_handle.await;
+            let _ = grpc_handle.await;
         }
         _ => panic!("Invalid SERVER_MODE: {}. Use 'rest', 'grpc', or 'hybrid'", server_mode),
     }
