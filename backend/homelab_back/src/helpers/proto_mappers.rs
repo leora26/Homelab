@@ -1,3 +1,5 @@
+use tonic::Status;
+use uuid::Uuid;
 use crate::domain::user::{User, Role as DomainRole};
 use crate::domain::white_listed_user::WhiteListedUser;
 use crate::pb::{EntityId, Role as ProtoRole, UserResponse, WhiteListedUserResponse};
@@ -30,4 +32,11 @@ pub fn map_user_to_proto(u: User) -> UserResponse {
             nanos: u.created_at.nanosecond() as i32,
         }),
     }
+}
+
+pub fn map_entity_id (id: Option<EntityId>) -> Result<Uuid, Status> {
+    let entity_id = id.ok_or_else(|| Status::invalid_argument("Missing ID"))?;
+
+    Uuid::parse_str(&entity_id.value)
+        .map_err(|_| Status::invalid_argument("Invalid UUID format"))
 }

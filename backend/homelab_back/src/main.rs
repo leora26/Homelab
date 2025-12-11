@@ -23,7 +23,9 @@ use crate::db::white_listed_user_repository::WhiteListedUserRepositoryImpl;
 use crate::db::folder_repository::FolderRepositoryImpl;
 use crate::db::shared_file_repository::SharedFileRepositoryImpl;
 use crate::db::user_repository::UserRepositoryImpl;
+use crate::grpc::user_grpc_service::GrpcUserService;
 use crate::grpc::white_listed_user_grpc_service::GrpcWhiteListedUserService;
+use crate::pb::user_service_server::UserServiceServer;
 use crate::pb::white_listed_user_service_server::WhiteListedUserServiceServer;
 use crate::service::file_service::{FileService, FileServiceImpl};
 use crate::service::folder_service::{FolderService, FolderServiceImpl};
@@ -114,10 +116,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
         "grpc" => {
             println!("🚀 Starting gRPC Server only at {}", grpc_addr);
             let app_state_arc = app_state.clone().into_inner();
+
             let wlu_impl = GrpcWhiteListedUserService::new(app_state_arc.clone());
+            let user_impl = GrpcUserService::new(app_state_arc.clone());
 
             Server::builder()
                 .add_service(WhiteListedUserServiceServer::new(wlu_impl))
+                .add_service(UserServiceServer::new(user_impl))
                 .serve(grpc_addr)
                 .await?;
         }
@@ -125,10 +130,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
             println!("🚀 Starting Hybrid Mode (REST + gRPC)");
 
             let app_state_arc = app_state.clone().into_inner();
+
             let wlu_impl = GrpcWhiteListedUserService::new(app_state_arc.clone());
+            let user_impl = GrpcUserService::new(app_state_arc.clone());
 
             let grpc_handle = Server::builder()
                 .add_service(WhiteListedUserServiceServer::new(wlu_impl))
+                .add_service(UserServiceServer::new(user_impl))
                 .serve(grpc_addr);
 
             println!("   - REST listening at http://{}:{}", rest_addr.0, rest_addr.1);

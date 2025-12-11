@@ -1,13 +1,8 @@
+use derive_new::new;
 use serde::Deserialize;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, new)]
 pub struct CreateWhiteListedUserCommand {
     pub email: String,
     pub full_name: String
-}
-
-impl CreateWhiteListedUserCommand {
-    pub fn new(email: String, full_name: String) -> Self {
-        Self {email, full_name}
-    }
 }
