@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use derive_new::new;
 use tonic::{Request, Response, Status};
 use uuid::Uuid;
 use crate::AppState;
@@ -15,14 +16,9 @@ use crate::pb::{
     UserResponse,
 };
 
+#[derive(new)]
 pub struct GrpcWhiteListedUserService {
     pub app_state: Arc<AppState>,
-}
-
-impl GrpcWhiteListedUserService {
-    pub fn new (app_state: Arc<AppState>) -> Self {
-        Self {app_state}
-    }
 }
 
 #[tonic::async_trait]

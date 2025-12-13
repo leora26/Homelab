@@ -13,6 +13,7 @@ pub struct FileUploader {
     file_repo: Arc<dyn FileRepository>,
 }
 
+// TODO: Marked for removal since there is a new implementation for gRPC
 impl FileUploader {
     pub fn new(file_repo: Arc<dyn FileRepository>) -> Self {
         Self { file_repo }

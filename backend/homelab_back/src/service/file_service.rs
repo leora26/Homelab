@@ -1,12 +1,15 @@
 use std::sync::Arc;
+use tokio::sync::mpsc::Receiver;
 use async_trait::async_trait;
+use tokio::io::{AsyncWriteExt, BufWriter};
 use uuid::Uuid;
+use crate::constants::MB;
 use crate::data::file_folder::update_file_name_command::UpdateFileNameCommand;
 use crate::data::file_folder::init_file_command::InitFileCommand;
 use crate::db::file_repository::FileRepository;
 use crate::db::folder_repository::FolderRepository;
 use crate::db::user_repository::UserRepository;
-use crate::domain::file::{File};
+use crate::domain::file::{File, UploadStatus};
 use crate::domain::folder::Folder;
 use crate::domain::user::User;
 use crate::exception::data_error::{DataError};
@@ -17,6 +20,7 @@ pub trait FileService: Send + Sync {
     async fn get_all_deleted_files(&self) -> Result<Vec<File>, DataError>;
     async fn search_file(&self, search_query: String) -> Result<Vec<File>, DataError>;
     async fn upload(&self, command: InitFileCommand) -> Result<File, DataError>;
+    async fn upload_stream(&self, file_id: Uuid, rx: Receiver<Result<Vec<u8>, DataError>>) -> Result<(), DataError>;
     async fn update_file_name(&self, command: UpdateFileNameCommand, id: Uuid) -> Result<File, DataError>;
     async fn update_deleted_file(&self, id: Uuid) -> Result<File, DataError>;
     async fn delete_chosen_files(&self, file_ids: &[Uuid]) -> Result<(), DataError>;
@@ -70,6 +74,51 @@ impl FileService for FileServiceImpl {
         } else {
             Err(DataError::NoFreeStorageError)
         }
+    }
+
+    async fn upload_stream(&self, file_id: Uuid, mut rx: Receiver<Result<Vec<u8>, DataError>>) -> Result<(), DataError> {
+        let mut f = self.file_repo.get_by_id(file_id).await?
+            .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
+
+        if f.upload_status != UploadStatus::Pending {
+            return Err(DataError::ValidationError("File is not pending".to_string()));
+        }
+
+        let file_path = f.build_file_path();
+
+        let file_handle = tokio::fs::File::create(&file_path).await
+            .map_err(|e| DataError::IOError(e.to_string()))?;
+
+        let mut writer = BufWriter::with_capacity(MB as usize, file_handle);
+        let mut total_bytes = 0i64;
+
+        while let Some(chunk_result) = rx.recv().await {
+            let data = chunk_result?;
+
+            total_bytes += data.len() as i64;
+
+            if let Err(e) = writer.write_all(&data).await {
+                let _ = tokio::fs::remove_file(&file_path).await;
+                return Err(DataError::IOError(e.to_string()));
+            }
+        }
+
+        if let Err(e) = writer.flush().await {
+            let _ = tokio::fs::remove_file(&file_path).await;
+            return Err(DataError::IOError(e.to_string()));
+        }
+
+        if !f.validate_size(total_bytes) {
+            f.update_status(UploadStatus::Failed);
+            self.file_repo.update(f).await?;
+            let _ = tokio::fs::remove_file(&file_path).await;
+            return Err(DataError::NotMatchingByteSizeError);
+        }
+
+        f.update_status(UploadStatus::Completed);
+        self.file_repo.update(f).await?;
+
+        Ok(())
     }
 
 

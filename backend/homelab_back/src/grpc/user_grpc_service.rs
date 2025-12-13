@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use derive_new::new;
 use tonic::{Request, Response, Status};
 use crate::AppState;
 use crate::data::user::create_user_command::CreateUserCommand;
@@ -6,14 +7,9 @@ use crate::helpers::proto_mappers::{map_entity_id, map_user_to_proto};
 use crate::pb::{CreateUserRequest, GetUserByEmailRequest, UpdatePasswordRequest, UserList, UserResponse};
 use crate::pb::user_service_server::UserService;
 
+#[derive(new)]
 pub struct GrpcUserService {
     pub app_state: Arc<AppState>,
-}
-
-impl GrpcUserService {
-    pub fn new (app_state: Arc<AppState>) -> Self {
-        Self {app_state}
-    }
 }
 
 #[tonic::async_trait]

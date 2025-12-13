@@ -8,7 +8,7 @@ pub mod types;
 pub mod helpers;
 pub mod constants;
 pub mod grpc;
-mod pb;
+pub mod pb;
 
 use std::env;
 use std::error::Error;

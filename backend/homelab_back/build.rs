@@ -17,6 +17,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 "proto/user.proto",
                 "proto/file.proto",
                 "proto/folder.proto",
+                "proto/types.proto",
             ],
             &["proto"],
         )?;

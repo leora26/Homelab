@@ -9,7 +9,7 @@ service FileService {
   rpc GetFile (GetFileRequest) returns (FileResponse);
   rpc SearchFiles (SearchFilesRequest) returns (FileListResponse);
   rpc GetDeletedFiles (google.protobuf.Empty) returns (FileListResponse);
-  rpc InitFile (InitFileRequest) returns (InitFileResponse);
+  rpc InitFile (InitFileRequest) returns (FileResponse);
   rpc UploadContent (stream FileChunk) returns (google.protobuf.Empty);
   rpc RenameFile (RenameFileRequest) returns (FileResponse);
   rpc UndeleteFile (UndeleteFileRequest) returns (FileResponse);
@@ -33,7 +33,7 @@ enum UploadStatus {
 message FileResponse {
   EntityId id = 1;
   string name = 2;
-  string owner_id = 3;
+  EntityId owner_id = 3;
   EntityId parent_folder_id = 4;
   FileType file_type = 5;
   bool is_deleted = 6;
@@ -46,10 +46,6 @@ message FileListResponse {
   repeated FileResponse files = 1;
 }
 
-message InitFileResponse {
-  EntityId id = 1;
-}
-
 message GetFileRequest {
   EntityId id = 1;
 }
@@ -60,7 +56,7 @@ message SearchFilesRequest {
 
 message InitFileRequest {
   string name = 1;
-  string destination = 2;
+  EntityId destination = 2;
   EntityId owner_id = 3;
   int64 size = 4;
 }

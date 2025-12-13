@@ -1,7 +1,8 @@
+use derive_new::new;
 use serde::Deserialize;
 use uuid::Uuid;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, new)]
 pub struct InitFileCommand {
     pub destination: Uuid,
     pub owner_id: Uuid,
