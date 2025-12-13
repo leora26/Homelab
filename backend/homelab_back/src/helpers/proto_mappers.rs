@@ -1,9 +1,10 @@
 use tonic::Status;
 use uuid::Uuid;
 use crate::domain::file::{File, FileType as DomainFileType, UploadStatus as DomainUploadStatus};
+use crate::domain::folder::Folder;
 use crate::domain::user::{User, Role as DomainRole};
 use crate::domain::white_listed_user::WhiteListedUser;
-use crate::pb::{EntityId, FileResponse, Role as ProtoRole, FileType as ProtoFileType, UploadStatus as ProtoUploadStatus, UserResponse, WhiteListedUserResponse};
+use crate::pb::{EntityId, FileResponse, Role as ProtoRole, FileType as ProtoFileType, UploadStatus as ProtoUploadStatus, UserResponse, WhiteListedUserResponse, FolderResponse};
 
 pub fn map_wlu_to_proto(u: WhiteListedUser) -> WhiteListedUserResponse {
     WhiteListedUserResponse {
@@ -59,6 +60,23 @@ pub fn map_file_to_proto (f: File) -> FileResponse {
             DomainUploadStatus::Pending => ProtoUploadStatus::Pending,
         } as i32
     }
+}
+
+pub fn map_folder_to_proto (f: Folder) -> FolderResponse {
+    FolderResponse {
+        id: Option::from(map_id_to_proto(f.id)),
+        parent_folder_id: Option::from(map_id_to_proto(f.parent_folder_id.unwrap())),
+        name: f.name,
+        owner_id: Option::from(map_id_to_proto(f.owner_id)),
+        created_at: Some(prost_types::Timestamp {
+            seconds: f.created_at.unix_timestamp(),
+            nanos: f.created_at.nanosecond() as i32
+        })
+    }
+}
+
+pub fn map_id_to_proto (id: Uuid) -> EntityId {
+    EntityId {value: id.to_string()}
 }
 
 pub fn map_entity_id (id: Option<EntityId>) -> Result<Uuid, Status> {

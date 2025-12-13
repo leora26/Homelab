@@ -1,6 +1,7 @@
+use derive_new::new;
 use serde::Deserialize;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, new)]
 pub struct UpdateFolderNameCommand {
     pub new_name: String,
 }

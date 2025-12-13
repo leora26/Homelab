@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use derive_new::new;
 use tokio::sync::mpsc;
 use tonic::{Request, Response, Status, Streaming};
+use uuid::Uuid;
 use crate::AppState;
 use crate::data::file_folder::init_file_command::InitFileCommand;
 use crate::data::file_folder::update_file_name_command::UpdateFileNameCommand;
@@ -141,7 +142,7 @@ impl FileService for GrpcFileService {
     async fn delete_chosen_files(&self, request: Request<DeleteChosenFilesRequest>) -> Result<Response<()>, Status> {
         let req = request.into_inner();
 
-        let file_ids: Vec<uuid::Uuid> = req.file_ids
+        let file_ids: Vec<Uuid> = req.file_ids
             .into_iter()
             .map(|id| map_entity_id(Some(id)))
             .collect::<Result<Vec<_>, _>>()?;
