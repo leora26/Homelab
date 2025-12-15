@@ -10,7 +10,7 @@ pub trait FolderRepository: Send + Sync {
     async fn get_root(&self, user_id: Uuid) -> Result<Option<Folder>, DataError>;
     async fn get_by_id(&self, folder_id: Uuid) -> Result<Option<Folder>, DataError>;
     async fn get_children_by_id(&self, folder_id: Uuid) -> Result<Vec<Folder>, DataError>;
-    async fn get_by_folder_and_file_name(&self, folder_id: Uuid, file_name: String) -> Result<File, DataError>;
+    async fn get_by_folder_and_file_name(&self, folder_id: Uuid, file_name: String) -> Result<Option<File>, DataError>;
     async fn search_by_name(&self, search_query: String) -> Result<Vec<Folder>, DataError>;
     async fn filter_files_in_folder(&self, file_types: &[FileType], folder_id: Uuid) -> Result<Vec<File>, DataError>;
     async fn get_by_folder_id(&self, folder_id: Uuid) -> Result<Vec<File>, DataError>;
@@ -80,7 +80,7 @@ impl FolderRepository for FolderRepositoryImpl {
         Ok(folders)
     }
 
-    async fn get_by_folder_and_file_name(&self, folder_id: Uuid, file_name: String) -> Result<File, DataError> {
+    async fn get_by_folder_and_file_name(&self, folder_id: Uuid, file_name: String) -> Result<Option<File>, DataError> {
         let file = sqlx::query_as!(
             File,
             r#"
@@ -91,7 +91,7 @@ impl FolderRepository for FolderRepositoryImpl {
             folder_id,
             file_name
         )
-            .fetch_one(&self.pool)
+            .fetch_optional(&self.pool)
             .await
             .map_err(|e| DataError::DatabaseError(e))?;
 
