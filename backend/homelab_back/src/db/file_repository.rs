@@ -9,6 +9,7 @@ pub trait FileRepository: Send + Sync {
     async fn get_by_id(&self, file_id: Uuid) -> Result<Option<File>, DataError>;
     async fn get_all_deleted(&self) -> Result<Vec<File>, DataError>;
     async fn search_by_name(&self, search_query: String) -> Result<Vec<File>, DataError>;
+    async fn get_by_folder_and_file_name(&self, folder_id: Uuid, file_name: String) -> Result<Option<File>, DataError>;
     async fn upload(&self, file: File) -> Result<File, DataError>;
     async fn update(&self, file: File) -> Result<File, DataError>;
     async fn delete_all(&self, file_ids: &[Uuid]) -> Result<(), DataError>;
@@ -75,6 +76,24 @@ impl FileRepository for FileRepositoryImpl {
             .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(f)
+    }
+
+    async fn get_by_folder_and_file_name(&self, folder_id: Uuid, file_name: String) -> Result<Option<File>, DataError> {
+        let file = sqlx::query_as!(
+            File,
+            r#"
+            SELECT id, name, owner_id, parent_folder_id, file_type as "file_type: _", is_deleted, ttl, size, upload_status as "upload_status: _"
+            FROM files
+            WHERE parent_folder_id = $1 AND name = $2 AND is_deleted = FALSE
+            "#,
+            folder_id,
+            file_name
+        )
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| DataError::DatabaseError(e))?;
+
+        Ok(file)
     }
 
     async fn upload(&self, file: File) -> Result<File, DataError> {

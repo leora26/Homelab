@@ -69,6 +69,10 @@ impl FileService for FileServiceImpl {
         let folder: Folder = self.folder_repo.get_by_id(command.destination).await?
             .ok_or_else(|| DataError::EntityNotFoundException("Folder".to_string()))?;
 
+        if let Some(_) = self.file_repo.get_by_folder_and_file_name(folder.id, command.name.clone()).await? {
+            return Err(DataError::FileAlreadyExistsError);
+        }
+
         let user: User = self.user_repo.get_by_id(command.owner_id).await?
             .ok_or_else(|| DataError::EntityNotFoundException("User".to_string()))?;
 
