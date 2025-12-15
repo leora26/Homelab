@@ -20,4 +20,6 @@ pub enum DataError {
     UploadInterrupter(String),
     #[error("Not matching byte size")]
     NotMatchingByteSizeError,
+    #[error("File with this name already exists in this folder. Delete existing file in order to upload new one")]
+    FileAlreadyExistsError,
 }

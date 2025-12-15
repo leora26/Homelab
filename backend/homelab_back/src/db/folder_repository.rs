@@ -7,16 +7,17 @@ use crate::exception::data_error::DataError;
 
 #[async_trait]
 pub trait FolderRepository: Send + Sync {
-    async fn get_root (&self, user_id: Uuid) -> Result<Option<Folder>, DataError>;
-    async fn get_by_id (&self, folder_id: Uuid) -> Result<Option<Folder>, DataError>;
-    async fn get_children_by_id (&self, folder_id: Uuid) -> Result<Vec<Folder>, DataError>;
-    async fn search_by_name (&self, search_query: String) -> Result<Vec<Folder>, DataError>;
-    async fn filter_files_in_folder (&self, file_types: &[FileType], folder_id: Uuid) -> Result<Vec<File>, DataError>;
-    async fn get_by_folder_id (&self, folder_id: Uuid) -> Result<Vec<File>, DataError>;
-    async fn create (&self, folder: Folder) -> Result<Folder, DataError>;
-    async fn update_folder (&self, folder: Folder) -> Result<Folder, DataError>;
+    async fn get_root(&self, user_id: Uuid) -> Result<Option<Folder>, DataError>;
+    async fn get_by_id(&self, folder_id: Uuid) -> Result<Option<Folder>, DataError>;
+    async fn get_children_by_id(&self, folder_id: Uuid) -> Result<Vec<Folder>, DataError>;
+    async fn get_by_folder_and_file_name(&self, folder_id: Uuid, file_name: String) -> Result<File, DataError>;
+    async fn search_by_name(&self, search_query: String) -> Result<Vec<Folder>, DataError>;
+    async fn filter_files_in_folder(&self, file_types: &[FileType], folder_id: Uuid) -> Result<Vec<File>, DataError>;
+    async fn get_by_folder_id(&self, folder_id: Uuid) -> Result<Vec<File>, DataError>;
+    async fn create(&self, folder: Folder) -> Result<Folder, DataError>;
+    async fn update_folder(&self, folder: Folder) -> Result<Folder, DataError>;
     async fn delete_all(&self, folder_ids: &[Uuid]) -> Result<(), DataError>;
-    async fn delete_by_id (&self, folder_id: Uuid) -> Result<(), DataError>;
+    async fn delete_by_id(&self, folder_id: Uuid) -> Result<(), DataError>;
 }
 
 pub struct FolderRepositoryImpl {
@@ -79,6 +80,24 @@ impl FolderRepository for FolderRepositoryImpl {
         Ok(folders)
     }
 
+    async fn get_by_folder_and_file_name(&self, folder_id: Uuid, file_name: String) -> Result<File, DataError> {
+        let file = sqlx::query_as!(
+            File,
+            r#"
+            SELECT id, name, owner_id, parent_folder_id, file_type as "file_type: _", is_deleted, ttl, size, upload_status as "upload_status: _"
+            FROM files
+            WHERE parent_folder_id = $1 AND name = $2 AND is_deleted = FALSE
+            "#,
+            folder_id,
+            file_name
+        )
+            .fetch_one(&self.pool)
+            .await
+            .map_err(|e| DataError::DatabaseError(e))?;
+
+        Ok(file)
+    }
+
     async fn search_by_name(&self, search_query: String) -> Result<Vec<Folder>, DataError> {
         let f: Vec<Folder> = sqlx::query_as!(
             Folder,
@@ -94,7 +113,6 @@ impl FolderRepository for FolderRepositoryImpl {
             .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(f)
-
     }
 
     async fn filter_files_in_folder(&self, file_types: &[FileType], folder_id: Uuid) -> Result<Vec<File>, DataError> {
