@@ -3,6 +3,7 @@ use async_recursion::async_recursion;
 use async_trait::async_trait;
 use uuid::Uuid;
 use crate::data::file_folder::create_folder_command::CreateFolderCommand;
+use crate::data::file_folder::move_folder_command::MoveFolderCommand;
 use crate::data::file_folder::update_folder_name_command::UpdateFolderNameCommand;
 use crate::db::folder_repository::FolderRepository;
 use crate::domain::file::{File, FileType};
@@ -22,6 +23,7 @@ pub trait FolderService: Send + Sync {
     async fn delete_chosen_folders (&self, folder_ids: &[Uuid]) -> Result<(), DataError>;
     async fn delete (&self, folder_id: Uuid) -> Result<(), DataError>;
     async fn create(&self, command: CreateFolderCommand) -> Result<Folder, DataError>;
+    async fn move_folder(&self, command: MoveFolderCommand) -> Result<Folder, DataError>;
 }
 
 pub struct FolderServiceImpl {
@@ -101,6 +103,15 @@ impl FolderService for FolderServiceImpl {
         let f = Folder::new(Uuid::new_v4(), Some(command.parent_folder_id), command.name, command.owner_id);
 
         self.folder_repo.create(f).await
+    }
+
+    async fn move_folder(&self, command: MoveFolderCommand) -> Result<Folder, DataError> {
+        let mut folder = self.folder_repo.get_by_id(command.folder_id).await?
+            .ok_or_else(|| DataError::EntityNotFoundException("Folder".to_string()))?;
+
+        folder.update_parent_folder(command.target_folder);
+
+        Ok(self.folder_repo.update_folder(folder).await?)
     }
 }
 

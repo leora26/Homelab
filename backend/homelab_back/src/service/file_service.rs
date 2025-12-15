@@ -7,6 +7,7 @@ use uuid::Uuid;
 use crate::constants::MB;
 use crate::data::file_folder::update_file_name_command::UpdateFileNameCommand;
 use crate::data::file_folder::init_file_command::InitFileCommand;
+use crate::data::file_folder::move_file_command::MoveFileCommand;
 use crate::db::file_repository::FileRepository;
 use crate::db::folder_repository::FolderRepository;
 use crate::db::user_repository::UserRepository;
@@ -26,6 +27,7 @@ pub trait FileService: Send + Sync {
     async fn update_deleted_file(&self, id: Uuid) -> Result<File, DataError>;
     async fn delete_chosen_files(&self, file_ids: &[Uuid]) -> Result<(), DataError>;
     async fn delete(&self, file_id: Uuid) -> Result<(), DataError>;
+    async fn move_file(&self, command: MoveFileCommand) -> Result<File, DataError>;
 }
 
 pub struct FileServiceImpl {
@@ -164,5 +166,14 @@ impl FileService for FileServiceImpl {
         file.set_as_deleted();
 
         self.file_repo.delete_by_id(file_id).await
+    }
+
+    async fn move_file(&self, command: MoveFileCommand) -> Result<File, DataError> {
+        let mut file = self.file_repo.get_by_id(command.file_id).await?
+            .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
+
+        file.update_parent_folder(command.folder_id);
+
+        Ok(self.file_repo.update(file).await?)
     }
 }

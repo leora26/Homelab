@@ -115,4 +115,8 @@ impl File {
     pub fn update_status(&mut self, status: UploadStatus) {
         self.upload_status = status
     }
+
+    pub fn update_parent_folder(&mut self, new_parent_folder: Uuid) {
+        self.parent_folder_id = new_parent_folder;
+    }
 }

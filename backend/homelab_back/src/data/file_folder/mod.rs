@@ -7,3 +7,5 @@ pub mod delete_chosen_files_command;
 pub mod filter_files_by_filetype_command;
 pub mod create_shared_file_command;
 pub mod create_folder_command;
+pub mod move_file_command;
+pub mod move_folder_command;
