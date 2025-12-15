@@ -3,7 +3,6 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
-use crate::constants::UPLOAD_ROOT;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, sqlx::Type)]
 #[sqlx(type_name = "file_type", rename_all = "lowercase")]
@@ -97,13 +96,13 @@ impl File {
         self.size = new_size
     }
 
-    pub fn build_file_path(&self) -> PathBuf {
+    pub fn build_file_path(&self, storage_path: &Path) -> PathBuf {
         let id_string = self.id.to_string();
 
         let bucket1 = &id_string[0..2];
         let bucket2 = &id_string[2..4];
 
-        Path::new(UPLOAD_ROOT)
+        storage_path
             .join(bucket1)
             .join(bucket2)
             .join(id_string)

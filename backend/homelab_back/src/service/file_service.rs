@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::mpsc::Receiver;
 use async_trait::async_trait;
@@ -31,6 +32,7 @@ pub struct FileServiceImpl {
     file_repo: Arc<dyn FileRepository>,
     folder_repo: Arc<dyn FolderRepository>,
     user_repo: Arc<dyn UserRepository>,
+    storage_path: PathBuf,
 }
 
 impl FileServiceImpl {
@@ -38,11 +40,13 @@ impl FileServiceImpl {
         file_repo: Arc<dyn FileRepository>,
         folder_repo: Arc<dyn FolderRepository>,
         user_repo: Arc<dyn UserRepository>,
+        storage_path: PathBuf,
     ) -> Self {
         Self {
             file_repo,
             folder_repo,
             user_repo,
+            storage_path
         }
     }
 }
@@ -84,7 +88,12 @@ impl FileService for FileServiceImpl {
             return Err(DataError::ValidationError("File is not pending".to_string()));
         }
 
-        let file_path = f.build_file_path();
+        let file_path = f.build_file_path(&self.storage_path);
+
+        if let Some(parent) = file_path.parent() {
+            tokio::fs::create_dir_all(parent).await
+                .map_err(|e| DataError::IOError(format!("Failed to create buckets: {}", e)))?;
+        }
 
         let file_handle = tokio::fs::File::create(&file_path).await
             .map_err(|e| DataError::IOError(e.to_string()))?;

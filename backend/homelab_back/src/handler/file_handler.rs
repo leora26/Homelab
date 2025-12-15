@@ -1,5 +1,4 @@
 use actix_web::{delete, get, patch, post, HttpResponse, Responder};
-use actix_web::web::Payload;
 use actix_web::web::{Data, Json, Path, Query, ServiceConfig};
 use uuid::Uuid;
 use crate::AppState;
@@ -8,7 +7,6 @@ use crate::data::file_folder::search_query::SearchQuery;
 use crate::data::file_folder::update_file_name_command::UpdateFileNameCommand;
 use crate::data::file_folder::init_file_command::InitFileCommand;
 use crate::helpers::error_mapping::map_data_err_to_http;
-use crate::service::file_uploader::FileUploader;
 
 #[get("/files/{id}")]
 pub async fn get_file(
@@ -76,26 +74,6 @@ pub async fn init_file(
         }
         Err(e) => {
             tracing::error!("Failed while creating a file: {}", e);
-            map_data_err_to_http(e)
-        }
-    }
-}
-
-#[patch("/files/{file_id}/content")]
-pub async fn upload_content(
-    app_state: Data<AppState>,
-    id: Path<Uuid>,
-    payload: Payload,
-) -> impl Responder {
-
-    let uploader = FileUploader::new(
-        app_state.file_repo.clone()
-    );
-
-    match uploader.upload_content(id.into_inner(), payload).await {
-        Ok(_) => HttpResponse::Ok().finish(),
-        Err(e) => {
-            tracing::error!("Failed when uploading file content: {}", e);
             map_data_err_to_http(e)
         }
     }
@@ -174,5 +152,4 @@ pub fn config(c: &mut ServiceConfig) {
     c.service(rename_file);
     c.service(search_file);
     c.service(get_all_deleted_files);
-    c.service(upload_content);
 }

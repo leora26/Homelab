@@ -12,7 +12,7 @@ pub mod pb;
 
 use std::env;
 use std::error::Error;
-use std::path::Path;
+use std::path::{PathBuf};
 use std::sync::Arc;
 use actix_web::{web, App, HttpServer};
 use dotenvy::dotenv;
@@ -64,11 +64,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     println!("🚀 Server started successfully at http://127.0.0.1:8080");
 
-    let root_path = Path::new(&root_folder_path);
+    let mut root_path = PathBuf::new();
+    root_path.push(root_folder_path);
 
     if !root_path.exists() {
-        if let Err(e) = std::fs::create_dir_all(root_path) {
-            panic!("Failed to create root directory at {}: {}", &root_folder_path, e);
+        if let Err(e) = std::fs::create_dir_all(&root_path) {
+            panic!("Failed to create root directory: {}", e);
         } else {
             println!("Root folder was created.");
         }
@@ -81,7 +82,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let share_file_repo = Arc::new(SharedFileRepositoryImpl::new(pool.clone()));
 
     let folder_service = Arc::new(FolderServiceImpl::new(folder_repo.clone()));
-    let file_service = Arc::new(FileServiceImpl::new(file_repo.clone(), folder_repo.clone(), user_repo.clone()));
+    let file_service = Arc::new(FileServiceImpl::new(file_repo.clone(), folder_repo.clone(), user_repo.clone(), root_path.to_path_buf()));
     let user_service = Arc::new(UserServiceImpl::new(user_repo.clone()));
     let wlu_service = Arc::new(WhiteListedServiceImpl::new(wlu_repo.clone(), user_repo.clone()));
     let shared_file_service = Arc::new(SharedFileServiceImpl::new(share_file_repo.clone(), user_repo.clone(), file_repo.clone()));
