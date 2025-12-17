@@ -3,10 +3,11 @@ use async_trait::async_trait;
 use tonic::{Request, Response, Status};
 use uuid::Uuid;
 use crate::AppState;
+use crate::data::file_folder::move_folder_command::MoveFolderCommand;
 use crate::data::file_folder::update_folder_name_command::UpdateFolderNameCommand;
 use crate::helpers::proto_mappers::{map_entity_id, map_file_to_proto, map_folder_to_proto};
 use crate::pb::folder_service_server::FolderService;
-use crate::pb::{DeleteAllFolderRequest, DeleteFolderRequest, FileListResponse, FolderResponse, FolderResponseList, GetAllSubfoldersRequest, GetFilesForFolderRequest, GetFolderRequest, RenameFolderRequest, SearchFolderRequest};
+use crate::pb::{DeleteAllFolderRequest, DeleteFolderRequest, FileListResponse, FolderResponse, FolderResponseList, GetAllSubfoldersRequest, GetFilesForFolderRequest, GetFolderRequest, MoveFolderRequest, RenameFolderRequest, SearchFolderRequest};
 
 pub struct GrpcFolderService {
     app_state: Arc<AppState>
@@ -93,5 +94,19 @@ impl FolderService for GrpcFolderService {
         self.app_state.folder_service.delete_chosen_folders(&folder_ids).await?;
 
         Ok(Response::new(()))
+    }
+
+    async fn move_folder(&self, request: Request<MoveFolderRequest>) -> Result<Response<FolderResponse>, Status> {
+        let req = request.into_inner();
+
+        let target_folder = map_entity_id(req.target_folder)?;
+
+        let folder_id = map_entity_id(req.folder_id)?;
+
+        let command = MoveFolderCommand::new(target_folder, folder_id);
+
+        let folder = self.app_state.folder_service.move_folder(command).await?;
+
+        Ok(Response::new(map_folder_to_proto(folder)))
     }
 }

@@ -15,6 +15,7 @@ service FileService {
   rpc UndeleteFile (UndeleteFileRequest) returns (FileResponse);
   rpc DeleteChosenFiles (DeleteChosenFilesRequest) returns (google.protobuf.Empty);
   rpc DeleteFile (DeleteFileRequest) returns (google.protobuf.Empty);
+  rpc MoveFile (MoveFileRequest) returns (FileResponse);
 }
 
 enum FileType {
@@ -83,4 +84,9 @@ message DeleteChosenFilesRequest {
 
 message DeleteFileRequest {
   EntityId id = 1;
+}
+
+message MoveFileRequest {
+  EntityId folder_id = 1;
+  EntityId file_id = 2;
 }

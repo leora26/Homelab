@@ -6,10 +6,11 @@ use tonic::{Request, Response, Status, Streaming};
 use uuid::Uuid;
 use crate::AppState;
 use crate::data::file_folder::init_file_command::InitFileCommand;
+use crate::data::file_folder::move_file_command::MoveFileCommand;
 use crate::data::file_folder::update_file_name_command::UpdateFileNameCommand;
 use crate::helpers::proto_mappers::{map_entity_id, map_file_to_proto};
 use crate::pb::file_service_server::FileService;
-use crate::pb::{DeleteChosenFilesRequest, DeleteFileRequest, FileChunk, FileListResponse, FileResponse, GetFileRequest, InitFileRequest, RenameFileRequest, SearchFilesRequest, UndeleteFileRequest};
+use crate::pb::{DeleteChosenFilesRequest, DeleteFileRequest, FileChunk, FileListResponse, FileResponse, GetFileRequest, InitFileRequest, MoveFileRequest, RenameFileRequest, SearchFilesRequest, UndeleteFileRequest};
 use crate::pb::file_chunk::Data as FileChunkData;
 
 #[derive(new)]
@@ -160,6 +161,20 @@ impl FileService for GrpcFileService {
         self.app_state.file_service.delete(file_id).await?;
 
         Ok(Response::new(()))
+    }
+
+    async fn move_file(&self, request: Request<MoveFileRequest>) -> Result<Response<FileResponse>, Status> {
+        let req = request.into_inner();
+
+        let file_id = map_entity_id(req.file_id)?;
+
+        let folder_id = map_entity_id(req.folder_id)?;
+
+        let command = MoveFileCommand::new(file_id, folder_id);
+
+        let file = self.app_state.file_service.move_file(command).await?;
+
+        Ok(Response::new(map_file_to_proto(file)))
     }
 }
 

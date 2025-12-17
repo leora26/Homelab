@@ -15,6 +15,7 @@ service FolderService {
   rpc RenameFolder (RenameFolderRequest) returns (FolderResponse);
   rpc SearchFolder (SearchFolderRequest) returns (FolderResponseList);
   rpc DeleteChosenFolders (DeleteAllFolderRequest) returns (google.protobuf.Empty);
+  rpc MoveFolder (MoveFolderRequest) returns (FolderResponse);
 }
 
 message FolderResponse {
@@ -65,3 +66,7 @@ message SearchFolderRequest {
   string query = 1;
 }
 
+message MoveFolderRequest {
+  EntityId target_folder = 1;
+  EntityId folder_id = 2;
+}
