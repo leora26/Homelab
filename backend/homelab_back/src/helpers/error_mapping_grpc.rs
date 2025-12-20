@@ -16,6 +16,7 @@ impl From<DataError> for Status {
             DataError::UploadInterrupter(msg) => Status::internal(msg),
             DataError::NotMatchingByteSizeError => Status::internal("The size of the uploaded file does not match to database metadata"),
             DataError::FileAlreadyExistsError => Status::invalid_argument("A file with the same name already exists in the given folder"),
+            DataError::UnknownError(msg) => Status::internal(msg),
         }
     }
 }

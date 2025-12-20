@@ -193,5 +193,59 @@ impl FileService for GrpcFileService {
 
         Ok(Response::new(map_file_to_proto(file)))
     }
+
+    async fn update_file_content(&self, request: Request<Streaming<FileChunk>>) -> Result<Response<()>, Status> {
+        let mut stream = request.into_inner();
+
+        let first_msg = match stream.message().await? {
+            Some(msg) => msg,
+            None => return Err(Status::invalid_argument("Stream cannot be empty")),
+        };
+
+        let file_id = match first_msg.data {
+            Some(FileChunkData::FileId(id_msg)) => {
+                map_entity_id(Some(id_msg))?
+            }
+            Some(FileChunkData::Content(_)) => {
+                return Err(Status::invalid_argument("First message must be File ID, not content"));
+            }
+            None => return Err(Status::invalid_argument("First message empty")),
+        };
+        let (tx, rx) = mpsc::channel(32);
+
+        let app_state_clone = self.app_state.clone();
+
+        let service_handle = tokio::spawn(async move {
+            app_state_clone.file_service.update_stream(file_id, rx).await
+        });
+
+        while let Ok(Some(msg)) = stream.message().await {
+            match msg.data {
+                Some(FileChunkData::Content(bytes)) => {
+                    if tx.send(Ok(bytes)).await.is_err() {
+                        break;
+                    }
+                }
+
+                Some(FileChunkData::FileId(_)) => {
+                    return Err(Status::invalid_argument("Received File ID inside content stream"));
+                }
+
+                None => {
+                    continue;
+                }
+            }
+        }
+
+        drop(tx);
+
+        match service_handle.await {
+            Ok(service_result) => {
+                service_result.map_err(|e| Status::from(e))?;
+                Ok(Response::new(()))
+            }
+            Err(_) => Err(Status::internal("Upload task panicked")),
+        }
+    }
 }
 
