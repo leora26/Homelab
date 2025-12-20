@@ -95,4 +95,5 @@ message MoveFileRequest {
 message CopyFileRequest {
   EntityId file_id = 1;
   EntityId target_folder_id = 2;
+  EntityId user_id = 3;
 }

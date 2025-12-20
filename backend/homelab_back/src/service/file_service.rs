@@ -1,20 +1,22 @@
-use std::path::PathBuf;
-use std::sync::Arc;
-use tokio::sync::mpsc::Receiver;
-use async_trait::async_trait;
-use tokio::io::{AsyncWriteExt, BufWriter};
-use uuid::Uuid;
 use crate::constants::MB;
-use crate::data::file_folder::update_file_name_command::UpdateFileNameCommand;
+use crate::data::file_folder::copy_file_command::CopyFileCommand;
 use crate::data::file_folder::init_file_command::InitFileCommand;
 use crate::data::file_folder::move_file_command::MoveFileCommand;
+use crate::data::file_folder::update_file_name_command::UpdateFileNameCommand;
 use crate::db::file_repository::FileRepository;
 use crate::db::folder_repository::FolderRepository;
 use crate::db::user_repository::UserRepository;
 use crate::domain::file::{File, UploadStatus};
 use crate::domain::folder::Folder;
 use crate::domain::user::User;
-use crate::exception::data_error::{DataError};
+use crate::exception::data_error::DataError;
+use async_trait::async_trait;
+use std::fmt::format;
+use std::path::PathBuf;
+use std::sync::Arc;
+use tokio::io::{AsyncWriteExt, BufWriter};
+use tokio::sync::mpsc::Receiver;
+use uuid::Uuid;
 
 #[async_trait]
 pub trait FileService: Send + Sync {
@@ -22,12 +24,21 @@ pub trait FileService: Send + Sync {
     async fn get_all_deleted_files(&self) -> Result<Vec<File>, DataError>;
     async fn search_file(&self, search_query: String) -> Result<Vec<File>, DataError>;
     async fn upload(&self, command: InitFileCommand) -> Result<File, DataError>;
-    async fn upload_stream(&self, file_id: Uuid, rx: Receiver<Result<Vec<u8>, DataError>>) -> Result<(), DataError>;
-    async fn update_file_name(&self, command: UpdateFileNameCommand, id: Uuid) -> Result<File, DataError>;
+    async fn upload_stream(
+        &self,
+        file_id: Uuid,
+        rx: Receiver<Result<Vec<u8>, DataError>>,
+    ) -> Result<(), DataError>;
+    async fn update_file_name(
+        &self,
+        command: UpdateFileNameCommand,
+        id: Uuid,
+    ) -> Result<File, DataError>;
     async fn update_deleted_file(&self, id: Uuid) -> Result<File, DataError>;
     async fn delete_chosen_files(&self, file_ids: &[Uuid]) -> Result<(), DataError>;
     async fn delete(&self, file_id: Uuid) -> Result<(), DataError>;
     async fn move_file(&self, command: MoveFileCommand) -> Result<File, DataError>;
+    async fn copy_file(&self, command: CopyFileCommand) -> Result<File, DataError>;
 }
 
 pub struct FileServiceImpl {
@@ -48,7 +59,7 @@ impl FileServiceImpl {
             file_repo,
             folder_repo,
             user_repo,
-            storage_path
+            storage_path,
         }
     }
 }
@@ -64,44 +75,74 @@ impl FileService for FileServiceImpl {
     }
 
     async fn search_file(&self, search_query: String) -> Result<Vec<File>, DataError> {
-        self.file_repo.search_by_name(format!("%{}%", search_query)).await
+        self.file_repo
+            .search_by_name(format!("%{}%", search_query))
+            .await
     }
 
     async fn upload(&self, command: InitFileCommand) -> Result<File, DataError> {
-        let folder: Folder = self.folder_repo.get_by_id(command.destination).await?
+        let folder: Folder = self
+            .folder_repo
+            .get_by_id(command.destination)
+            .await?
             .ok_or_else(|| DataError::EntityNotFoundException("Folder".to_string()))?;
 
-        if let Some(_) = self.file_repo.get_by_folder_and_file_name(folder.id, command.name.clone()).await? {
+        if let Some(_) = self
+            .file_repo
+            .get_by_folder_and_file_name(folder.id, command.name.clone())
+            .await?
+        {
             return Err(DataError::FileAlreadyExistsError);
         }
 
-        let user: User = self.user_repo.get_by_id(command.owner_id).await?
+        let user: User = self
+            .user_repo
+            .get_by_id(command.owner_id)
+            .await?
             .ok_or_else(|| DataError::EntityNotFoundException("User".to_string()))?;
 
         if user.validate_storage_size(command.expected_size) {
-            let f = File::new(Uuid::new_v4(), command.name, user.id, folder.id, false, command.expected_size);
+            let f = File::new(
+                Uuid::new_v4(),
+                command.name,
+                user.id,
+                folder.id,
+                false,
+                command.expected_size,
+            );
             self.file_repo.upload(f).await
         } else {
             Err(DataError::NoFreeStorageError)
         }
     }
 
-    async fn upload_stream(&self, file_id: Uuid, mut rx: Receiver<Result<Vec<u8>, DataError>>) -> Result<(), DataError> {
-        let mut f = self.file_repo.get_by_id(file_id).await?
+    async fn upload_stream(
+        &self,
+        file_id: Uuid,
+        mut rx: Receiver<Result<Vec<u8>, DataError>>,
+    ) -> Result<(), DataError> {
+        let mut f = self
+            .file_repo
+            .get_by_id(file_id)
+            .await?
             .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
 
         if f.upload_status != UploadStatus::Pending {
-            return Err(DataError::ValidationError("File is not pending".to_string()));
+            return Err(DataError::ValidationError(
+                "File is not pending".to_string(),
+            ));
         }
 
         let file_path = f.build_file_path(&self.storage_path);
 
         if let Some(parent) = file_path.parent() {
-            tokio::fs::create_dir_all(parent).await
+            tokio::fs::create_dir_all(parent)
+                .await
                 .map_err(|e| DataError::IOError(format!("Failed to create buckets: {}", e)))?;
         }
 
-        let file_handle = tokio::fs::File::create(&file_path).await
+        let file_handle = tokio::fs::File::create(&file_path)
+            .await
             .map_err(|e| DataError::IOError(e.to_string()))?;
 
         let mut writer = BufWriter::with_capacity(MB as usize, file_handle);
@@ -136,9 +177,15 @@ impl FileService for FileServiceImpl {
         Ok(())
     }
 
-
-    async fn update_file_name(&self, command: UpdateFileNameCommand, file_id: Uuid) -> Result<File, DataError> {
-        let mut file: File = self.file_repo.get_by_id(file_id).await?
+    async fn update_file_name(
+        &self,
+        command: UpdateFileNameCommand,
+        file_id: Uuid,
+    ) -> Result<File, DataError> {
+        let mut file: File = self
+            .file_repo
+            .get_by_id(file_id)
+            .await?
             .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
 
         file.rename(command.new_name);
@@ -147,7 +194,10 @@ impl FileService for FileServiceImpl {
     }
 
     async fn update_deleted_file(&self, id: Uuid) -> Result<File, DataError> {
-        let mut file: File = self.file_repo.get_by_id(id).await?
+        let mut file: File = self
+            .file_repo
+            .get_by_id(id)
+            .await?
             .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
 
         file.set_as_undeleted();
@@ -160,7 +210,10 @@ impl FileService for FileServiceImpl {
     }
 
     async fn delete(&self, file_id: Uuid) -> Result<(), DataError> {
-        let mut file = self.file_repo.get_by_id(file_id).await?
+        let mut file = self
+            .file_repo
+            .get_by_id(file_id)
+            .await?
             .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
 
         file.set_as_deleted();
@@ -169,11 +222,72 @@ impl FileService for FileServiceImpl {
     }
 
     async fn move_file(&self, command: MoveFileCommand) -> Result<File, DataError> {
-        let mut file = self.file_repo.get_by_id(command.file_id).await?
+        let mut file = self
+            .file_repo
+            .get_by_id(command.file_id)
+            .await?
             .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
 
         file.update_parent_folder(command.folder_id);
 
         Ok(self.file_repo.update(file).await?)
+    }
+
+    async fn copy_file(&self, command: CopyFileCommand) -> Result<File, DataError> {
+        let file = self
+            .file_repo
+            .get_by_id(command.file_id)
+            .await?
+            .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
+
+        let user = self
+            .user_repo
+            .get_by_id(command.user_id)
+            .await?
+            .ok_or_else(|| DataError::EntityNotFoundException("User".to_string()))?;
+
+        if !user.validate_storage_size(file.size) {
+            return Err(DataError::NoFreeStorageError);
+        }
+
+        let new_file_id = Uuid::new_v4();
+
+        let mut new_file = File::new(
+            new_file_id,
+            format!("{}_copy", file.name.clone()),
+            user.id,
+            command.target_folder_id,
+            false,
+            file.size,
+        );
+
+        new_file.upload_status = UploadStatus::Completed;
+
+        let source_path = file.build_file_path(&self.storage_path);
+        let dest_path = new_file.build_file_path(&self.storage_path);
+
+        if let Some(parent) = dest_path.parent() {
+            tokio::fs::create_dir_all(parent)
+                .await
+                .map_err(|e| DataError::IOError(format!("Failed to create buckets: {}", e)))?;
+        }
+
+        if let Err(e) = tokio::fs::copy(&source_path, &dest_path).await {
+            return Err(DataError::IOError(e.to_string()));
+        }
+
+        match self.file_repo.upload(new_file).await {
+            Ok(uploaded_file) => Ok(uploaded_file),
+            Err(err) => {
+                if let Err(del_err) = tokio::fs::remove_file(&dest_path).await {
+                    return Err(DataError::IOError(format!(
+                        "Failed to delete ghost file. Needs immediate attention: {}",
+                        del_err.to_string()
+                    )));
+                }
+
+                Err(err)
+            }
+        }
     }
 }
