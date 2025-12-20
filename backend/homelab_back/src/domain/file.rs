@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
+use crate::exception::data_error::DataError;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, sqlx::Type)]
 #[sqlx(type_name = "file_type", rename_all = "lowercase")]
