@@ -10,7 +10,7 @@ use crate::data::file_folder::move_file_command::MoveFileCommand;
 use crate::data::file_folder::update_file_name_command::UpdateFileNameCommand;
 use crate::helpers::proto_mappers::{map_entity_id, map_file_to_proto};
 use crate::pb::file_service_server::FileService;
-use crate::pb::{DeleteChosenFilesRequest, DeleteFileRequest, FileChunk, FileListResponse, FileResponse, GetFileRequest, InitFileRequest, MoveFileRequest, RenameFileRequest, SearchFilesRequest, UndeleteFileRequest};
+use crate::pb::{CopyFileRequest, DeleteChosenFilesRequest, DeleteFileRequest, FileChunk, FileListResponse, FileResponse, GetFileRequest, InitFileRequest, MoveFileRequest, RenameFileRequest, SearchFilesRequest, UndeleteFileRequest};
 use crate::pb::file_chunk::Data as FileChunkData;
 
 #[derive(new)]
@@ -175,6 +175,10 @@ impl FileService for GrpcFileService {
         let file = self.app_state.file_service.move_file(command).await?;
 
         Ok(Response::new(map_file_to_proto(file)))
+    }
+
+    async fn copy_file(&self, request: Request<CopyFileRequest>) -> Result<Response<FileResponse>, Status> {
+        todo!()
     }
 }
 
