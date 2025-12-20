@@ -11,7 +11,6 @@ use crate::domain::folder::Folder;
 use crate::domain::user::User;
 use crate::exception::data_error::DataError;
 use async_trait::async_trait;
-use std::fmt::format;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::io::{AsyncWriteExt, BufWriter};
@@ -39,6 +38,11 @@ pub trait FileService: Send + Sync {
     async fn delete(&self, file_id: Uuid) -> Result<(), DataError>;
     async fn move_file(&self, command: MoveFileCommand) -> Result<File, DataError>;
     async fn copy_file(&self, command: CopyFileCommand) -> Result<File, DataError>;
+    async fn update_stream (
+        &self,
+        file_id: Uuid,
+        rx: Receiver<Result<Vec<u8>, DataError>>,
+    ) -> Result<(), DataError>;
 }
 
 pub struct FileServiceImpl {
@@ -289,5 +293,67 @@ impl FileService for FileServiceImpl {
                 Err(err)
             }
         }
+    }
+
+    async fn update_stream(&self, file_id: Uuid, mut rx: Receiver<Result<Vec<u8>, DataError>>) -> Result<(), DataError> {
+        let mut f = self.file_repo.get_by_id(file_id).await?
+            .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
+
+        let target_path = f.build_file_path(&self.storage_path);
+
+        let parent = target_path.parent()
+            .ok_or_else(|| DataError::UnknownError("Invalid file path structure".to_string()))?;
+
+        let temp_path = parent.join(format!("{}.tmp", f.id));
+
+        let file_handle = tokio::fs::File::create(&temp_path)
+            .await
+            .map_err(|e| DataError::IOError(e.to_string()))?;
+
+        let mut writer = BufWriter::with_capacity(MB as usize, file_handle);
+        let mut new_total_bytes = 0i64;
+
+        while let Some(chunk_result) = rx.recv().await {
+            let data = chunk_result?;
+            new_total_bytes += data.len() as i64;
+
+            if let Err(e) = writer.write_all(&data).await {
+                let _ = tokio::fs::remove_file(&temp_path).await;
+                return Err(DataError::IOError(e.to_string()));
+            }
+        }
+
+        if let Err(e) = writer.flush().await {
+            let _ = tokio::fs::remove_file(&temp_path).await;
+            return Err(DataError::IOError(e.to_string()));
+        }
+
+        if let Err(e) = writer.get_ref().sync_all().await {
+            let _ = tokio::fs::remove_file(&temp_path).await;
+            return Err(DataError::IOError(e.to_string()));
+        }
+
+        let old_size = f.size;
+        let size_diff = new_total_bytes - old_size;
+
+        if size_diff > 0 {
+            let user = self.user_repo.get_by_id(f.owner_id).await?
+                .ok_or_else(|| DataError::EntityNotFoundException("User".to_string()))?;
+
+            if !user.validate_storage_size(size_diff) {
+                let _ = tokio::fs::remove_file(&temp_path).await;
+                return Err(DataError::NoFreeStorageError);
+            }
+        }
+
+        if let Err(e) = tokio::fs::rename(&temp_path, &target_path).await {
+            let _ = tokio::fs::remove_file(&temp_path).await;
+            return Err(DataError::IOError(e.to_string()));
+        }
+
+        f.update_size(new_total_bytes);
+        self.file_repo.update(f).await?;
+
+        Ok(())
     }
 }
