@@ -71,7 +71,7 @@ CREATE TABLE files
     is_deleted       BOOLEAN       NOT NULL DEFAULT FALSE,
     ttl              TIMESTAMPTZ,
     size             BIGINT        NOT NULL,
-    upload_status            upload_status NOT NULL
+    upload_status    upload_status NOT NULL
 );
 
 
@@ -92,5 +92,10 @@ CREATE TABLE shared_file
     owner_id    UUID        NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     file_id     UUID        NOT NULL REFERENCES files (id) ON DELETE CASCADE,
     access_type access_type NOT NULL
-)
+);
 
+CREATE TABLE global_files
+(
+    id          UUID PRIMARY KEY,
+    original_id UUID NOT NULL REFERENCES files (id) ON DELETE CASCADE
+);

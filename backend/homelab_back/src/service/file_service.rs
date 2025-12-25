@@ -13,9 +13,12 @@ use crate::exception::data_error::DataError;
 use async_trait::async_trait;
 use std::path::PathBuf;
 use std::sync::Arc;
+use derive_new::new;
 use tokio::io::{AsyncWriteExt, BufWriter};
 use tokio::sync::mpsc::Receiver;
 use uuid::Uuid;
+use crate::db::global_file_repository::GlobalFileRepository;
+use crate::domain::global_file::GlobalFile;
 
 #[async_trait]
 pub trait FileService: Send + Sync {
@@ -45,27 +48,13 @@ pub trait FileService: Send + Sync {
     ) -> Result<(), DataError>;
 }
 
+#[derive(new)]
 pub struct FileServiceImpl {
     file_repo: Arc<dyn FileRepository>,
     folder_repo: Arc<dyn FolderRepository>,
     user_repo: Arc<dyn UserRepository>,
     storage_path: PathBuf,
-}
-
-impl FileServiceImpl {
-    pub fn new(
-        file_repo: Arc<dyn FileRepository>,
-        folder_repo: Arc<dyn FolderRepository>,
-        user_repo: Arc<dyn UserRepository>,
-        storage_path: PathBuf,
-    ) -> Self {
-        Self {
-            file_repo,
-            folder_repo,
-            user_repo,
-            storage_path,
-        }
-    }
+    global_file_repo: Arc<dyn GlobalFileRepository>,
 }
 
 #[async_trait]
@@ -114,7 +103,15 @@ impl FileService for FileServiceImpl {
                 false,
                 command.expected_size,
             );
-            self.file_repo.upload(f).await
+            
+            if command.is_global {
+                let original = f.id.clone();
+                let global_file = GlobalFile::new(Uuid::new_v4(), original);
+                
+                self.global_file_repo.save(global_file).await?;
+            }
+            
+            self.file_repo.save(f).await
         } else {
             Err(DataError::NoFreeStorageError)
         }
@@ -280,7 +277,7 @@ impl FileService for FileServiceImpl {
             return Err(DataError::IOError(e.to_string()));
         }
 
-        match self.file_repo.upload(new_file).await {
+        match self.file_repo.save(new_file).await {
             Ok(uploaded_file) => Ok(uploaded_file),
             Err(err) => {
                 if let Err(del_err) = tokio::fs::remove_file(&dest_path).await {
