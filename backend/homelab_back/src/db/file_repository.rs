@@ -10,7 +10,7 @@ pub trait FileRepository: Send + Sync {
     async fn get_all_deleted(&self) -> Result<Vec<File>, DataError>;
     async fn search_by_name(&self, search_query: String) -> Result<Vec<File>, DataError>;
     async fn get_by_folder_and_file_name(&self, folder_id: Uuid, file_name: String) -> Result<Option<File>, DataError>;
-    async fn upload(&self, file: File) -> Result<File, DataError>;
+    async fn save(&self, file: File) -> Result<File, DataError>;
     async fn update(&self, file: File) -> Result<File, DataError>;
     async fn delete_all(&self, file_ids: &[Uuid]) -> Result<(), DataError>;
     async fn delete_by_id(&self, file_id: Uuid) -> Result<(), DataError>;
@@ -96,8 +96,8 @@ impl FileRepository for FileRepositoryImpl {
         Ok(file)
     }
 
-    async fn upload(&self, file: File) -> Result<File, DataError> {
-        let file = sqlx::query_as!(
+    async fn save(&self, file: File) -> Result<File, DataError> {
+        let f = sqlx::query_as!(
         File,
         r#"
         INSERT INTO files (id, name, owner_id, parent_folder_id, file_type, is_deleted, size, upload_status)
@@ -117,7 +117,7 @@ impl FileRepository for FileRepositoryImpl {
             .await
             .map_err(|e| DataError::DatabaseError(e))?;
 
-        Ok(file)
+        Ok(f)
     }
 
     async fn update(&self, file: File) -> Result<File, DataError> {

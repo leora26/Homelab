@@ -62,6 +62,7 @@ message InitFileRequest {
   EntityId destination = 2;
   EntityId owner_id = 3;
   int64 size = 4;
+  bool is_global = 5;
 }
 
 message FileChunk {

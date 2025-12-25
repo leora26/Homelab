@@ -2,9 +2,10 @@ use tonic::Status;
 use uuid::Uuid;
 use crate::domain::file::{File, FileType as DomainFileType, UploadStatus as DomainUploadStatus};
 use crate::domain::folder::Folder;
+use crate::domain::global_file::GlobalFile;
 use crate::domain::user::{User, Role as DomainRole};
 use crate::domain::white_listed_user::WhiteListedUser;
-use crate::pb::{EntityId, FileResponse, Role as ProtoRole, FileType as ProtoFileType, UploadStatus as ProtoUploadStatus, UserResponse, WhiteListedUserResponse, FolderResponse};
+use crate::pb::{EntityId, FileResponse, Role as ProtoRole, FileType as ProtoFileType, UploadStatus as ProtoUploadStatus, UserResponse, WhiteListedUserResponse, FolderResponse, GlobalFileResponse};
 
 pub fn map_wlu_to_proto(u: WhiteListedUser) -> WhiteListedUserResponse {
     WhiteListedUserResponse {
@@ -59,6 +60,13 @@ pub fn map_file_to_proto (f: File) -> FileResponse {
             DomainUploadStatus::Completed => ProtoUploadStatus::Completed,
             DomainUploadStatus::Pending => ProtoUploadStatus::Pending,
         } as i32
+    }
+}
+
+pub fn map_global_file_to_proto(g: GlobalFile) -> GlobalFileResponse {
+    GlobalFileResponse {
+        id: Option::from(map_id_to_proto(g.id)),
+        original_id: Option::from(map_id_to_proto(g.original_id))
     }
 }
 

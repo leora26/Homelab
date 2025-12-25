@@ -7,6 +7,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("cargo:rerun-if-changed=proto/white_listed_user.proto");
     println!("cargo:rerun-if-changed=proto/user.proto");
     println!("cargo:rerun-if-changed=proto/file.proto");
+    println!("cargo:rerun-if-changed=proto/global_file.proto");
     println!("cargo:rerun-if-changed=proto/folder.proto");
     println!("cargo:rerun-if-changed=proto/types.proto");
 
@@ -16,6 +17,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 "proto/white_listed_user.proto",
                 "proto/user.proto",
                 "proto/file.proto",
+                "proto/global_file.proto",
                 "proto/folder.proto",
                 "proto/types.proto",
             ],
