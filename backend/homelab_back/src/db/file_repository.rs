@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use derive_new::new;
 use sqlx::PgPool;
 use uuid::Uuid;
 use crate::domain::file::File;
@@ -16,14 +17,9 @@ pub trait FileRepository: Send + Sync {
     async fn delete_by_id(&self, file_id: Uuid) -> Result<(), DataError>;
 }
 
+#[derive(new)]
 pub struct FileRepositoryImpl {
     pool: PgPool,
-}
-
-impl FileRepositoryImpl {
-    pub fn new(pool: PgPool) -> Self {
-        Self { pool }
-    }
 }
 
 #[async_trait]

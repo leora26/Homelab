@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use async_trait::async_trait;
+use derive_new::new;
 use uuid::Uuid;
 use crate::data::user::create_user_command::CreateUserCommand;
 use crate::domain::user::User;
@@ -16,14 +17,9 @@ pub trait UserService: Send + Sync {
     async fn update_password(&self, id: Uuid, pass: &str) -> Result<(), DataError>;
 }
 
+#[derive(new)]
 pub struct UserServiceImpl {
     user_repo: Arc<dyn UserRepository>,
-}
-
-impl UserServiceImpl {
-    pub fn new(user_repo: Arc<dyn UserRepository>) -> Self {
-        Self { user_repo }
-    }
 }
 
 #[async_trait]

@@ -99,3 +99,18 @@ CREATE TABLE global_files
     id          UUID PRIMARY KEY,
     original_id UUID NOT NULL REFERENCES files (id) ON DELETE CASCADE
 );
+
+CREATE TABLE labels
+(
+    id       UUID PRIMARY KEY,
+    name     TEXT NOT NULL,
+    color    TEXT NOT NULL,
+    owner_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE
+);
+
+CREATE TABLE file_labels
+(
+    id       UUID PRIMARY KEY,
+    file_id  UUID REFERENCES files (id) ON DELETE CASCADE,
+    label_id UUID REFERENCES labels (id) ON DELETE CASCADE
+);

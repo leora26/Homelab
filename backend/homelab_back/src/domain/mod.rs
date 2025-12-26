@@ -5,3 +5,5 @@ pub mod action_log;
 pub mod white_listed_user;
 pub mod shared_file;
 pub mod global_file;
+pub mod label;
+pub mod file_label;
