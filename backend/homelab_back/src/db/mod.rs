@@ -5,3 +5,4 @@ pub mod white_listed_user_repository;
 pub mod shared_file_repository;
 pub mod global_file_repository;
 pub mod label_repository;
+pub mod file_label_repository;

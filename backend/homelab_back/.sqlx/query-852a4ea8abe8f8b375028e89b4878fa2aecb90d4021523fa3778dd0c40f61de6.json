@@ -1,0 +1,94 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                f.id,\n                f.name,\n                f.owner_id,\n                f.parent_folder_id,\n                f.file_type as \"file_type: _\",\n                f.is_deleted,\n                f.ttl,\n                f.size,\n                f.upload_status as \"upload_status: _\"\n            FROM files f\n            INNER JOIN file_labels fl ON f.id = fl.file_id\n            WHERE fl.label_id = $1 AND f.owner_id = $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "owner_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "parent_folder_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "file_type: _",
+        "type_info": {
+          "Custom": {
+            "name": "file_type",
+            "kind": {
+              "Enum": [
+                "Text",
+                "Image",
+                "Video",
+                "Unknown"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "is_deleted",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 6,
+        "name": "ttl",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "size",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 8,
+        "name": "upload_status: _",
+        "type_info": {
+          "Custom": {
+            "name": "upload_status",
+            "kind": {
+              "Enum": [
+                "Pending",
+                "Completed",
+                "Failed"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "852a4ea8abe8f8b375028e89b4878fa2aecb90d4021523fa3778dd0c40f61de6"
+}

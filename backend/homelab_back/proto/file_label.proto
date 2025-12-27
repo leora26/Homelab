@@ -1,0 +1,34 @@
+syntax = "proto3";
+package nas;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+import "types.proto";
+import "file.proto";
+import "label.proto";
+
+service FileLabelService {
+  rpc CreateFileLabel (CreateFileLabelRequest) returns (FileLabelResponse);
+  rpc GetLabelsForFile (GetLabelsForFileRequest) returns (LabelListResponse);
+  rpc GetFilesForLabel (GetFilesForLabelRequest) returns (FileListResponse);
+}
+
+message FileLabelResponse {
+  EntityId file_id = 2;
+  EntityId label_id = 3;
+}
+
+message GetLabelsForFileRequest {
+  EntityId file_id = 1;
+  EntityId owner_id = 2;
+}
+
+message GetFilesForLabelRequest {
+  EntityId label_id = 1;
+  EntityId owner_id = 2;
+}
+
+message CreateFileLabelRequest {
+  EntityId file_id = 1;
+  EntityId label_id = 2;
+}

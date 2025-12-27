@@ -15,6 +15,7 @@ pub trait FileRepository: Send + Sync {
     async fn update(&self, file: File) -> Result<File, DataError>;
     async fn delete_all(&self, file_ids: &[Uuid]) -> Result<(), DataError>;
     async fn delete_by_id(&self, file_id: Uuid) -> Result<(), DataError>;
+    async fn get_all_files_by_label (&self, label_id: Uuid, owner_id: Uuid) -> Result<Vec<File>, DataError>;
 }
 
 #[derive(new)]
@@ -168,5 +169,33 @@ impl FileRepository for FileRepositoryImpl {
             .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(())
+    }
+
+    async fn get_all_files_by_label(&self, label_id: Uuid, owner_id: Uuid) -> Result<Vec<File>, DataError> {
+        let files = sqlx::query_as!(
+            File,
+            r#"
+            SELECT
+                f.id,
+                f.name,
+                f.owner_id,
+                f.parent_folder_id,
+                f.file_type as "file_type: _",
+                f.is_deleted,
+                f.ttl,
+                f.size,
+                f.upload_status as "upload_status: _"
+            FROM files f
+            INNER JOIN file_labels fl ON f.id = fl.file_id
+            WHERE fl.label_id = $1 AND f.owner_id = $2
+            "#,
+            label_id,
+            owner_id
+        )
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| DataError::DatabaseError(e))?;
+
+        Ok(files)
     }
 }

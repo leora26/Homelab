@@ -12,6 +12,7 @@ pub trait LabelRepository: Send + Sync {
     async fn create(&self, label: Label) -> Result<Label, DataError>;
     async fn delete(&self, id: Uuid) -> Result<(), DataError>;
     async fn update(&self, label: Label) -> Result<Label, DataError>;
+    async fn get_labels_by_file (&self, file_id: Uuid, owner_id: Uuid) -> Result<Vec<Label>, DataError>;
 }
 
 #[derive(new)]
@@ -104,5 +105,28 @@ impl LabelRepository for LabelRepositoryImpl {
             .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(label)
+    }
+
+    async fn get_labels_by_file(&self, file_id: Uuid, owner_id: Uuid) -> Result<Vec<Label>, DataError> {
+        let labels = sqlx::query_as!(
+            Label,
+            r#"
+            SELECT
+                l.id,
+                l.name,
+                l.color,
+                l.owner_id
+            FROM labels l
+            INNER JOIN file_labels fl ON l.id = fl.label_id
+            WHERE fl.file_id = $1 AND l.owner_id = $2
+            "#,
+            file_id,
+            owner_id
+        )
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| DataError::DatabaseError(e))?;
+
+        Ok(labels)
     }
 }

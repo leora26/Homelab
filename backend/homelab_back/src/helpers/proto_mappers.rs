@@ -4,13 +4,10 @@ use crate::domain::global_file::GlobalFile;
 use crate::domain::label::Label;
 use crate::domain::user::{Role as DomainRole, User};
 use crate::domain::white_listed_user::WhiteListedUser;
-use crate::pb::{
-    EntityId, FileResponse, FileType as ProtoFileType, FolderResponse, GlobalFileResponse,
-    LabelResponse, Role as ProtoRole, UploadStatus as ProtoUploadStatus, UserResponse,
-    WhiteListedUserResponse,
-};
+use crate::pb::{EntityId, FileLabelResponse, FileResponse, FileType as ProtoFileType, FolderResponse, GlobalFileResponse, LabelResponse, Role as ProtoRole, UploadStatus as ProtoUploadStatus, UserResponse, WhiteListedUserResponse};
 use tonic::Status;
 use uuid::Uuid;
+use crate::domain::file_label::FileLabel;
 
 pub fn map_wlu_to_proto(u: WhiteListedUser) -> WhiteListedUserResponse {
     WhiteListedUserResponse {
@@ -104,6 +101,13 @@ pub fn map_label_to_proto(l: Label) -> LabelResponse {
         name: l.name,
         color: l.color,
         owner_id: Option::from(map_id_to_proto(l.owner_id)),
+    }
+}
+
+pub fn map_file_label_to_proto (fl: FileLabel) -> FileLabelResponse {
+    FileLabelResponse {
+        file_id: Option::from(map_id_to_proto(fl.file_id)),
+        label_id: Option::from(map_id_to_proto(fl.label_id)),
     }
 }
 

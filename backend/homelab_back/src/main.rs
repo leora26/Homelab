@@ -10,9 +10,11 @@ pub mod pb;
 pub mod service;
 pub mod types;
 
+use crate::db::file_label_repository::FileLabelRepositoryImpl;
 use crate::db::file_repository::{FileRepository, FileRepositoryImpl};
 use crate::db::folder_repository::FolderRepositoryImpl;
 use crate::db::global_file_repository::GlobalFileRepositoryImpl;
+use crate::db::label_repository::LabelRepositoryImpl;
 use crate::db::shared_file_repository::SharedFileRepositoryImpl;
 use crate::db::user_repository::UserRepositoryImpl;
 use crate::db::white_listed_user_repository::WhiteListedUserRepositoryImpl;
@@ -20,8 +22,11 @@ use crate::grpc::user_grpc_service::GrpcUserService;
 use crate::grpc::white_listed_user_grpc_service::GrpcWhiteListedUserService;
 use crate::pb::user_service_server::UserServiceServer;
 use crate::pb::white_listed_user_service_server::WhiteListedUserServiceServer;
+use crate::service::file_label_service::{FileLabelService, FileLabelServiceImpl};
 use crate::service::file_service::{FileService, FileServiceImpl};
 use crate::service::folder_service::{FolderService, FolderServiceImpl};
+use crate::service::global_file_service::{GlobalFileService, GlobalFileServiceImpl};
+use crate::service::label_service::{LabelService, LabelServiceImpl};
 use crate::service::shared_file_service::{SharedFileService, SharedFileServiceImpl};
 use crate::service::user_service::{UserService, UserServiceImpl};
 use crate::service::white_listed_user_service::{WhiteListedServiceImpl, WhiteListedUserService};
@@ -33,9 +38,6 @@ use std::error::Error;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tonic::transport::Server;
-use crate::db::label_repository::LabelRepositoryImpl;
-use crate::service::global_file_service::{GlobalFileService, GlobalFileServiceImpl};
-use crate::service::label_service::{LabelService, LabelServiceImpl};
 
 pub struct AppState {
     pub file_service: Arc<dyn FileService>,
@@ -46,6 +48,7 @@ pub struct AppState {
     pub file_repo: Arc<dyn FileRepository>,
     pub global_file_service: Arc<dyn GlobalFileService>,
     pub label_service: Arc<dyn LabelService>,
+    pub file_label_service: Arc<dyn FileLabelService>,
 }
 
 #[actix_web::main]
@@ -88,6 +91,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let share_file_repo = Arc::new(SharedFileRepositoryImpl::new(pool.clone()));
     let global_file_repo = Arc::new(GlobalFileRepositoryImpl::new(pool.clone()));
     let label_repo = Arc::new(LabelRepositoryImpl::new(pool.clone()));
+    let file_label_repo = Arc::new(FileLabelRepositoryImpl::new(pool.clone()));
 
     let folder_service = Arc::new(FolderServiceImpl::new(folder_repo.clone()));
     let file_service = Arc::new(FileServiceImpl::new(
@@ -109,6 +113,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
     ));
     let global_file_service = Arc::new(GlobalFileServiceImpl::new(global_file_repo.clone()));
     let label_service = Arc::new(LabelServiceImpl::new(label_repo.clone(), user_repo.clone()));
+    let file_label_service = Arc::new(FileLabelServiceImpl::new(
+        label_repo.clone(),
+        file_repo.clone(),
+        file_label_repo.clone(),
+        user_repo.clone(),
+    ));
 
     let app_state = web::Data::new(AppState {
         file_service,
@@ -118,7 +128,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         shared_file_service,
         file_repo: file_repo.clone(),
         global_file_service,
-        label_service
+        label_service,
+        file_label_service
     });
 
     let rest_addr = ("0.0.0.0", 8080);

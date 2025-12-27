@@ -12,3 +12,4 @@ pub mod move_folder_command;
 pub mod copy_file_command;
 pub mod create_label_command;
 pub mod change_label_command;
+pub mod create_file_label_command;

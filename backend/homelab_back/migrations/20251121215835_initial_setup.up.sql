@@ -110,7 +110,11 @@ CREATE TABLE labels
 
 CREATE TABLE file_labels
 (
-    id       UUID PRIMARY KEY,
     file_id  UUID REFERENCES files (id) ON DELETE CASCADE,
-    label_id UUID REFERENCES labels (id) ON DELETE CASCADE
+    label_id UUID REFERENCES labels (id) ON DELETE CASCADE,
+
+    PRIMARY KEY (file_id, label_id)
 );
+
+CREATE INDEX idx_file_labels_label_id ON file_labels(label_id);
+CREATE INDEX idx_file_labels_file_id ON file_labels(file_id);
