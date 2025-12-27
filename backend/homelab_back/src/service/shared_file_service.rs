@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use async_trait::async_trait;
+use derive_new::new;
 use uuid::Uuid;
 use crate::data::file_folder::create_shared_file_command::CreateSharedFileCommand;
 use crate::db::file_repository::FileRepository;
@@ -16,24 +17,11 @@ pub trait SharedFileService: Send + Sync {
     async fn get_all_shared_files_per_user (&self, user_id: Uuid) -> Result<Vec<SharedFile>, DataError>;
 }
 
+#[derive(new)]
 pub struct SharedFileServiceImpl {
     shared_file_repository: Arc<dyn SharedFileRepository>,
     user_repository: Arc<dyn UserRepository>,
     file_repository: Arc<dyn FileRepository>,
-}
-
-impl SharedFileServiceImpl {
-    pub fn new(
-        shared_file_repository: Arc<dyn SharedFileRepository>,
-        user_repository: Arc<dyn UserRepository>,
-        file_repository: Arc<dyn FileRepository>,
-    ) -> Self {
-        Self {
-            shared_file_repository,
-            user_repository,
-            file_repository,
-        }
-    }
 }
 
 #[async_trait]

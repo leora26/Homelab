@@ -7,7 +7,7 @@ use crate::exception::data_error::DataError;
 
 #[async_trait]
 pub trait LabelRepository: Send + Sync {
-    async fn get_by_id (&self, id: Uuid) -> Result<Label, DataError>;
+    async fn get_by_id (&self, id: Uuid) -> Result<Option<Label>, DataError>;
     async fn get_all (&self) -> Result<Vec<Label>, DataError>;
     async fn create(&self, label: Label) -> Result<Label, DataError>;
     async fn delete(&self, id: Uuid) -> Result<(), DataError>;
@@ -21,7 +21,7 @@ pub struct LabelRepositoryImpl {
 
 #[async_trait]
 impl LabelRepository for LabelRepositoryImpl {
-    async fn get_by_id(&self, id: Uuid) -> Result<Label, DataError> {
+    async fn get_by_id(&self, id: Uuid) -> Result<Option<Label>, DataError> {
         let label = sqlx::query_as!(
             Label,
             r#"
@@ -30,7 +30,7 @@ impl LabelRepository for LabelRepositoryImpl {
             "#,
             id
         )
-            .fetch_one(&self.pool)
+            .fetch_optional(&self.pool)
             .await
             .map_err(|e| DataError::DatabaseError(e))?;
 

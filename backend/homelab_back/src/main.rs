@@ -33,7 +33,9 @@ use std::error::Error;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tonic::transport::Server;
+use crate::db::label_repository::LabelRepositoryImpl;
 use crate::service::global_file_service::{GlobalFileService, GlobalFileServiceImpl};
+use crate::service::label_service::{LabelService, LabelServiceImpl};
 
 pub struct AppState {
     pub file_service: Arc<dyn FileService>,
@@ -42,7 +44,8 @@ pub struct AppState {
     pub white_listed_user_service: Arc<dyn WhiteListedUserService>,
     pub shared_file_service: Arc<dyn SharedFileService>,
     pub file_repo: Arc<dyn FileRepository>,
-    pub global_file_service: Arc<dyn GlobalFileService>
+    pub global_file_service: Arc<dyn GlobalFileService>,
+    pub label_service: Arc<dyn LabelService>,
 }
 
 #[actix_web::main]
@@ -84,6 +87,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let wlu_repo = Arc::new(WhiteListedUserRepositoryImpl::new(pool.clone()));
     let share_file_repo = Arc::new(SharedFileRepositoryImpl::new(pool.clone()));
     let global_file_repo = Arc::new(GlobalFileRepositoryImpl::new(pool.clone()));
+    let label_repo = Arc::new(LabelRepositoryImpl::new(pool.clone()));
 
     let folder_service = Arc::new(FolderServiceImpl::new(folder_repo.clone()));
     let file_service = Arc::new(FileServiceImpl::new(
@@ -104,6 +108,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         file_repo.clone(),
     ));
     let global_file_service = Arc::new(GlobalFileServiceImpl::new(global_file_repo.clone()));
+    let label_service = Arc::new(LabelServiceImpl::new(label_repo.clone(), user_repo.clone()));
 
     let app_state = web::Data::new(AppState {
         file_service,
@@ -112,7 +117,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         white_listed_user_service: wlu_service,
         shared_file_service,
         file_repo: file_repo.clone(),
-        global_file_service
+        global_file_service,
+        label_service
     });
 
     let rest_addr = ("0.0.0.0", 8080);

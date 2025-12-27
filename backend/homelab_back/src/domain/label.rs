@@ -10,3 +10,11 @@ pub struct Label {
     pub color: String,
     pub owner_id: Uuid
 }
+
+
+impl Label {
+    pub fn update (&mut self, name: String, color: String) {
+        self.name = name;
+        self.color = color;
+    }
+}

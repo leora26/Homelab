@@ -20,7 +20,7 @@ message LabelResponse {
 }
 
 message LabelListResponse {
-  repeated LabelListResponse labels = 1;
+  repeated LabelResponse labels = 1;
 }
 
 message CreateLabelRequest {

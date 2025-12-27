@@ -13,8 +13,8 @@ use crate::exception::data_error::DataError;
 pub trait LabelService: Send + Sync {
     async fn get_all (&self) -> Result<Vec<Label>, DataError>;
     async fn create_label (&self, command: CreateLabelCommand) -> Result<Label, DataError>;
-    async fn delete_label (&self, label_id: &Uuid) -> Result<(), DataError>;
-    async fn change_label (&self, command: ChangeLabelCommand) -> Result<(), DataError>;
+    async fn delete_label (&self, label_id: Uuid) -> Result<(), DataError>;
+    async fn change_label (&self, command: ChangeLabelCommand) -> Result<Label, DataError>;
 }
 
 #[derive(new)]
@@ -46,11 +46,19 @@ impl LabelService for LabelServiceImpl {
         Ok(self.label_repo.create(label).await?)
     }
 
-    async fn delete_label(&self, label_id: &Uuid) -> Result<(), DataError> {
-        todo!()
+    async fn delete_label(&self, label_id: Uuid) -> Result<(), DataError> {
+        self.label_repo.delete(label_id).await
     }
 
-    async fn change_label(&self, command: ChangeLabelCommand) -> Result<(), DataError> {
-        todo!()
+    async fn change_label(&self, command: ChangeLabelCommand) -> Result<Label, DataError> {
+
+        let mut label = self.label_repo.get_by_id(command.id)
+            .await?
+            .ok_or_else(|| DataError::EntityNotFoundException("Label".to_string()))?;
+
+        label.update(command.name, command.color);
+
+        Ok(self.label_repo.update(label).await?)
+
     }
 }
