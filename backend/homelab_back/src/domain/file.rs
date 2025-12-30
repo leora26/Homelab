@@ -41,7 +41,7 @@ impl FileType {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
 pub struct File {
     pub id: Uuid,
     pub name: String,

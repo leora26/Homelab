@@ -19,6 +19,7 @@ use tokio::sync::mpsc::Receiver;
 use uuid::Uuid;
 use crate::db::global_file_repository::GlobalFileRepository;
 use crate::domain::global_file::GlobalFile;
+use crate::service::preview_service::{PreviewService, PreviewServiceImpl};
 
 #[async_trait]
 pub trait FileService: Send + Sync {
@@ -136,6 +137,8 @@ impl FileService for FileServiceImpl {
 
         let file_path = f.build_file_path(&self.storage_path);
 
+        // Make sure that parent directories exist.
+        // Storing a bunch of files without parent directories that come build_file_path would be an unoptimized
         if let Some(parent) = file_path.parent() {
             tokio::fs::create_dir_all(parent)
                 .await
@@ -165,6 +168,8 @@ impl FileService for FileServiceImpl {
             return Err(DataError::IOError(e.to_string()));
         }
 
+        // If the file size is not the same as provided during initialization,
+        // we need to remove file from the disk since the file was probably corrupted
         if !f.validate_size(total_bytes) {
             f.update_status(UploadStatus::Failed);
             self.file_repo.update(f).await?;
@@ -173,7 +178,10 @@ impl FileService for FileServiceImpl {
         }
 
         f.update_status(UploadStatus::Completed);
-        self.file_repo.update(f).await?;
+        self.file_repo.update(f.clone()).await?;
+
+        // After the file has been uploaded we need to create a preview of this file
+        PreviewServiceImpl::spawn_generation(f, self.storage_path.clone());
 
         Ok(())
     }
