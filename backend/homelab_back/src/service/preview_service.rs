@@ -55,6 +55,14 @@ impl PreviewService for PreviewServiceImpl {
                     let _ = Self::try_extract_cover(ffmpeg_binary, &f_path, &p_path).await;
                     Ok(Ok(()))
                 }
+                FileType::Pdf if file.name.ends_with(".pdf") => {
+                    let f_path = file_path.to_string_lossy().to_string();
+
+                    match Self::generate_pdf_preview(&f_path, &preview_path).await {
+                        Ok(_) => Ok(Ok(())),
+                        Err(e) => Ok(Err(e))
+                    }
+                }
 
                 // For text/unknown, we just return "Success" (Ok) doing nothing
                 _ => Ok(Ok(())),
@@ -89,6 +97,39 @@ impl PreviewService for PreviewServiceImpl {
 }
 
 impl PreviewServiceImpl {
+
+    async fn generate_pdf_preview(input: &str, output_path: &PathBuf) -> Result<(), String> {
+        let parent = output_path.parent().ok_or("Invalid parent dir")?;
+        let temp_prefix = output_path.file_stem().ok_or("Invalid temp prefix")?.to_string_lossy();
+        let temp_prefix_path = parent.join(format!("{}_temp", temp_prefix));
+
+        let status = Command::new("pdftoppm")
+            .arg("-jpeg")
+            .arg("-f").arg("1")
+            .arg("-l").arg("1")
+            .arg("-scale-to").arg("320")
+            .arg(input)
+            .arg(&temp_prefix_path)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .await
+            .map_err(|e| e.to_string())?;
+
+        if !status.success() {
+            return Err(format!("pdftoppm failed with code: {}", status));
+        }
+
+        let generated_filename = format!("{}-1.jpg", temp_prefix_path.to_string_lossy());
+
+        tokio::fs::rename(generated_filename, output_path)
+            .await
+            .map_err(|e| format!("Failed to rename PDF preview: {}", e))?;
+
+        Ok(())
+    }
+
     fn generate_image_preview(input_path: &PathBuf, output_path: &PathBuf) -> Result<(), String> {
         let img = image::open(input_path)
             .map_err(|e| format!("Corrupt or unsupported image format: {}", e))?;

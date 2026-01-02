@@ -4,6 +4,7 @@ CREATE TYPE file_type AS ENUM (
     'Image',
     'Video',
     'Audio',
+    'Pdf',
     'Unknown'
     );
 

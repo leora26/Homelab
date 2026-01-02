@@ -59,6 +59,8 @@ pub fn map_file_to_proto(f: File) -> FileResponse {
             DomainFileType::Image => ProtoFileType::Image,
             DomainFileType::Text => ProtoFileType::Text,
             DomainFileType::Video => ProtoFileType::Video,
+            DomainFileType::Audio => ProtoFileType::Audio,
+            DomainFileType::Pdf => ProtoFileType::Pdf,
             DomainFileType::Unknown => ProtoFileType::Unknown,
         } as i32,
         is_deleted: f.is_deleted,

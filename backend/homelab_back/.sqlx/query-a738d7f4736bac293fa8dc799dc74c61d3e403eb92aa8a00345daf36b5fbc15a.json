@@ -34,6 +34,8 @@
                 "Text",
                 "Image",
                 "Video",
+                "Audio",
+                "Pdf",
                 "Unknown"
               ]
             }
@@ -87,6 +89,8 @@
                       "Text",
                       "Image",
                       "Video",
+                      "Audio",
+                      "Pdf",
                       "Unknown"
                     ]
                   }

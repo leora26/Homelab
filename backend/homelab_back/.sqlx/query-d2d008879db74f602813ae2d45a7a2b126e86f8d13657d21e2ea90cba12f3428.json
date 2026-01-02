@@ -29,6 +29,8 @@
                 "Text",
                 "Image",
                 "Video",
+                "Audio",
+                "Pdf",
                 "Unknown"
               ]
             }

@@ -12,6 +12,7 @@ pub enum FileType {
     Video,
     Unknown,
     Audio,
+    Pdf
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, sqlx::Type)]
