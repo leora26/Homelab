@@ -48,6 +48,14 @@ impl PreviewService for PreviewServiceImpl {
 
                     Ok(video_result)
                 }
+                FileType::Audio => {
+                    let f_path = file_path.to_string_lossy().to_string();
+                    let p_path = preview_path.to_string_lossy().to_string();
+
+                    let _ = Self::try_extract_cover(ffmpeg_binary, &f_path, &p_path).await;
+                    Ok(Ok(()))
+                }
+
                 // For text/unknown, we just return "Success" (Ok) doing nothing
                 _ => Ok(Ok(())),
             };

@@ -3,6 +3,7 @@ CREATE TYPE file_type AS ENUM (
     'Text',
     'Image',
     'Video',
+    'Audio',
     'Unknown'
     );
 

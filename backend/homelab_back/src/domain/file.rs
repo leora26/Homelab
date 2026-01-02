@@ -11,6 +11,7 @@ pub enum FileType {
     Image,
     Video,
     Unknown,
+    Audio,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, sqlx::Type)]
