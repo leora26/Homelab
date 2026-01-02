@@ -47,6 +47,7 @@ pub trait FileService: Send + Sync {
         file_id: Uuid,
         rx: Receiver<Result<Vec<u8>, DataError>>,
     ) -> Result<(), DataError>;
+    async fn get_file_for_streaming(&self, file_id: Uuid) -> Result<PathBuf, DataError>;
 }
 
 #[derive(new)]
@@ -360,5 +361,21 @@ impl FileService for FileServiceImpl {
         self.file_repo.update(f).await?;
 
         Ok(())
+    }
+
+    async fn get_file_for_streaming(&self, file_id: Uuid) -> Result<PathBuf, DataError> {
+        let file = self
+            .file_repo
+            .get_by_id(file_id)
+            .await?
+            .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
+
+        let file_path = file.build_file_path(&self.storage_path);
+
+        if !file_path.exists() {
+            return Err(DataError::IOError("File metadata exists but disk file is missing".to_string()));
+        }
+
+        Ok(file_path)
     }
 }
