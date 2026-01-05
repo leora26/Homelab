@@ -16,6 +16,8 @@ impl From<DataError> for Status {
             DataError::UploadInterrupter(msg) => Status::internal(msg),
             DataError::NotMatchingByteSizeError => Status::internal("The size of the uploaded file does not match to database metadata"),
             DataError::FileAlreadyExistsError => Status::invalid_argument("A file with the same name already exists in the given folder"),
+            DataError::FileIsAlreadyArchivedError => Status::invalid_argument("This file has already been archived"),
+            DataError::FileIsNotArchivedError => Status::invalid_argument("You cannot unarchive file that is not an archive"),
             DataError::UnknownError(msg) => Status::internal(msg),
         }
     }

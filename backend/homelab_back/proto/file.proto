@@ -18,6 +18,8 @@ service FileService {
   rpc MoveFile (MoveFileRequest) returns (FileResponse);
   rpc CopyFile (CopyFileRequest) returns (FileResponse);
   rpc UpdateFileContent (stream FileChunk) returns (google.protobuf.Empty);
+  rpc ArchiveFile (ArchiveFileCommand) returns (google.protobuf.Empty);
+  rpc UnarchiveFile (UnarchiveFileCommand) returns (google.protobuf.Empty);
 }
 
 enum FileType {
@@ -100,4 +102,12 @@ message CopyFileRequest {
   EntityId file_id = 1;
   EntityId target_folder_id = 2;
   EntityId user_id = 3;
+}
+
+message ArchiveFileCommand {
+  EntityId file_id = 1;
+}
+
+message UnarchiveFileCommand {
+  EntityId file_id = 1;
 }

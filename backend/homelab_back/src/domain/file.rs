@@ -121,4 +121,18 @@ impl File {
     pub fn update_parent_folder(&mut self, new_parent_folder: Uuid) {
         self.parent_folder_id = new_parent_folder;
     }
+
+    pub fn is_archived(&self, storage_path: &Path) -> bool {
+        let path = self.build_file_path(storage_path);
+
+        match path.extension().and_then(|s| s.to_str()) {
+            Some(ext) => {
+                matches!(
+                    ext.to_lowercase().as_str(),
+                    "zip" | "gz" | "tar" | "rar" | "7z" | "bz2" | "xz" | "iso"
+                )
+            }
+            None => false,
+        }
+    }
 }

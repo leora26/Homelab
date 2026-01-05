@@ -24,4 +24,8 @@ pub enum DataError {
     FileAlreadyExistsError,
     #[error("{0}")]
     UnknownError(String),
+    #[error("This file has been previously archived and it cannot be archived again")]
+    FileIsAlreadyArchivedError,
+    #[error("This file is not archived, so you cannot not unarchive it")]
+    FileIsNotArchivedError,
 }

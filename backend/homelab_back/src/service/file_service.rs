@@ -5,21 +5,23 @@ use crate::data::file_folder::move_file_command::MoveFileCommand;
 use crate::data::file_folder::update_file_name_command::UpdateFileNameCommand;
 use crate::db::file_repository::FileRepository;
 use crate::db::folder_repository::FolderRepository;
+use crate::db::global_file_repository::GlobalFileRepository;
 use crate::db::user_repository::UserRepository;
 use crate::domain::file::{File, UploadStatus};
 use crate::domain::folder::Folder;
+use crate::domain::global_file::GlobalFile;
 use crate::domain::user::User;
 use crate::exception::data_error::DataError;
+use crate::service::preview_service::{PreviewService, PreviewServiceImpl};
+use async_compression::tokio::write::{GzipDecoder, GzipEncoder};
 use async_trait::async_trait;
+use derive_new::new;
 use std::path::PathBuf;
 use std::sync::Arc;
-use derive_new::new;
-use tokio::io::{AsyncWriteExt, BufWriter};
+use tokio::fs;
+use tokio::io::{AsyncWriteExt, BufReader, BufWriter};
 use tokio::sync::mpsc::Receiver;
 use uuid::Uuid;
-use crate::db::global_file_repository::GlobalFileRepository;
-use crate::domain::global_file::GlobalFile;
-use crate::service::preview_service::{PreviewService, PreviewServiceImpl};
 
 #[async_trait]
 pub trait FileService: Send + Sync {
@@ -42,12 +44,14 @@ pub trait FileService: Send + Sync {
     async fn delete(&self, file_id: Uuid) -> Result<(), DataError>;
     async fn move_file(&self, command: MoveFileCommand) -> Result<File, DataError>;
     async fn copy_file(&self, command: CopyFileCommand) -> Result<File, DataError>;
-    async fn update_stream (
+    async fn update_stream(
         &self,
         file_id: Uuid,
         rx: Receiver<Result<Vec<u8>, DataError>>,
     ) -> Result<(), DataError>;
     async fn get_file_for_streaming(&self, file_id: Uuid) -> Result<PathBuf, DataError>;
+    async fn archive_file(&self, file_id: Uuid) -> Result<(), DataError>;
+    async fn unarchive_file(&self, file_id: Uuid) -> Result<(), DataError>;
 }
 
 #[derive(new)]
@@ -105,14 +109,14 @@ impl FileService for FileServiceImpl {
                 false,
                 command.expected_size,
             );
-            
+
             if command.is_global {
                 let original = f.id.clone();
                 let global_file = GlobalFile::new(Uuid::new_v4(), original);
-                
+
                 self.global_file_repo.save(global_file).await?;
             }
-            
+
             self.file_repo.save(f).await
         } else {
             Err(DataError::NoFreeStorageError)
@@ -301,13 +305,21 @@ impl FileService for FileServiceImpl {
         }
     }
 
-    async fn update_stream(&self, file_id: Uuid, mut rx: Receiver<Result<Vec<u8>, DataError>>) -> Result<(), DataError> {
-        let mut f = self.file_repo.get_by_id(file_id).await?
+    async fn update_stream(
+        &self,
+        file_id: Uuid,
+        mut rx: Receiver<Result<Vec<u8>, DataError>>,
+    ) -> Result<(), DataError> {
+        let mut f = self
+            .file_repo
+            .get_by_id(file_id)
+            .await?
             .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
 
         let target_path = f.build_file_path(&self.storage_path);
 
-        let parent = target_path.parent()
+        let parent = target_path
+            .parent()
             .ok_or_else(|| DataError::UnknownError("Invalid file path structure".to_string()))?;
 
         let temp_path = parent.join(format!("{}.tmp", f.id));
@@ -343,7 +355,10 @@ impl FileService for FileServiceImpl {
         let size_diff = new_total_bytes - old_size;
 
         if size_diff > 0 {
-            let user = self.user_repo.get_by_id(f.owner_id).await?
+            let user = self
+                .user_repo
+                .get_by_id(f.owner_id)
+                .await?
                 .ok_or_else(|| DataError::EntityNotFoundException("User".to_string()))?;
 
             if !user.validate_storage_size(size_diff) {
@@ -373,9 +388,101 @@ impl FileService for FileServiceImpl {
         let file_path = file.build_file_path(&self.storage_path);
 
         if !file_path.exists() {
-            return Err(DataError::IOError("File metadata exists but disk file is missing".to_string()));
+            return Err(DataError::IOError(
+                "File metadata exists but disk file is missing".to_string(),
+            ));
         }
 
         Ok(file_path)
+    }
+
+    async fn archive_file(&self, file_id: Uuid) -> Result<(), DataError> {
+        let file = self
+            .file_repo
+            .get_by_id(file_id)
+            .await?
+            .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
+
+        if file.is_archived(&self.storage_path) {
+            return Err(DataError::FileIsNotArchivedError);
+        }
+
+        let original_path = file.build_file_path(&self.storage_path);
+
+        let mut compressed_path = original_path.clone();
+        compressed_path.set_extension("gz");
+
+        let mut source_file = fs::File::open(&original_path)
+            .await
+            .map_err(|e| DataError::IOError(e.to_string()))?;
+
+        let dest_file = fs::File::create(&compressed_path)
+            .await
+            .map_err(|e| DataError::IOError(e.to_string()))?;
+
+        let buffered_writer = BufWriter::new(dest_file);
+        let mut encoder = GzipEncoder::new(buffered_writer);
+
+        if let Err(e) = tokio::io::copy(&mut source_file, &mut encoder).await {
+            let _ = fs::remove_file(&compressed_path).await;
+            return Err(DataError::IOError(e.to_string()));
+        }
+
+        if let Err(e) = encoder.shutdown().await {
+            let _ = fs::remove_file(&compressed_path).await;
+            return Err(DataError::IOError(e.to_string()));
+        }
+
+        fs::remove_file(&original_path)
+            .await
+            .map_err(|e| DataError::IOError(e.to_string()))?;
+
+        Ok(())
+    }
+
+    async fn unarchive_file(&self, file_id: Uuid) -> Result<(), DataError> {
+        let file = self
+            .file_repo
+            .get_by_id(file_id)
+            .await?
+            .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
+
+        if !file.is_archived(&self.storage_path) {
+            return Err(DataError::FileIsAlreadyArchivedError);
+        }
+
+        let compressed_path = file.build_file_path(&self.storage_path);
+
+        let mut output_path = compressed_path.clone();
+        output_path.set_extension("");
+
+        let source_file = fs::File::open(&compressed_path)
+            .await
+            .map_err(|e| DataError::IOError(e.to_string()))?;
+
+        let reader = BufReader::new(source_file);
+        let mut decoder = GzipDecoder::new(reader);
+
+        let dest_file = fs::File::create(&output_path)
+            .await
+            .map_err(|e| DataError::IOError(e.to_string()))?;
+
+        let mut buffered_writer = BufWriter::new(dest_file);
+
+        if let Err(e) = tokio::io::copy(&mut decoder, &mut buffered_writer).await {
+            let _ = fs::remove_file(&output_path).await;
+            return Err(DataError::IOError(e.to_string()));
+        }
+
+        if let Err(e) = buffered_writer.flush().await {
+            let _ = fs::remove_file(&output_path).await;
+            return Err(DataError::IOError(e.to_string()));
+        }
+
+        fs::remove_file(&compressed_path)
+            .await
+            .map_err(|e| DataError::IOError(e.to_string()))?;
+
+        Ok(())
     }
 }

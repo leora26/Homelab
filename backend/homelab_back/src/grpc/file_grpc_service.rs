@@ -5,11 +5,7 @@ use crate::data::file_folder::update_file_name_command::UpdateFileNameCommand;
 use crate::helpers::proto_mappers::{map_entity_id, map_file_to_proto};
 use crate::pb::file_chunk::Data as FileChunkData;
 use crate::pb::file_service_server::FileService;
-use crate::pb::{
-    CopyFileRequest, DeleteChosenFilesRequest, DeleteFileRequest, FileChunk, FileListResponse,
-    FileResponse, GetFileRequest, InitFileRequest, MoveFileRequest, RenameFileRequest,
-    SearchFilesRequest, UndeleteFileRequest,
-};
+use crate::pb::{ArchiveFileCommand, CopyFileRequest, DeleteChosenFilesRequest, DeleteFileRequest, FileChunk, FileListResponse, FileResponse, GetFileRequest, InitFileRequest, MoveFileRequest, RenameFileRequest, SearchFilesRequest, UnarchiveFileCommand, UndeleteFileRequest};
 use crate::AppState;
 use async_trait::async_trait;
 use derive_new::new;
@@ -316,5 +312,25 @@ impl FileService for GrpcFileService {
             }
             Err(_) => Err(Status::internal("Upload task panicked")),
         }
+    }
+
+    async fn archive_file(&self, request: Request<ArchiveFileCommand>) -> Result<Response<()>, Status> {
+        let req = request.into_inner();
+
+        let file_id = map_entity_id(req.file_id)?;
+
+        self.app_state.file_service.archive_file(file_id).await?;
+
+        Ok(Response::new(()))
+    }
+
+    async fn unarchive_file(&self, request: Request<UnarchiveFileCommand>) -> Result<Response<()>, Status> {
+        let req = request.into_inner();
+
+        let file_id = map_entity_id(req.file_id)?;
+
+        self.app_state.file_service.unarchive_file(file_id).await?;
+
+        Ok(Response::new(()))
     }
 }
