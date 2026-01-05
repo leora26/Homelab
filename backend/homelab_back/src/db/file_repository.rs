@@ -1,21 +1,30 @@
+use crate::domain::file::File;
+use crate::exception::data_error::DataError;
 use async_trait::async_trait;
 use derive_new::new;
 use sqlx::PgPool;
 use uuid::Uuid;
-use crate::domain::file::File;
-use crate::exception::data_error::DataError;
 
 #[async_trait]
 pub trait FileRepository: Send + Sync {
     async fn get_by_id(&self, file_id: Uuid) -> Result<Option<File>, DataError>;
     async fn get_all_deleted(&self, user_id: Uuid) -> Result<Vec<File>, DataError>;
+    async fn get_all_by_ids(&self, file_ids: &[Uuid]) -> Result<Vec<File>, DataError>;
     async fn search_by_name(&self, search_query: String) -> Result<Vec<File>, DataError>;
-    async fn get_by_folder_and_file_name(&self, folder_id: Uuid, file_name: String) -> Result<Option<File>, DataError>;
+    async fn get_by_folder_and_file_name(
+        &self,
+        folder_id: Uuid,
+        file_name: String,
+    ) -> Result<Option<File>, DataError>;
     async fn save(&self, file: File) -> Result<File, DataError>;
     async fn update(&self, file: File) -> Result<File, DataError>;
-    async fn delete_all(&self, file_ids: &[Uuid]) -> Result<(), DataError>;
     async fn delete_by_id(&self, file_id: Uuid) -> Result<(), DataError>;
-    async fn get_all_files_by_label (&self, label_id: Uuid, owner_id: Uuid) -> Result<Vec<File>, DataError>;
+    async fn delete_by_ids(&self, file_ids: &[Uuid]) -> Result<(), DataError>;
+    async fn get_all_files_by_label(
+        &self,
+        label_id: Uuid,
+        owner_id: Uuid,
+    ) -> Result<Vec<File>, DataError>;
 }
 
 #[derive(new)]
@@ -59,6 +68,23 @@ impl FileRepository for FileRepositoryImpl {
         Ok(f)
     }
 
+    async fn get_all_by_ids(&self, file_ids: &[Uuid]) -> Result<Vec<File>, DataError> {
+        let f: Vec<File> = sqlx::query_as!(
+            File,
+            r#"
+            SELECT id, name, owner_id, file_type as "file_type: _", parent_folder_id, is_deleted, ttl, size, upload_status as "upload_status: _"
+            FROM files
+            WHERE is_deleted = FALSE AND id = ANY($1)
+            "#,
+            file_ids
+        )
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| DataError::DatabaseError(e))?;
+
+        Ok(f)
+    }
+
     async fn search_by_name(&self, search_query: String) -> Result<Vec<File>, DataError> {
         let f: Vec<File> = sqlx::query_as!(
             File,
@@ -76,7 +102,11 @@ impl FileRepository for FileRepositoryImpl {
         Ok(f)
     }
 
-    async fn get_by_folder_and_file_name(&self, folder_id: Uuid, file_name: String) -> Result<Option<File>, DataError> {
+    async fn get_by_folder_and_file_name(
+        &self,
+        folder_id: Uuid,
+        file_name: String,
+    ) -> Result<Option<File>, DataError> {
         let file = sqlx::query_as!(
             File,
             r#"
@@ -144,20 +174,6 @@ impl FileRepository for FileRepositoryImpl {
         Ok(f)
     }
 
-    async fn delete_all(&self, file_ids: &[Uuid]) -> Result<(), DataError> {
-        sqlx::query!(
-            r#"
-            DELETE FROM files WHERE id = ANY($1) AND is_deleted = TRUE
-            "#,
-            file_ids
-        )
-            .execute(&self.pool)
-            .await
-            .map_err(|e| DataError::DatabaseError(e))?;
-
-        Ok(())
-    }
-
     async fn delete_by_id(&self, file_id: Uuid) -> Result<(), DataError> {
         sqlx::query!(
             r#"
@@ -165,14 +181,33 @@ impl FileRepository for FileRepositoryImpl {
             "#,
             file_id
         )
-            .execute(&self.pool)
-            .await
-            .map_err(|e| DataError::DatabaseError(e))?;
+        .execute(&self.pool)
+        .await
+        .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(())
     }
 
-    async fn get_all_files_by_label(&self, label_id: Uuid, owner_id: Uuid) -> Result<Vec<File>, DataError> {
+    async fn delete_by_ids(&self, file_ids: &[Uuid]) -> Result<(), DataError> {
+        sqlx::query!(
+            r#"
+        DELETE FROM files 
+        WHERE id = ANY($1)
+        "#,
+            file_ids
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| DataError::DatabaseError(e))?;
+
+        Ok(())
+    }
+
+    async fn get_all_files_by_label(
+        &self,
+        label_id: Uuid,
+        owner_id: Uuid,
+    ) -> Result<Vec<File>, DataError> {
         let files = sqlx::query_as!(
             File,
             r#"
@@ -193,9 +228,9 @@ impl FileRepository for FileRepositoryImpl {
             label_id,
             owner_id
         )
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| DataError::DatabaseError(e))?;
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(files)
     }

@@ -340,6 +340,12 @@ impl FileService for GrpcFileService {
     }
 
     async fn remove_all_deleted_files(&self, request: Request<RemoveAllDeletedFilesCommand>) -> Result<Response<()>, Status> {
-        todo!()
+        let req = request.into_inner();
+
+        let user_id = map_entity_id(req.user_id)?;
+
+        self.app_state.file_service.remove_deleted_files(user_id).await?;
+
+        Ok(Response::new(()))
     }
 }
