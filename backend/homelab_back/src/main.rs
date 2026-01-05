@@ -9,6 +9,7 @@ pub mod helpers;
 pub mod pb;
 pub mod service;
 pub mod types;
+pub mod jobs;
 
 use crate::db::file_label_repository::FileLabelRepositoryImpl;
 use crate::db::file_repository::{FileRepository, FileRepositoryImpl};
@@ -38,6 +39,8 @@ use std::error::Error;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tonic::transport::Server;
+use crate::jobs::delete_cron_job::init_delete_job;
+use tracing_subscriber::EnvFilter;
 
 pub struct AppState {
     pub file_service: Arc<dyn FileService>,
@@ -53,7 +56,10 @@ pub struct AppState {
 
 #[actix_web::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    env_logger::init();
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env())
+        .init();
+
     dotenv().ok();
 
     let server_mode = env::var("SERVER_MODE")
@@ -119,6 +125,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         file_label_repo.clone(),
         user_repo.clone(),
     ));
+
+    let _cleanup_scheduler = init_delete_job(file_service.clone()).await;
 
     let app_state = web::Data::new(AppState {
         file_service,
