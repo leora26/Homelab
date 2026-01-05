@@ -8,7 +8,7 @@ import "types.proto";
 service FileService {
   rpc GetFile (GetFileRequest) returns (FileResponse);
   rpc SearchFiles (SearchFilesRequest) returns (FileListResponse);
-  rpc GetDeletedFiles (google.protobuf.Empty) returns (FileListResponse);
+  rpc GetDeletedFiles (GetDeletedFilesCommand) returns (FileListResponse);
   rpc InitFile (InitFileRequest) returns (FileResponse);
   rpc UploadContent (stream FileChunk) returns (google.protobuf.Empty);
   rpc RenameFile (RenameFileRequest) returns (FileResponse);
@@ -20,6 +20,7 @@ service FileService {
   rpc UpdateFileContent (stream FileChunk) returns (google.protobuf.Empty);
   rpc ArchiveFile (ArchiveFileCommand) returns (google.protobuf.Empty);
   rpc UnarchiveFile (UnarchiveFileCommand) returns (google.protobuf.Empty);
+  rpc RemoveAllDeletedFiles (RemoveAllDeletedFilesCommand) returns (google.protobuf.Empty);
 }
 
 enum FileType {
@@ -110,4 +111,12 @@ message ArchiveFileCommand {
 
 message UnarchiveFileCommand {
   EntityId file_id = 1;
+}
+
+message RemoveAllDeletedFilesCommand {
+  EntityId user_id = 1;
+}
+
+message GetDeletedFilesCommand {
+  EntityId user_id = 1;
 }

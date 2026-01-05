@@ -8,7 +8,7 @@ use crate::exception::data_error::DataError;
 #[async_trait]
 pub trait FileRepository: Send + Sync {
     async fn get_by_id(&self, file_id: Uuid) -> Result<Option<File>, DataError>;
-    async fn get_all_deleted(&self) -> Result<Vec<File>, DataError>;
+    async fn get_all_deleted(&self, user_id: Uuid) -> Result<Vec<File>, DataError>;
     async fn search_by_name(&self, search_query: String) -> Result<Vec<File>, DataError>;
     async fn get_by_folder_and_file_name(&self, folder_id: Uuid, file_name: String) -> Result<Option<File>, DataError>;
     async fn save(&self, file: File) -> Result<File, DataError>;
@@ -42,14 +42,15 @@ impl FileRepository for FileRepositoryImpl {
         Ok(file)
     }
 
-    async fn get_all_deleted(&self) -> Result<Vec<File>, DataError> {
+    async fn get_all_deleted(&self, user_id: Uuid) -> Result<Vec<File>, DataError> {
         let f: Vec<File> = sqlx::query_as!(
             File,
             r#"
             SELECT id, name, owner_id, file_type as "file_type: _", parent_folder_id, is_deleted, ttl, size, upload_status as "upload_status: _"
             FROM files
-            WHERE is_deleted = TRUE
+            WHERE is_deleted = TRUE AND owner_id = $1
             "#,
+            user_id
         )
             .fetch_all(&self.pool)
             .await

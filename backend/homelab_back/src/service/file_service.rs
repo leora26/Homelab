@@ -26,7 +26,7 @@ use uuid::Uuid;
 #[async_trait]
 pub trait FileService: Send + Sync {
     async fn get_by_id(&self, file_id: Uuid) -> Result<Option<File>, DataError>;
-    async fn get_all_deleted_files(&self) -> Result<Vec<File>, DataError>;
+    async fn get_all_deleted_files(&self, user_id: Uuid) -> Result<Vec<File>, DataError>;
     async fn search_file(&self, search_query: String) -> Result<Vec<File>, DataError>;
     async fn upload(&self, command: InitFileCommand) -> Result<File, DataError>;
     async fn upload_stream(
@@ -52,6 +52,7 @@ pub trait FileService: Send + Sync {
     async fn get_file_for_streaming(&self, file_id: Uuid) -> Result<PathBuf, DataError>;
     async fn archive_file(&self, file_id: Uuid) -> Result<(), DataError>;
     async fn unarchive_file(&self, file_id: Uuid) -> Result<(), DataError>;
+    async fn remove_deleted_files(&self, user_id: Uuid) -> Result<(), DataError>;
 }
 
 #[derive(new)]
@@ -69,8 +70,8 @@ impl FileService for FileServiceImpl {
         self.file_repo.get_by_id(file_id).await
     }
 
-    async fn get_all_deleted_files(&self) -> Result<Vec<File>, DataError> {
-        self.file_repo.get_all_deleted().await
+    async fn get_all_deleted_files(&self, user_id: Uuid) -> Result<Vec<File>, DataError> {
+        self.file_repo.get_all_deleted(user_id).await
     }
 
     async fn search_file(&self, search_query: String) -> Result<Vec<File>, DataError> {
@@ -484,5 +485,9 @@ impl FileService for FileServiceImpl {
             .map_err(|e| DataError::IOError(e.to_string()))?;
 
         Ok(())
+    }
+
+    async fn remove_deleted_files(&self, user_id: Uuid) -> Result<(), DataError> {
+        todo!()
     }
 }

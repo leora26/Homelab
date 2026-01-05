@@ -58,23 +58,6 @@ pub async fn search_file(app_state: Data<AppState>, query: Query<SearchQuery>) -
     }
 }
 
-#[get("/files/deleted")]
-pub async fn get_all_deleted_files(app_state: Data<AppState>) -> impl Responder {
-    match app_state.file_service.get_all_deleted_files().await {
-        Ok(f) => {
-            if f.is_empty() {
-                HttpResponse::NoContent().body("No deleted files were found")
-            } else {
-                HttpResponse::Ok().json(f)
-            }
-        }
-        Err(e) => {
-            tracing::error!("Failed to get all deleted files: {}", e);
-            map_data_err_to_http(e)
-        }
-    }
-}
-
 #[post("/files")]
 pub async fn init_file(app_state: Data<AppState>, req: Json<InitFileCommand>) -> impl Responder {
     match app_state.file_service.upload(req.into_inner()).await {
@@ -159,5 +142,4 @@ pub fn config(c: &mut ServiceConfig) {
     c.service(init_file);
     c.service(rename_file);
     c.service(search_file);
-    c.service(get_all_deleted_files);
 }
