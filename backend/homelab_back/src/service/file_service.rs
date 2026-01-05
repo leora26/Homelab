@@ -18,15 +18,16 @@ use async_trait::async_trait;
 use derive_new::new;
 use std::path::PathBuf;
 use std::sync::Arc;
-use tokio::fs;
+use tokio::{fs};
 use tokio::io::{AsyncWriteExt, BufReader, BufWriter};
 use tokio::sync::mpsc::Receiver;
 use uuid::Uuid;
+use futures::stream::{self, StreamExt};
 
 #[async_trait]
 pub trait FileService: Send + Sync {
     async fn get_by_id(&self, file_id: Uuid) -> Result<Option<File>, DataError>;
-    async fn get_all_deleted_files(&self) -> Result<Vec<File>, DataError>;
+    async fn get_all_deleted_files(&self, user_id: Uuid) -> Result<Vec<File>, DataError>;
     async fn search_file(&self, search_query: String) -> Result<Vec<File>, DataError>;
     async fn upload(&self, command: InitFileCommand) -> Result<File, DataError>;
     async fn upload_stream(
@@ -52,6 +53,8 @@ pub trait FileService: Send + Sync {
     async fn get_file_for_streaming(&self, file_id: Uuid) -> Result<PathBuf, DataError>;
     async fn archive_file(&self, file_id: Uuid) -> Result<(), DataError>;
     async fn unarchive_file(&self, file_id: Uuid) -> Result<(), DataError>;
+    async fn cleanup_deleted_files(&self, user_id: Uuid) -> Result<(), DataError>;
+    async fn cleanup_expired_files(&self) -> Result<(), DataError>;
 }
 
 #[derive(new)]
@@ -69,8 +72,8 @@ impl FileService for FileServiceImpl {
         self.file_repo.get_by_id(file_id).await
     }
 
-    async fn get_all_deleted_files(&self) -> Result<Vec<File>, DataError> {
-        self.file_repo.get_all_deleted().await
+    async fn get_all_deleted_files(&self, user_id: Uuid) -> Result<Vec<File>, DataError> {
+        self.file_repo.get_all_deleted(user_id).await
     }
 
     async fn search_file(&self, search_query: String) -> Result<Vec<File>, DataError> {
@@ -220,7 +223,14 @@ impl FileService for FileServiceImpl {
     }
 
     async fn delete_chosen_files(&self, file_ids: &[Uuid]) -> Result<(), DataError> {
-        self.file_repo.delete_all(file_ids).await
+        let files = self.file_repo.get_all_by_ids(file_ids).await?;
+
+        for mut file in files {
+            file.set_as_deleted();
+            self.file_repo.update(file).await.map_err(|e| e)?;
+        }
+
+        Ok(())
     }
 
     async fn delete(&self, file_id: Uuid) -> Result<(), DataError> {
@@ -232,7 +242,9 @@ impl FileService for FileServiceImpl {
 
         file.set_as_deleted();
 
-        self.file_repo.delete_by_id(file_id).await
+        let _ = self.file_repo.update(file).await?;
+
+        Ok(())
     }
 
     async fn move_file(&self, command: MoveFileCommand) -> Result<File, DataError> {
@@ -482,6 +494,80 @@ impl FileService for FileServiceImpl {
         fs::remove_file(&compressed_path)
             .await
             .map_err(|e| DataError::IOError(e.to_string()))?;
+
+        Ok(())
+    }
+
+    async fn cleanup_deleted_files(&self, user_id: Uuid) -> Result<(), DataError> {
+        let deleted_files = self.file_repo.get_all_deleted(user_id).await?;
+
+        if deleted_files.is_empty() {
+            return Ok(());
+        }
+        
+        self.remove_deleted_files(deleted_files).await
+    }
+
+    async fn cleanup_expired_files(&self) -> Result<(), DataError> {
+        let expired_files = self.file_repo.get_expired_files().await?;
+        
+        if expired_files.is_empty() {
+            return Ok(());  
+        }
+        
+        self.remove_deleted_files(expired_files).await
+    }
+}
+
+impl FileServiceImpl {
+    async fn remove_deleted_files(&self, deleted_files: Vec<File>) -> Result<(), DataError> {
+
+        const CONCURRENCY_LIMIT: usize = 10;
+
+        let results = stream::iter(deleted_files)
+            .map(|file| async move {
+                let path = file.build_file_path(&self.storage_path);
+
+                let remove_result = match fs::remove_file(&path).await {
+                    Ok(_) => Ok(file.id),
+                    Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                        let mut gz_path = path.clone();
+                        gz_path.set_extension("gz");
+
+                        match fs::remove_file(gz_path).await {
+                            Ok(_) => Ok(file.id),
+                            Err(e2) => Err((file.id, e2))
+                        }
+                    }
+                    Err(e) => Err((file.id, e)),
+                };
+
+                remove_result
+            })
+            .buffer_unordered(CONCURRENCY_LIMIT)
+            .collect::<Vec<_>>()
+            .await;
+
+        let mut success_results = Vec::new();
+        let mut error_results = Vec::new();
+
+        for res in results {
+            match res {
+                Ok(id) => success_results.push(id),
+                Err(e) => error_results.push(e)
+            }
+        }
+
+        if !success_results.is_empty() {
+            self.file_repo.delete_by_ids(&success_results).await?;
+        }
+
+        if !error_results.is_empty() {
+            return Err(DataError::IOError(format!(
+                "Failed to delete {} files from disk. Check logs.",
+                error_results.len()
+            )));
+        }
 
         Ok(())
     }

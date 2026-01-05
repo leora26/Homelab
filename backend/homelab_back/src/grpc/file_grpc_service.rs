@@ -5,7 +5,7 @@ use crate::data::file_folder::update_file_name_command::UpdateFileNameCommand;
 use crate::helpers::proto_mappers::{map_entity_id, map_file_to_proto};
 use crate::pb::file_chunk::Data as FileChunkData;
 use crate::pb::file_service_server::FileService;
-use crate::pb::{ArchiveFileCommand, CopyFileRequest, DeleteChosenFilesRequest, DeleteFileRequest, FileChunk, FileListResponse, FileResponse, GetFileRequest, InitFileRequest, MoveFileRequest, RenameFileRequest, SearchFilesRequest, UnarchiveFileCommand, UndeleteFileRequest};
+use crate::pb::{ArchiveFileCommand, CopyFileRequest, DeleteChosenFilesRequest, DeleteFileRequest, FileChunk, FileListResponse, FileResponse, GetDeletedFilesCommand, GetFileRequest, InitFileRequest, MoveFileRequest, RemoveAllDeletedFilesCommand, RenameFileRequest, SearchFilesRequest, UnarchiveFileCommand, UndeleteFileRequest};
 use crate::AppState;
 use async_trait::async_trait;
 use derive_new::new;
@@ -58,9 +58,14 @@ impl FileService for GrpcFileService {
 
     async fn get_deleted_files(
         &self,
-        _request: Request<()>,
+        request: Request<GetDeletedFilesCommand>,
     ) -> Result<Response<FileListResponse>, Status> {
-        let files = self.app_state.file_service.get_all_deleted_files().await?;
+
+        let req = request.into_inner();
+
+        let user_id = map_entity_id(req.user_id)?;
+
+        let files = self.app_state.file_service.get_all_deleted_files(user_id).await?;
 
         let proto_files = files.into_iter().map(|f| map_file_to_proto(f)).collect();
 
@@ -330,6 +335,16 @@ impl FileService for GrpcFileService {
         let file_id = map_entity_id(req.file_id)?;
 
         self.app_state.file_service.unarchive_file(file_id).await?;
+
+        Ok(Response::new(()))
+    }
+
+    async fn remove_all_deleted_files(&self, request: Request<RemoveAllDeletedFilesCommand>) -> Result<Response<()>, Status> {
+        let req = request.into_inner();
+
+        let user_id = map_entity_id(req.user_id)?;
+
+        self.app_state.file_service.cleanup_deleted_files(user_id).await?;
 
         Ok(Response::new(()))
     }

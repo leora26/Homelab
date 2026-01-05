@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 tokio = { version = "1.38.0", features = ["full", "fs", "io-util"] }
 async-compression = { version = "0.4", features = ["tokio", "gzip"] }
+tokio-cron-scheduler = "0.15.1"
 
 actix-web = "4.8.0"
 actix-files = "0.6"
@@ -32,7 +33,8 @@ thiserror = "2.0.12"
 async-trait = "0.1.89"
 
 derive-new = "0.7.0"
-
+futures = "0.3"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 [dev-dependencies]
 
 [build-dependencies]
