@@ -344,7 +344,7 @@ impl FileService for GrpcFileService {
 
         let user_id = map_entity_id(req.user_id)?;
 
-        self.app_state.file_service.remove_deleted_files(user_id).await?;
+        self.app_state.file_service.cleanup_deleted_files(user_id).await?;
 
         Ok(Response::new(()))
     }

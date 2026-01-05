@@ -25,6 +25,7 @@ pub trait FileRepository: Send + Sync {
         label_id: Uuid,
         owner_id: Uuid,
     ) -> Result<Vec<File>, DataError>;
+    async fn get_expired_files(&self) -> Result<Vec<File>, DataError>;
 }
 
 #[derive(new)]
@@ -233,5 +234,24 @@ impl FileRepository for FileRepositoryImpl {
         .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(files)
+    }
+
+    async fn get_expired_files(&self) -> Result<Vec<File>, DataError> {
+        let f = sqlx::query_as!(
+            File,
+            r#"
+            SELECT id, name, owner_id, file_type as "file_type: _", parent_folder_id, 
+               is_deleted, ttl, size, upload_status as "upload_status: _"
+            FROM files
+            WHERE is_deleted = TRUE 
+              AND ttl IS NOT NULL 
+              AND ttl < NOW()
+            "#
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| DataError::DatabaseError(e))?;
+
+        Ok(f)
     }
 }

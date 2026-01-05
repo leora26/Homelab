@@ -53,7 +53,8 @@ pub trait FileService: Send + Sync {
     async fn get_file_for_streaming(&self, file_id: Uuid) -> Result<PathBuf, DataError>;
     async fn archive_file(&self, file_id: Uuid) -> Result<(), DataError>;
     async fn unarchive_file(&self, file_id: Uuid) -> Result<(), DataError>;
-    async fn remove_deleted_files(&self, user_id: Uuid) -> Result<(), DataError>;
+    async fn cleanup_deleted_files(&self, user_id: Uuid) -> Result<(), DataError>;
+    async fn cleanup_expired_files(&self) -> Result<(), DataError>;
 }
 
 #[derive(new)]
@@ -497,12 +498,29 @@ impl FileService for FileServiceImpl {
         Ok(())
     }
 
-    async fn remove_deleted_files(&self, user_id: Uuid) -> Result<(), DataError> {
+    async fn cleanup_deleted_files(&self, user_id: Uuid) -> Result<(), DataError> {
         let deleted_files = self.file_repo.get_all_deleted(user_id).await?;
 
         if deleted_files.is_empty() {
             return Ok(());
         }
+        
+        self.remove_deleted_files(deleted_files).await
+    }
+
+    async fn cleanup_expired_files(&self) -> Result<(), DataError> {
+        let expired_files = self.file_repo.get_expired_files().await?;
+        
+        if expired_files.is_empty() {
+            return Ok(());  
+        }
+        
+        self.remove_deleted_files(expired_files).await
+    }
+}
+
+impl FileServiceImpl {
+    async fn remove_deleted_files(&self, deleted_files: Vec<File>) -> Result<(), DataError> {
 
         const CONCURRENCY_LIMIT: usize = 10;
 
