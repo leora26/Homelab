@@ -14,21 +14,21 @@ service FileLabelService {
 }
 
 message FileLabelResponse {
-  EntityId file_id = 2;
-  EntityId label_id = 3;
+  common.EntityId file_id = 2;
+  common.EntityId label_id = 3;
 }
 
 message GetLabelsForFileRequest {
-  EntityId file_id = 1;
-  EntityId owner_id = 2;
+  common.EntityId file_id = 1;
+  common.EntityId owner_id = 2;
 }
 
 message GetFilesForLabelRequest {
-  EntityId label_id = 1;
-  EntityId owner_id = 2;
+  common.EntityId label_id = 1;
+  common.EntityId owner_id = 2;
 }
 
 message CreateFileLabelRequest {
-  EntityId file_id = 1;
-  EntityId label_id = 2;
+  common.EntityId file_id = 1;
+  common.EntityId label_id = 2;
 }

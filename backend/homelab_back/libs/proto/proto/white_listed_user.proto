@@ -1,5 +1,5 @@
 syntax = "proto3";
-package nas;
+package user;
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";
@@ -17,7 +17,7 @@ message WhiteListedUserList {
 }
 
 message WhiteListedUserResponse {
-  EntityId id = 1;
+  common.EntityId id = 1;
   string email = 2;
   string full_name = 3;
   google.protobuf.Timestamp created_at = 4;
@@ -29,6 +29,6 @@ message CreateWhiteListedUserRequest {
 }
 
 message ConfirmWhiteListedUsersRequest {
-  EntityId id = 1;
+  common.EntityId id = 1;
   int64 allowed_storage = 2;
 }

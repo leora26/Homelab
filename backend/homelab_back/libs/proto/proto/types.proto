@@ -1,5 +1,5 @@
 syntax = "proto3";
-package nas;
+package common;
 
 message EntityId {
   string value = 1;

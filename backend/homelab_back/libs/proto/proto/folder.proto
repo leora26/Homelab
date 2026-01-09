@@ -19,10 +19,10 @@ service FolderService {
 }
 
 message FolderResponse {
-  EntityId id = 1;
-  EntityId parent_folder_id = 2;
+  common.EntityId id = 1;
+  common.EntityId parent_folder_id = 2;
   string name = 3;
-  EntityId owner_id = 4;
+  common.EntityId owner_id = 4;
   google.protobuf.Timestamp created_at = 5;
 }
 
@@ -31,34 +31,34 @@ message FolderResponseList {
 }
 
 message GetFolderRequest {
-  EntityId id = 1;
+  common.EntityId id = 1;
 }
 
 message GetAllSubfoldersRequest {
-  EntityId id = 1;
+  common.EntityId id = 1;
 }
 
 message DeleteFolderRequest {
-  EntityId id = 1;
+  common.EntityId id = 1;
 }
 
 message DeleteAllFolderRequest {
-  repeated EntityId id = 1;
+  repeated common.EntityId id = 1;
 }
 
 message GetFilesForFolderRequest {
-  EntityId id = 1;
+  common.EntityId id = 1;
 }
 
 message CreateFolderRequest {
-  EntityId parent_folder_id = 1;
+  common.EntityId parent_folder_id = 1;
   string name = 2;
-  EntityId owner_id = 3;
+  common.EntityId owner_id = 3;
 }
 
 
 message RenameFolderRequest {
-  EntityId id = 1;
+  common.EntityId id = 1;
   string new_name = 2;
 }
 
@@ -67,6 +67,6 @@ message SearchFolderRequest {
 }
 
 message MoveFolderRequest {
-  EntityId target_folder = 1;
-  EntityId folder_id = 2;
+  common.EntityId target_folder = 1;
+  common.EntityId folder_id = 2;
 }

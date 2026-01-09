@@ -10,8 +10,8 @@ service GlobalFileService {
 }
 
 message GlobalFileResponse {
-  EntityId id = 1;
-  EntityId original_id = 2;
+  common.EntityId id = 1;
+  common.EntityId original_id = 2;
 }
 
 message GlobalFileListResponse {

@@ -13,10 +13,10 @@ service LabelService {
 }
 
 message LabelResponse {
-  EntityId id = 1;
+  common.EntityId id = 1;
   string name = 2;
   string color = 3;
-  EntityId owner_id = 4;
+  common.EntityId owner_id = 4;
 }
 
 message LabelListResponse {
@@ -26,15 +26,15 @@ message LabelListResponse {
 message CreateLabelRequest {
   string name = 1;
   string color = 2;
-  EntityId owner_id = 3;
+  common.EntityId owner_id = 3;
 }
 
 message DeleteLabelRequest {
-  EntityId id = 1;
+  common.EntityId id = 1;
 }
 
 message ChangeLabelRequest {
-  EntityId id = 1;
+  common.EntityId id = 1;
   string name = 2;
   string color = 3;
 }

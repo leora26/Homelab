@@ -39,10 +39,10 @@ enum UploadStatus {
 }
 
 message FileResponse {
-  EntityId id = 1;
+  common.EntityId id = 1;
   string name = 2;
-  EntityId owner_id = 3;
-  EntityId parent_folder_id = 4;
+  common.EntityId owner_id = 3;
+  common.EntityId parent_folder_id = 4;
   FileType file_type = 5;
   bool is_deleted = 6;
   google.protobuf.Timestamp ttl = 7;
@@ -55,7 +55,7 @@ message FileListResponse {
 }
 
 message GetFileRequest {
-  EntityId id = 1;
+  common.EntityId id = 1;
 }
 
 message SearchFilesRequest {
@@ -64,59 +64,59 @@ message SearchFilesRequest {
 
 message InitFileRequest {
   string name = 1;
-  EntityId destination = 2;
-  EntityId owner_id = 3;
+  common.EntityId destination = 2;
+  common.EntityId owner_id = 3;
   int64 size = 4;
   bool is_global = 5;
 }
 
 message FileChunk {
   oneof data {
-    EntityId file_id = 1;
+    common.EntityId file_id = 1;
     bytes content = 2;
   }
 }
 
 message RenameFileRequest {
-  EntityId id = 1;
+  common.EntityId id = 1;
   string new_name = 2;
 }
 
 message UndeleteFileRequest {
-  EntityId id = 1;
+  common.EntityId id = 1;
 }
 
 message DeleteChosenFilesRequest {
-  repeated EntityId file_ids = 1;
+  repeated common.EntityId file_ids = 1;
 }
 
 message DeleteFileRequest {
-  EntityId id = 1;
+  common.EntityId id = 1;
 }
 
 message MoveFileRequest {
-  EntityId folder_id = 1;
-  EntityId file_id = 2;
+  common.EntityId folder_id = 1;
+  common.EntityId file_id = 2;
 }
 
 message CopyFileRequest {
-  EntityId file_id = 1;
-  EntityId target_folder_id = 2;
-  EntityId user_id = 3;
+  common.EntityId file_id = 1;
+  common.EntityId target_folder_id = 2;
+  common.EntityId user_id = 3;
 }
 
 message ArchiveFileCommand {
-  EntityId file_id = 1;
+  common.EntityId file_id = 1;
 }
 
 message UnarchiveFileCommand {
-  EntityId file_id = 1;
+  common.EntityId file_id = 1;
 }
 
 message RemoveAllDeletedFilesCommand {
-  EntityId user_id = 1;
+  common.EntityId user_id = 1;
 }
 
 message GetDeletedFilesCommand {
-  EntityId user_id = 1;
+  common.EntityId user_id = 1;
 }

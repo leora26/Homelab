@@ -1,7 +1,7 @@
 [workspace]
 members = [
-    "apps/nas-server",
-    "libs/core",
+#    "apps/nas-server",
+#    "libs/core",
     "libs/proto"
 ]
 resolver = "2"
