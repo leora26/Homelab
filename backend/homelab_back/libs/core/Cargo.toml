@@ -1,0 +1,12 @@
+[package]
+name = "homelab-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { workspace = true }
+sqlx = { workspace = true }
+uuid = { workspace = true }
+time = { workspace = true }
+
+derive-new = "0.7.0"
