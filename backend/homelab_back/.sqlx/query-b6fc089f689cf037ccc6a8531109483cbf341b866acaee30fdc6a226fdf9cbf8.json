@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT id, name, owner_id, file_type as \"file_type: _\", parent_folder_id, is_deleted, ttl, size, upload_status as \"upload_status: _\"\n            FROM files\n            WHERE is_deleted = TRUE\n            ",
+  "query": "\n            SELECT id, name, owner_id, file_type as \"file_type: _\", parent_folder_id, \n               is_deleted, ttl, size, upload_status as \"upload_status: _\"\n            FROM files\n            WHERE is_deleted = TRUE \n              AND ttl IS NOT NULL \n              AND ttl < NOW()\n            ",
   "describe": {
     "columns": [
       {
@@ -89,5 +89,5 @@
       false
     ]
   },
-  "hash": "d2d008879db74f602813ae2d45a7a2b126e86f8d13657d21e2ea90cba12f3428"
+  "hash": "b6fc089f689cf037ccc6a8531109483cbf341b866acaee30fdc6a226fdf9cbf8"
 }
