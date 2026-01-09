@@ -3,7 +3,7 @@
 version = 4
 
 [[package]]
-name = "HomelabBack"
+name = "HomelabNasBack"
 version = "0.1.0"
 dependencies = [
  "actix-files",
