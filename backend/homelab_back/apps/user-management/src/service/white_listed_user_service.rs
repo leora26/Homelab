@@ -1,14 +1,14 @@
 use std::sync::Arc;
 use async_trait::async_trait;
 use uuid::Uuid;
-use crate::data::user::confirm_user_command::ConfirmUserCommand;
-use crate::data::user::create_white_listed_user_command::CreateWhiteListedUserCommand;
+use crate::data::confirm_user_command::ConfirmUserCommand;
+use crate::data::create_white_listed_user_command::CreateWhiteListedUserCommand;
 use crate::db::user_repository::UserRepository;
 use crate::db::white_listed_user_repository::WhiteListedUserRepository;
 use homelab_core::user::User;
 use homelab_core::white_listed_user::WhiteListedUser;
-use crate::exception::data_error::DataError;
-use crate::types::user_email::UserEmail;
+use crate::helpers::data_error::DataError;
+use crate::helpers::user_email::UserEmail;
 
 #[async_trait]
 pub trait WhiteListedUserService: Send + Sync {

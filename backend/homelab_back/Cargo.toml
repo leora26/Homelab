@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "apps/nas-server",
+    "apps/user-management",
     "libs/core",
     "libs/proto"
 ]

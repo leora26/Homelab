@@ -1,7 +1,7 @@
-use crate::data::file_folder::copy_file_command::CopyFileCommand;
-use crate::data::file_folder::init_file_command::InitFileCommand;
-use crate::data::file_folder::move_file_command::MoveFileCommand;
-use crate::data::file_folder::update_file_name_command::UpdateFileNameCommand;
+use crate::data::copy_file_command::CopyFileCommand;
+use crate::data::init_file_command::InitFileCommand;
+use crate::data::move_file_command::MoveFileCommand;
+use crate::data::update_file_name_command::UpdateFileNameCommand;
 use crate::helpers::proto_mappers::{map_entity_id, map_file_to_proto};
 use homelab_proto::nas::file_chunk::Data as FileChunkData;
 use homelab_proto::nas::file_service_server::FileService;

@@ -2,7 +2,7 @@ use std::sync::Arc;
 use derive_new::new;
 use tonic::{Request, Response, Status};
 use crate::AppState;
-use crate::data::user::create_user_command::CreateUserCommand;
+use crate::data::create_user_command::CreateUserCommand;
 use crate::helpers::proto_mappers::{map_entity_id, map_user_to_proto};
 use homelab_proto::user::{CreateUserRequest, GetUserByEmailRequest, UpdatePasswordRequest, UserList, UserResponse};
 use homelab_proto::user::user_service_server::UserService;

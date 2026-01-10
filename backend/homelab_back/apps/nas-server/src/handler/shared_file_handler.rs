@@ -2,7 +2,7 @@ use actix_web::{get, post, HttpResponse, Responder};
 use actix_web::web::{Data, Json, Path, ServiceConfig};
 use uuid::Uuid;
 use crate::AppState;
-use crate::data::file_folder::create_shared_file_command::CreateSharedFileCommand;
+use crate::data::create_shared_file_command::CreateSharedFileCommand;
 use crate::helpers::error_mapping::map_data_err_to_http;
 
 #[post("/shared")]

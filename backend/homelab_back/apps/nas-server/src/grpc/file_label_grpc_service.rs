@@ -1,4 +1,4 @@
-use crate::data::file_folder::create_file_label_command::CreateFileLabelCommand;
+use crate::data::create_file_label_command::CreateFileLabelCommand;
 use crate::helpers::proto_mappers::{map_entity_id, map_file_label_to_proto, map_file_to_proto, map_label_to_proto};
 use homelab_proto::nas::file_label_service_server::FileLabelService;
 use homelab_proto::nas::{

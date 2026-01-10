@@ -1,5 +1,5 @@
 use homelab_core::global_file::GlobalFile;
-use crate::exception::data_error::DataError;
+use crate::helpers::data_error::DataError;
 use async_trait::async_trait;
 use sqlx::PgPool;
 

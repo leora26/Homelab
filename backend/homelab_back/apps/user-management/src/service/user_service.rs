@@ -2,11 +2,11 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use derive_new::new;
 use uuid::Uuid;
-use crate::data::user::create_user_command::CreateUserCommand;
+use crate::data::create_user_command::CreateUserCommand;
 use homelab_core::user::User;
 use crate::db::user_repository::UserRepository;
-use crate::exception::data_error::DataError;
-use crate::types::user_email::UserEmail;
+use crate::helpers::data_error::DataError;
+use crate::helpers::user_email::UserEmail;
 
 #[async_trait]
 pub trait UserService: Send + Sync {

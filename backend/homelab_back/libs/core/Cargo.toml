@@ -8,5 +8,6 @@ serde = { workspace = true }
 sqlx = { workspace = true }
 uuid = { workspace = true }
 time = { workspace = true }
+thiserror = {workspace = true}
 
 derive-new = "0.7.0"

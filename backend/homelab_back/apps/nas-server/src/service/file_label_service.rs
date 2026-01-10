@@ -2,7 +2,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use derive_new::new;
 use uuid::Uuid;
-use crate::data::file_folder::create_file_label_command::CreateFileLabelCommand;
+use crate::data::create_file_label_command::CreateFileLabelCommand;
 use crate::db::file_label_repository::FileLabelRepository;
 use crate::db::file_repository::FileRepository;
 use crate::db::label_repository::LabelRepository;
@@ -10,7 +10,7 @@ use crate::db::user_repository::UserRepository;
 use homelab_core::file::File;
 use homelab_core::file_label::FileLabel;
 use homelab_core::label::Label;
-use crate::exception::data_error::DataError;
+use crate::helpers::data_error::DataError;
 
 #[async_trait]
 pub trait FileLabelService: Send + Sync {

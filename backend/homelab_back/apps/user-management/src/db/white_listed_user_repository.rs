@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use sqlx::PgPool;
 use uuid::Uuid;
 use homelab_core::white_listed_user::WhiteListedUser;
-use crate::exception::data_error::DataError;
+use crate::helpers::data_error::DataError;
 
 #[async_trait]
 pub trait WhiteListedUserRepository: Send + Sync {
@@ -36,7 +36,8 @@ impl WhiteListedUserRepository for WhiteListedUserRepositoryImpl {
             user.created_at
         )
             .fetch_one(&self.pool)
-            .await?;
+            .await
+            .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(user)
     }
@@ -50,7 +51,8 @@ impl WhiteListedUserRepository for WhiteListedUserRepositoryImpl {
             "#
         )
             .fetch_all(&self.pool)
-            .await?;
+            .await
+            .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(users)
     }
@@ -79,7 +81,8 @@ impl WhiteListedUserRepository for WhiteListedUserRepositoryImpl {
             user_id
         )
             .fetch_optional(&self.pool)
-            .await?;
+            .await
+            .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(user)
     }

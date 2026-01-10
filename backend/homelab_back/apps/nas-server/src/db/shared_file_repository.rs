@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use sqlx::{PgPool};
 use uuid::Uuid;
 use homelab_core::shared_file::{SharedFile};
-use crate::exception::data_error::DataError;
+use crate::helpers::data_error::DataError;
 
 #[async_trait]
 pub trait SharedFileRepository: Send + Sync {

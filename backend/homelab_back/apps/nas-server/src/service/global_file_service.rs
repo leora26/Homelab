@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use derive_new::new;
 use crate::db::global_file_repository::GlobalFileRepository;
 use homelab_core::global_file::GlobalFile;
-use crate::exception::data_error::DataError;
+use crate::helpers::data_error::DataError;
 
 #[async_trait]
 pub trait GlobalFileService: Send + Sync {

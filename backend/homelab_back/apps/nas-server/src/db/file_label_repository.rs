@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use derive_new::new;
 use sqlx::PgPool;
 use homelab_core::file_label::FileLabel;
-use crate::exception::data_error::DataError;
+use crate::helpers::data_error::DataError;
 
 #[async_trait]
 pub trait FileLabelRepository: Send + Sync {

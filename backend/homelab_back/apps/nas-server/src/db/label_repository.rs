@@ -3,7 +3,7 @@ use derive_new::new;
 use sqlx::PgPool;
 use uuid::Uuid;
 use homelab_core::label::Label;
-use crate::exception::data_error::DataError;
+use crate::helpers::data_error::DataError;
 
 #[async_trait]
 pub trait LabelRepository: Send + Sync {

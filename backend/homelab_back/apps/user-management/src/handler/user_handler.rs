@@ -3,8 +3,8 @@ use actix_web::web::{Data, Json, Path};
 use crate::AppState;
 use tracing;
 use uuid::Uuid;
-use crate::data::user::create_user_command::CreateUserCommand;
-use crate::data::user::update_password_command::UpdatePasswordCommand;
+use crate::data::create_user_command::CreateUserCommand;
+use crate::data::update_password_command::UpdatePasswordCommand;
 use crate::helpers::error_mapping::map_data_err_to_http;
 
 #[get("/users/{email}")]

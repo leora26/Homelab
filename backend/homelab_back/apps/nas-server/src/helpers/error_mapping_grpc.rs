@@ -1,5 +1,5 @@
 use tonic::Status;
-use crate::exception::data_error::DataError;
+use crate::helpers::data_error::DataError;
 
 impl From<DataError> for Status {
     fn from(e: DataError) -> Self {
@@ -7,7 +7,6 @@ impl From<DataError> for Status {
 
         match e {
             DataError::EntityNotFoundException(msg) => Status::not_found(msg),
-            DataError::WhiteListedUserDoesNotExist(msg) => Status::not_found(msg),
             DataError::DatabaseError(_) => Status::internal("A database error occurred"),
             DataError::EntityCreationError(msg) => Status::aborted(msg),
             DataError::ValidationError(msg) => Status::invalid_argument(msg),
@@ -19,6 +18,7 @@ impl From<DataError> for Status {
             DataError::FileIsAlreadyArchivedError => Status::invalid_argument("This file has already been archived"),
             DataError::FileIsNotArchivedError => Status::invalid_argument("You cannot unarchive file that is not an archive"),
             DataError::UnknownError(msg) => Status::internal(msg),
+            _ => Status::internal("Internal server error"),
         }
     }
 }

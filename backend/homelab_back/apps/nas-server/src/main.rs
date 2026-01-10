@@ -5,7 +5,6 @@ pub mod grpc;
 pub mod handler;
 pub mod helpers;
 pub mod service;
-pub mod types;
 pub mod jobs;
 
 use crate::db::file_label_repository::FileLabelRepositoryImpl;
@@ -15,13 +14,9 @@ use crate::db::global_file_repository::GlobalFileRepositoryImpl;
 use crate::db::label_repository::LabelRepositoryImpl;
 use crate::db::shared_file_repository::SharedFileRepositoryImpl;
 use crate::db::user_repository::UserRepositoryImpl;
-use crate::db::white_listed_user_repository::WhiteListedUserRepositoryImpl;
 
-use crate::grpc::user_grpc_service::GrpcUserService;
-use crate::grpc::white_listed_user_grpc_service::GrpcWhiteListedUserService;
-
-use homelab_proto::user::user_service_server::UserServiceServer;
-use homelab_proto::user::white_listed_user_service_server::WhiteListedUserServiceServer;
+// TODO: add all other Grpc servers
+use homelab_proto::nas::file_service_server::FileServiceServer;
 
 use crate::service::file_label_service::{FileLabelService, FileLabelServiceImpl};
 use crate::service::file_service::{FileService, FileServiceImpl};
@@ -29,8 +24,6 @@ use crate::service::folder_service::{FolderService, FolderServiceImpl};
 use crate::service::global_file_service::{GlobalFileService, GlobalFileServiceImpl};
 use crate::service::label_service::{LabelService, LabelServiceImpl};
 use crate::service::shared_file_service::{SharedFileService, SharedFileServiceImpl};
-use crate::service::user_service::{UserService, UserServiceImpl};
-use crate::service::white_listed_user_service::{WhiteListedUserService, WhiteListedServiceImpl};
 
 use actix_web::{web, App, HttpServer};
 use dotenvy::dotenv;
@@ -42,12 +35,11 @@ use std::sync::Arc;
 use tonic::transport::Server;
 use crate::jobs::delete_cron_job::init_delete_job;
 use tracing_subscriber::EnvFilter;
+use crate::grpc::file_grpc_service::GrpcFileService;
 
 pub struct AppState {
     pub file_service: Arc<dyn FileService>,
     pub folder_service: Arc<dyn FolderService>,
-    pub user_service: Arc<dyn UserService>,
-    pub white_listed_user_service: Arc<dyn WhiteListedUserService>,
     pub shared_file_service: Arc<dyn SharedFileService>,
     pub file_repo: Arc<dyn FileRepository>,
     pub global_file_service: Arc<dyn GlobalFileService>,
@@ -78,6 +70,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .await
         .expect("Failed to create database pool");
 
+    sqlx::migrate!("../../migrations")
+        .run(&pool)
+        .await
+        .expect("Failed to run migrations");
+
     println!("🚀 Server started successfully at http://127.0.0.1:8080");
 
     let mut root_path = PathBuf::new();
@@ -94,7 +91,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let file_repo = Arc::new(FileRepositoryImpl::new(pool.clone()));
     let user_repo = Arc::new(UserRepositoryImpl::new(pool.clone()));
     let folder_repo = Arc::new(FolderRepositoryImpl::new(pool.clone()));
-    let wlu_repo = Arc::new(WhiteListedUserRepositoryImpl::new(pool.clone()));
     let share_file_repo = Arc::new(SharedFileRepositoryImpl::new(pool.clone()));
     let global_file_repo = Arc::new(GlobalFileRepositoryImpl::new(pool.clone()));
     let label_repo = Arc::new(LabelRepositoryImpl::new(pool.clone()));
@@ -107,11 +103,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
         user_repo.clone(),
         root_path.to_path_buf(),
         global_file_repo.clone(),
-    ));
-    let user_service = Arc::new(UserServiceImpl::new(user_repo.clone()));
-    let wlu_service = Arc::new(WhiteListedServiceImpl::new(
-        wlu_repo.clone(),
-        user_repo.clone(),
     ));
     let shared_file_service = Arc::new(SharedFileServiceImpl::new(
         share_file_repo.clone(),
@@ -132,8 +123,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let app_state = web::Data::new(AppState {
         file_service,
         folder_service,
-        user_service,
-        white_listed_user_service: wlu_service,
         shared_file_service,
         file_repo: file_repo.clone(),
         global_file_service,
@@ -168,12 +157,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
             println!("🚀 Starting gRPC Server only at {}", grpc_addr);
             let app_state_arc = app_state.clone().into_inner();
 
-            let wlu_impl = GrpcWhiteListedUserService::new(app_state_arc.clone());
-            let user_impl = GrpcUserService::new(app_state_arc.clone());
+            let file_impl = GrpcFileService::new(app_state_arc.clone());
 
             Server::builder()
-                .add_service(WhiteListedUserServiceServer::new(wlu_impl))
-                .add_service(UserServiceServer::new(user_impl))
+                .add_service(FileServiceServer::new(file_impl))
                 .serve(grpc_addr)
                 .await?;
         }
@@ -181,13 +168,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
             println!("🚀 Starting Hybrid Mode (REST + gRPC)");
 
             let app_state_arc = app_state.clone().into_inner();
-
-            let wlu_impl = GrpcWhiteListedUserService::new(app_state_arc.clone());
-            let user_impl = GrpcUserService::new(app_state_arc.clone());
+            
+            let file_impl = GrpcFileService::new(app_state_arc.clone());
 
             let grpc_handle = Server::builder()
-                .add_service(WhiteListedUserServiceServer::new(wlu_impl))
-                .add_service(UserServiceServer::new(user_impl))
+                .add_service(FileServiceServer::new(file_impl))
                 .serve(grpc_addr);
 
             println!(
@@ -217,10 +202,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
 fn handler_config(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/api")
-            .configure(crate::handler::user_handler::config)
-            .configure(crate::handler::folder_handler::config)
-            .configure(crate::handler::file_handler::config)
-            .configure(crate::handler::white_listed_user_handler::config)
-            .configure(crate::handler::shared_file_handler::config),
+            .configure(handler::folder_handler::config)
+            .configure(handler::file_handler::config)
+            .configure(handler::shared_file_handler::config),
     );
 }

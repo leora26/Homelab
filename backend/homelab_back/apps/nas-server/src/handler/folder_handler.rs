@@ -2,10 +2,10 @@ use crate::AppState;
 use actix_web::{delete, get, patch, web, HttpResponse, Responder};
 use actix_web::web::{Data, Json, Path, Query};
 use uuid::Uuid;
-use crate::data::file_folder::delete_chosen_folders_command::DeleteChosenFoldersCommand;
-use crate::data::file_folder::filter_files_by_filetype_command::FilterFilesByFileTypeCommand;
-use crate::data::file_folder::search_query::SearchQuery;
-use crate::data::file_folder::update_folder_name_command::UpdateFolderNameCommand;
+use crate::data::delete_chosen_folders_command::DeleteChosenFoldersCommand;
+use crate::data::filter_files_by_filetype_command::FilterFilesByFileTypeCommand;
+use crate::data::search_query::SearchQuery;
+use crate::data::update_folder_name_command::UpdateFolderNameCommand;
 use crate::helpers::error_mapping::map_data_err_to_http;
 
 #[get("/folders/{userId}/root")]

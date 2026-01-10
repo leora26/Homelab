@@ -2,48 +2,11 @@ use homelab_core::file::{File, FileType as DomainFileType, UploadStatus as Domai
 use homelab_core::folder::Folder;
 use homelab_core::global_file::GlobalFile;
 use homelab_core::label::Label;
-use homelab_core::user::{Role as DomainRole, User};
-use homelab_core::white_listed_user::WhiteListedUser;
 use homelab_proto::nas::{FileLabelResponse, FileResponse, FileType as ProtoFileType, FolderResponse, GlobalFileResponse, LabelResponse, UploadStatus as ProtoUploadStatus};
-use homelab_proto::user::{Role as ProtoRole, UserResponse, WhiteListedUserResponse};
 use homelab_proto::common::{EntityId};
 use tonic::Status;
 use uuid::Uuid;
 use homelab_core::file_label::FileLabel;
-
-pub fn map_wlu_to_proto(u: WhiteListedUser) -> WhiteListedUserResponse {
-    WhiteListedUserResponse {
-        id: Some(EntityId {
-            value: u.id.to_string(),
-        }),
-        email: u.email,
-        full_name: u.full_name,
-        created_at: Some(prost_types::Timestamp {
-            seconds: u.created_at.unix_timestamp(),
-            nanos: u.created_at.nanosecond() as i32,
-        }),
-    }
-}
-
-pub fn map_user_to_proto(u: User) -> UserResponse {
-    UserResponse {
-        id: Some(EntityId {
-            value: u.id.to_string(),
-        }),
-        email: u.email,
-        full_name: u.full_name,
-        role: match u.role {
-            DomainRole::User => ProtoRole::User,
-            DomainRole::Admin => ProtoRole::Admin,
-        } as i32,
-        allowed_storage: u.allowed_storage,
-        taken_storage: u.taken_storage,
-        created_at: Some(prost_types::Timestamp {
-            seconds: u.created_at.unix_timestamp(),
-            nanos: u.created_at.nanosecond() as i32,
-        }),
-    }
-}
 
 pub fn map_file_to_proto(f: File) -> FileResponse {
     FileResponse {

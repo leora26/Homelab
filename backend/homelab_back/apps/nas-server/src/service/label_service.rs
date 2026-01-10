@@ -2,12 +2,12 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use derive_new::new;
 use uuid::Uuid;
-use crate::data::file_folder::change_label_command::ChangeLabelCommand;
-use crate::data::file_folder::create_label_command::CreateLabelCommand;
+use crate::data::change_label_command::ChangeLabelCommand;
+use crate::data::create_label_command::CreateLabelCommand;
 use crate::db::label_repository::LabelRepository;
 use crate::db::user_repository::UserRepository;
 use homelab_core::label::Label;
-use crate::exception::data_error::DataError;
+use crate::helpers::data_error::DataError;
 
 #[async_trait]
 pub trait LabelService: Send + Sync {

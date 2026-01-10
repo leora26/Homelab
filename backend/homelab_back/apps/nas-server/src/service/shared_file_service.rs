@@ -2,14 +2,14 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use derive_new::new;
 use uuid::Uuid;
-use crate::data::file_folder::create_shared_file_command::CreateSharedFileCommand;
+use crate::data::create_shared_file_command::CreateSharedFileCommand;
 use crate::db::file_repository::FileRepository;
 use crate::db::shared_file_repository::{SharedFileRepository};
 use crate::db::user_repository::UserRepository;
 use homelab_core::file::File;
 use homelab_core::shared_file::{SharedFile, SharedFileAccessType};
 use homelab_core::user::User;
-use crate::exception::data_error::DataError;
+use crate::helpers::data_error::DataError;
 
 #[async_trait]
 pub trait SharedFileService: Send + Sync {

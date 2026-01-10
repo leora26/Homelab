@@ -4,8 +4,8 @@ use tonic::{Request, Response, Status};
 use uuid::Uuid;
 use crate::AppState;
 
-use crate::data::user::confirm_user_command::ConfirmUserCommand;
-use crate::data::user::create_white_listed_user_command::CreateWhiteListedUserCommand;
+use crate::data::confirm_user_command::ConfirmUserCommand;
+use crate::data::create_white_listed_user_command::CreateWhiteListedUserCommand;
 use crate::helpers::proto_mappers::{map_user_to_proto, map_wlu_to_proto};
 use homelab_proto::user::{
     white_listed_user_service_server::WhiteListedUserService,
