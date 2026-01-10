@@ -1,0 +1,40 @@
+syntax = "proto3";
+package nas;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+import "types.proto";
+
+service LabelService {
+  rpc GetLabels (google.protobuf.Empty) returns (LabelListResponse);
+  rpc CreateLabel (CreateLabelRequest) returns (LabelResponse);
+  rpc DeleteLabel (DeleteLabelRequest) returns (google.protobuf.Empty);
+  rpc ChangeLabel (ChangeLabelRequest) returns (LabelResponse);
+}
+
+message LabelResponse {
+  common.EntityId id = 1;
+  string name = 2;
+  string color = 3;
+  common.EntityId owner_id = 4;
+}
+
+message LabelListResponse {
+  repeated LabelResponse labels = 1;
+}
+
+message CreateLabelRequest {
+  string name = 1;
+  string color = 2;
+  common.EntityId owner_id = 3;
+}
+
+message DeleteLabelRequest {
+  common.EntityId id = 1;
+}
+
+message ChangeLabelRequest {
+  common.EntityId id = 1;
+  string name = 2;
+  string color = 3;
+}

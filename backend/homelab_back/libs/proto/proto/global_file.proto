@@ -1,0 +1,19 @@
+syntax = "proto3";
+package nas;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+import "types.proto";
+
+service GlobalFileService {
+  rpc GetAll (google.protobuf.Empty) returns (GlobalFileListResponse);
+}
+
+message GlobalFileResponse {
+  common.EntityId id = 1;
+  common.EntityId original_id = 2;
+}
+
+message GlobalFileListResponse {
+  repeated GlobalFileResponse global_files = 1;
+}
