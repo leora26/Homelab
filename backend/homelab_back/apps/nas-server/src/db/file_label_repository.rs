@@ -1,8 +1,8 @@
+use crate::helpers::data_error::DataError;
 use async_trait::async_trait;
 use derive_new::new;
-use sqlx::PgPool;
 use homelab_core::file_label::FileLabel;
-use crate::helpers::data_error::DataError;
+use sqlx::PgPool;
 
 #[async_trait]
 pub trait FileLabelRepository: Send + Sync {
@@ -11,7 +11,7 @@ pub trait FileLabelRepository: Send + Sync {
 
 #[derive(new)]
 pub struct FileLabelRepositoryImpl {
-    pool: PgPool
+    pool: PgPool,
 }
 
 #[async_trait]
@@ -27,9 +27,9 @@ impl FileLabelRepository for FileLabelRepositoryImpl {
             fl.file_id,
             fl.label_id
         )
-            .fetch_one(&self.pool)
-            .await
-            .map_err(|e| DataError::DatabaseError(e))?;
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(fl)
     }

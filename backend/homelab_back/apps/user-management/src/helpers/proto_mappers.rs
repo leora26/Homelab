@@ -1,7 +1,7 @@
 use homelab_core::user::{Role as DomainRole, User};
 use homelab_core::white_listed_user::WhiteListedUser;
+use homelab_proto::common::EntityId;
 use homelab_proto::user::{Role as ProtoRole, UserResponse, WhiteListedUserResponse};
-use homelab_proto::common::{EntityId};
 use tonic::Status;
 use uuid::Uuid;
 
@@ -30,15 +30,12 @@ pub fn map_user_to_proto(u: User) -> UserResponse {
             DomainRole::User => ProtoRole::User,
             DomainRole::Admin => ProtoRole::Admin,
         } as i32,
-        allowed_storage: u.allowed_storage,
-        taken_storage: u.taken_storage,
         created_at: Some(prost_types::Timestamp {
             seconds: u.created_at.unix_timestamp(),
             nanos: u.created_at.nanosecond() as i32,
         }),
     }
 }
-
 
 pub fn map_entity_id(id: Option<EntityId>) -> Result<Uuid, Status> {
     let entity_id = id.ok_or_else(|| Status::invalid_argument("Missing ID"))?;

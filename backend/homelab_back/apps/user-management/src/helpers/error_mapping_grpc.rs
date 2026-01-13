@@ -1,5 +1,5 @@
-use tonic::Status;
 use crate::helpers::data_error::DataError;
+use tonic::Status;
 
 impl From<DataError> for Status {
     fn from(e: DataError) -> Self {

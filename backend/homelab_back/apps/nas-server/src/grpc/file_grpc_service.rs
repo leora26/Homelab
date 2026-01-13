@@ -3,12 +3,17 @@ use crate::data::init_file_command::InitFileCommand;
 use crate::data::move_file_command::MoveFileCommand;
 use crate::data::update_file_name_command::UpdateFileNameCommand;
 use crate::helpers::proto_mappers::{map_entity_id, map_file_to_proto};
-use homelab_proto::nas::file_chunk::Data as FileChunkData;
-use homelab_proto::nas::file_service_server::FileService;
-use homelab_proto::nas::{ArchiveFileCommand, CopyFileRequest, DeleteChosenFilesRequest, DeleteFileRequest, FileChunk, FileListResponse, FileResponse, GetDeletedFilesCommand, GetFileRequest, InitFileRequest, MoveFileRequest, RemoveAllDeletedFilesCommand, RenameFileRequest, SearchFilesRequest, UnarchiveFileCommand, UndeleteFileRequest};
 use crate::AppState;
 use async_trait::async_trait;
 use derive_new::new;
+use homelab_proto::nas::file_chunk::Data as FileChunkData;
+use homelab_proto::nas::file_service_server::FileService;
+use homelab_proto::nas::{
+    ArchiveFileCommand, CopyFileRequest, DeleteChosenFilesRequest, DeleteFileRequest, FileChunk,
+    FileListResponse, FileResponse, GetDeletedFilesCommand, GetFileRequest, InitFileRequest,
+    MoveFileRequest, RemoveAllDeletedFilesCommand, RenameFileRequest, SearchFilesRequest,
+    UnarchiveFileCommand, UndeleteFileRequest,
+};
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tonic::{Request, Response, Status, Streaming};
@@ -60,12 +65,15 @@ impl FileService for GrpcFileService {
         &self,
         request: Request<GetDeletedFilesCommand>,
     ) -> Result<Response<FileListResponse>, Status> {
-
         let req = request.into_inner();
 
         let user_id = map_entity_id(req.user_id)?;
 
-        let files = self.app_state.file_service.get_all_deleted_files(user_id).await?;
+        let files = self
+            .app_state
+            .file_service
+            .get_all_deleted_files(user_id)
+            .await?;
 
         let proto_files = files.into_iter().map(|f| map_file_to_proto(f)).collect();
 
@@ -319,7 +327,10 @@ impl FileService for GrpcFileService {
         }
     }
 
-    async fn archive_file(&self, request: Request<ArchiveFileCommand>) -> Result<Response<()>, Status> {
+    async fn archive_file(
+        &self,
+        request: Request<ArchiveFileCommand>,
+    ) -> Result<Response<()>, Status> {
         let req = request.into_inner();
 
         let file_id = map_entity_id(req.file_id)?;
@@ -329,7 +340,10 @@ impl FileService for GrpcFileService {
         Ok(Response::new(()))
     }
 
-    async fn unarchive_file(&self, request: Request<UnarchiveFileCommand>) -> Result<Response<()>, Status> {
+    async fn unarchive_file(
+        &self,
+        request: Request<UnarchiveFileCommand>,
+    ) -> Result<Response<()>, Status> {
         let req = request.into_inner();
 
         let file_id = map_entity_id(req.file_id)?;
@@ -339,12 +353,18 @@ impl FileService for GrpcFileService {
         Ok(Response::new(()))
     }
 
-    async fn remove_all_deleted_files(&self, request: Request<RemoveAllDeletedFilesCommand>) -> Result<Response<()>, Status> {
+    async fn remove_all_deleted_files(
+        &self,
+        request: Request<RemoveAllDeletedFilesCommand>,
+    ) -> Result<Response<()>, Status> {
         let req = request.into_inner();
 
         let user_id = map_entity_id(req.user_id)?;
 
-        self.app_state.file_service.cleanup_deleted_files(user_id).await?;
+        self.app_state
+            .file_service
+            .cleanup_deleted_files(user_id)
+            .await?;
 
         Ok(Response::new(()))
     }

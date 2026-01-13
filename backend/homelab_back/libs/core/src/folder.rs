@@ -33,11 +33,11 @@ impl Folder {
         }
     }
 
-    pub fn rename (&mut self, new_name: String) {
+    pub fn rename(&mut self, new_name: String) {
         self.name = new_name;
     }
 
-    pub fn update_parent_folder (&mut self, new_parent_folder_id: Uuid) {
+    pub fn update_parent_folder(&mut self, new_parent_folder_id: Uuid) {
         self.parent_folder_id = Option::from(new_parent_folder_id);
     }
 }

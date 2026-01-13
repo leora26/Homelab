@@ -1,9 +1,9 @@
-use std::sync::Arc;
+use crate::db::global_file_repository::GlobalFileRepository;
+use crate::helpers::data_error::DataError;
 use async_trait::async_trait;
 use derive_new::new;
-use crate::db::global_file_repository::GlobalFileRepository;
 use homelab_core::global_file::GlobalFile;
-use crate::helpers::data_error::DataError;
+use std::sync::Arc;
 
 #[async_trait]
 pub trait GlobalFileService: Send + Sync {
@@ -13,7 +13,7 @@ pub trait GlobalFileService: Send + Sync {
 #[derive(new)]
 pub struct GlobalFileServiceImpl {
     global_file_repository: Arc<dyn GlobalFileRepository>,
-} 
+}
 
 #[async_trait]
 impl GlobalFileService for GlobalFileServiceImpl {

@@ -1,12 +1,12 @@
-use std::sync::Arc;
-use async_trait::async_trait;
-use derive_new::new;
-use uuid::Uuid;
 use crate::data::create_user_command::CreateUserCommand;
-use homelab_core::user::User;
 use crate::db::user_repository::UserRepository;
 use crate::helpers::data_error::DataError;
 use crate::helpers::user_email::UserEmail;
+use async_trait::async_trait;
+use derive_new::new;
+use homelab_core::user::User;
+use std::sync::Arc;
+use uuid::Uuid;
 
 #[async_trait]
 pub trait UserService: Send + Sync {
@@ -33,12 +33,17 @@ impl UserService for UserServiceImpl {
     }
 
     async fn create(&self, command: CreateUserCommand) -> Result<User, DataError> {
-        let valid_email = UserEmail::parse(command.email)
-            .map_err(|e| DataError::ValidationError(e))?;
+        let valid_email =
+            UserEmail::parse(command.email).map_err(|e| DataError::ValidationError(e))?;
 
         let cleaned_name = command.full_name.trim().to_string();
 
-        let u = User::new_complete(Uuid::new_v4(), valid_email.into_inner(), command.password, cleaned_name, command.storage);
+        let u = User::new_complete(
+            Uuid::new_v4(),
+            valid_email.into_inner(),
+            command.password,
+            cleaned_name,
+        );
 
         self.user_repo.create(u).await
     }
@@ -48,8 +53,10 @@ impl UserService for UserServiceImpl {
     }
 
     async fn update_password(&self, id: Uuid, pass: &str) -> Result<(), DataError> {
-        let mut user = self.user_repo.get_by_id(id).await?
-            .ok_or_else(|| DataError::EntityNotFoundException(format!("User not found: {}", id)))?;
+        let mut user =
+            self.user_repo.get_by_id(id).await?.ok_or_else(|| {
+                DataError::EntityNotFoundException(format!("User not found: {}", id))
+            })?;
 
         user.set_password(pass);
 

@@ -1,6 +1,6 @@
-use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+use std::path::{Path, PathBuf};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -12,7 +12,7 @@ pub enum FileType {
     Video,
     Unknown,
     Audio,
-    Pdf
+    Pdf,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, sqlx::Type)]
@@ -35,7 +35,7 @@ impl FileType {
                 "txt" | "md" | "json" | "xml" | "html" | "css" | "js" | "rs" => FileType::Text,
                 "png" | "jpg" | "jpeg" | "gif" | "bmp" | "svg" | "webp" => FileType::Image,
                 "mp4" | "mov" | "avi" | "mkv" | "webm" => FileType::Video,
-                _ => FileType::Unknown
+                _ => FileType::Unknown,
             }
         } else {
             FileType::Unknown
@@ -61,7 +61,14 @@ impl File {
         FileType::from_filename(name)
     }
 
-    pub fn new(id: Uuid, name: String, owner_id: Uuid, parent_folder_id: Uuid, is_deleted: bool, size: i64) -> Self {
+    pub fn new(
+        id: Uuid,
+        name: String,
+        owner_id: Uuid,
+        parent_folder_id: Uuid,
+        is_deleted: bool,
+        size: i64,
+    ) -> Self {
         let file_type: FileType = File::get_file_type(&name);
 
         Self {
@@ -104,14 +111,15 @@ impl File {
         let bucket1 = &id_string[0..2];
         let bucket2 = &id_string[2..4];
 
-        storage_path
-            .join(bucket1)
-            .join(bucket2)
-            .join(id_string)
+        storage_path.join(bucket1).join(bucket2).join(id_string)
     }
 
     pub fn validate_size(&self, size: i64) -> bool {
-        if self.size == size { true } else { false }
+        if self.size == size {
+            true
+        } else {
+            false
+        }
     }
 
     pub fn update_status(&mut self, status: UploadStatus) {

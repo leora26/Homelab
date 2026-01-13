@@ -1,6 +1,6 @@
-use homelab_core::global_file::GlobalFile;
 use crate::helpers::data_error::DataError;
 use async_trait::async_trait;
+use homelab_core::global_file::GlobalFile;
 use sqlx::PgPool;
 
 #[async_trait]
@@ -46,10 +46,10 @@ impl GlobalFileRepository for GlobalFileRepositoryImpl {
             SELECT id, original_id FROM global_files
             "#
         )
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| DataError::DatabaseError(e))?;
-        
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| DataError::DatabaseError(e))?;
+
         Ok(global_files)
     }
 }

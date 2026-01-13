@@ -1,8 +1,8 @@
-use async_trait::async_trait;
-use sqlx::{PgPool};
-use uuid::Uuid;
-use homelab_core::shared_file::{SharedFile};
 use crate::helpers::data_error::DataError;
+use async_trait::async_trait;
+use homelab_core::shared_file::SharedFile;
+use sqlx::PgPool;
+use uuid::Uuid;
 
 #[async_trait]
 pub trait SharedFileRepository: Send + Sync {
@@ -16,9 +16,7 @@ pub struct SharedFileRepositoryImpl {
 
 impl SharedFileRepositoryImpl {
     pub fn new(pool: PgPool) -> Self {
-        Self {
-            pool
-        }
+        Self { pool }
     }
 }
 
@@ -38,9 +36,9 @@ impl SharedFileRepository for SharedFileRepositoryImpl {
             shared_file.file_id,
             shared_file.access_type as _
         )
-            .fetch_one(&self.pool)
-            .await
-            .map_err(|e| DataError::DatabaseError(e))?;
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(shared_file)
     }
@@ -55,9 +53,9 @@ impl SharedFileRepository for SharedFileRepositoryImpl {
             "#,
             user_id
         )
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| DataError::DatabaseError(e))?;
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(shared_files)
     }

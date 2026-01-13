@@ -6,5 +6,5 @@ use uuid::Uuid;
 pub struct CreateLabelCommand {
     pub name: String,
     pub color: String,
-    pub owner_id: Uuid
+    pub owner_id: Uuid,
 }

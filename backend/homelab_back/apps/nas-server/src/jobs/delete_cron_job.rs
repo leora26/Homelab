@@ -1,6 +1,6 @@
-use std::sync::Arc;
-use tokio_cron_scheduler::{JobScheduler, Job};
 use crate::service::file_service::FileService;
+use std::sync::Arc;
+use tokio_cron_scheduler::{Job, JobScheduler};
 
 pub async fn init_delete_job(file_service: Arc<dyn FileService>) -> JobScheduler {
     let sched = JobScheduler::new()
@@ -20,9 +20,12 @@ pub async fn init_delete_job(file_service: Arc<dyn FileService>) -> JobScheduler
             }
         })
     })
-        .expect("Failed to create cleanup job");
+    .expect("Failed to create cleanup job");
 
-    sched.add(cleanup_job).await.expect("Failed to add cleanup job");
+    sched
+        .add(cleanup_job)
+        .await
+        .expect("Failed to add cleanup job");
 
     sched.start().await.expect("Failed to start scheduler");
 

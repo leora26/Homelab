@@ -1,7 +1,6 @@
 use std::error::Error;
 
 fn main() -> Result<(), Box<dyn Error>> {
-
     std::env::set_var("PROTOC", protoc_bin_vendored::protoc_bin_path().unwrap());
 
     println!("cargo:rerun-if-changed=proto/white_listed_user.proto");
@@ -13,20 +12,19 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("cargo:rerun-if-changed=proto/file_label.proto");
     println!("cargo:rerun-if-changed=proto/types.proto");
 
-    tonic_build::configure()
-        .compile_protos(
-            &[
-                "proto/white_listed_user.proto",
-                "proto/user.proto",
-                "proto/file.proto",
-                "proto/global_file.proto",
-                "proto/folder.proto",
-                "proto/label.proto",
-                "proto/file_label.proto",
-                "proto/types.proto",
-            ],
-            &["proto"],
-        )?;
+    tonic_build::configure().compile_protos(
+        &[
+            "proto/white_listed_user.proto",
+            "proto/user.proto",
+            "proto/file.proto",
+            "proto/global_file.proto",
+            "proto/folder.proto",
+            "proto/label.proto",
+            "proto/file_label.proto",
+            "proto/types.proto",
+        ],
+        &["proto"],
+    )?;
 
     Ok(())
 }

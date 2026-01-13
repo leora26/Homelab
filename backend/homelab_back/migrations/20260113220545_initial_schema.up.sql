@@ -1,36 +1,21 @@
--- Add up migration script here
 CREATE TYPE file_type AS ENUM (
-    'Text',
-    'Image',
-    'Video',
-    'Audio',
-    'Pdf',
-    'Unknown'
-    );
+    'Text', 'Image', 'Video', 'Audio', 'Pdf', 'Unknown'
+);
 
 CREATE TYPE user_role AS ENUM (
-    'user',
-    'admin'
-    );
+    'user', 'admin'
+);
 
 CREATE TYPE action_log_type AS ENUM (
-    'FileUpload',
-    'FileDeletion',
-    'FolderCreation',
-    'FolderDeletion',
-    'UserCreation',
-    'AccountCompletion'
+    'FileUpload', 'FileDeletion', 'FolderCreation', 'FolderDeletion', 'UserCreation', 'AccountCompletion'
 );
 
 CREATE TYPE access_type AS ENUM (
-    'ReadOnly',
-    'Edit'
+    'ReadOnly', 'Edit'
 );
 
 CREATE TYPE upload_status AS ENUM (
-    'Pending',
-    'Completed',
-    'Failed'
+    'Pending', 'Completed', 'Failed'
 );
 
 CREATE TABLE users
@@ -40,9 +25,14 @@ CREATE TABLE users
     full_name       TEXT UNIQUE NOT NULL,
     password_hash   TEXT        NOT NULL,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    role            user_role   NOT NULL,
-    allowed_storage BIGINT      NOT NULL,
-    taken_storage   BIGINT      NOT NULL
+    role            user_role   NOT NULL
+);
+
+CREATE TABLE storage_profiles
+(
+    user_id         UUID PRIMARY KEY REFERENCES users (id) ON DELETE CASCADE,
+    allowed_storage BIGINT NOT NULL DEFAULT 10737418240, -- Default 10GB
+    taken_storage   BIGINT NOT NULL DEFAULT 0
 );
 
 CREATE TABLE white_listed_users
@@ -62,7 +52,6 @@ CREATE TABLE folders
     parent_folder_id UUID        NOT NULL REFERENCES folders (id) ON DELETE CASCADE
 );
 
-
 CREATE TABLE files
 (
     id               UUID PRIMARY KEY,
@@ -75,7 +64,6 @@ CREATE TABLE files
     size             BIGINT        NOT NULL,
     upload_status    upload_status NOT NULL
 );
-
 
 CREATE TABLE action_logs
 (
@@ -114,7 +102,6 @@ CREATE TABLE file_labels
 (
     file_id  UUID REFERENCES files (id) ON DELETE CASCADE,
     label_id UUID REFERENCES labels (id) ON DELETE CASCADE,
-
     PRIMARY KEY (file_id, label_id)
 );
 

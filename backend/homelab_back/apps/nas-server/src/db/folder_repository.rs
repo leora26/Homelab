@@ -1,9 +1,9 @@
+use crate::helpers::data_error::DataError;
 use async_trait::async_trait;
-use sqlx::PgPool;
-use uuid::Uuid;
 use homelab_core::file::{File, FileType};
 use homelab_core::folder::Folder;
-use crate::helpers::data_error::DataError;
+use sqlx::PgPool;
+use uuid::Uuid;
 
 #[async_trait]
 pub trait FolderRepository: Send + Sync {
@@ -11,7 +11,11 @@ pub trait FolderRepository: Send + Sync {
     async fn get_by_id(&self, folder_id: Uuid) -> Result<Option<Folder>, DataError>;
     async fn get_children_by_id(&self, folder_id: Uuid) -> Result<Vec<Folder>, DataError>;
     async fn search_by_name(&self, search_query: String) -> Result<Vec<Folder>, DataError>;
-    async fn filter_files_in_folder(&self, file_types: &[FileType], folder_id: Uuid) -> Result<Vec<File>, DataError>;
+    async fn filter_files_in_folder(
+        &self,
+        file_types: &[FileType],
+        folder_id: Uuid,
+    ) -> Result<Vec<File>, DataError>;
     async fn get_by_folder_id(&self, folder_id: Uuid) -> Result<Vec<File>, DataError>;
     async fn create(&self, folder: Folder) -> Result<Folder, DataError>;
     async fn update_folder(&self, folder: Folder) -> Result<Folder, DataError>;
@@ -33,48 +37,48 @@ impl FolderRepositoryImpl {
 impl FolderRepository for FolderRepositoryImpl {
     async fn get_root(&self, user_id: Uuid) -> Result<Option<Folder>, DataError> {
         let folder = sqlx::query_as!(
-        Folder,
-        r#"
+            Folder,
+            r#"
         SELECT id, parent_folder_id, name, owner_id, created_at
         FROM folders
         WHERE parent_folder_id IS NULL AND owner_id = $1"#,
-        user_id
-    )
-            .fetch_optional(&self.pool)
-            .await
-            .map_err(|e| DataError::DatabaseError(e))?;
+            user_id
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(folder)
     }
 
     async fn get_by_id(&self, folder_id: Uuid) -> Result<Option<Folder>, DataError> {
         let folder = sqlx::query_as!(
-        Folder,
-        r#"
+            Folder,
+            r#"
         SELECT id, parent_folder_id, name, owner_id, created_at
         FROM folders
         WHERE id = $1"#,
-        folder_id
-    )
-            .fetch_optional(&self.pool)
-            .await
-            .map_err(|e| DataError::DatabaseError(e))?;
+            folder_id
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(folder)
     }
 
     async fn get_children_by_id(&self, folder_id: Uuid) -> Result<Vec<Folder>, DataError> {
         let folders = sqlx::query_as!(
-        Folder,
-        r#"
+            Folder,
+            r#"
         SELECT id, parent_folder_id, name, owner_id, created_at
         FROM folders
         WHERE parent_folder_id = $1"#,
-        folder_id
-    )
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| DataError::DatabaseError(e))?;
+            folder_id
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(folders)
     }
@@ -89,14 +93,18 @@ impl FolderRepository for FolderRepositoryImpl {
             "#,
             search_query
         )
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| DataError::DatabaseError(e))?;
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(f)
     }
 
-    async fn filter_files_in_folder(&self, file_types: &[FileType], folder_id: Uuid) -> Result<Vec<File>, DataError> {
+    async fn filter_files_in_folder(
+        &self,
+        file_types: &[FileType],
+        folder_id: Uuid,
+    ) -> Result<Vec<File>, DataError> {
         let files = sqlx::query_as!(
             File,
             r#"
@@ -145,9 +153,9 @@ impl FolderRepository for FolderRepositoryImpl {
             folder.created_at,
             folder.parent_folder_id
         )
-            .fetch_one(&self.pool)
-            .await
-            .map_err(|e| DataError::DatabaseError(e))?;
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(folder)
     }
@@ -166,9 +174,9 @@ impl FolderRepository for FolderRepositoryImpl {
             folder.parent_folder_id,
             folder.id
         )
-            .fetch_one(&self.pool)
-            .await
-            .map_err(|e| DataError::DatabaseError(e))?;
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(f)
     }
@@ -181,9 +189,9 @@ impl FolderRepository for FolderRepositoryImpl {
             "#,
             folder_ids
         )
-            .execute(&self.pool)
-            .await
-            .map_err(|e| DataError::DatabaseError(e))?;
+        .execute(&self.pool)
+        .await
+        .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(())
     }
@@ -194,10 +202,11 @@ impl FolderRepository for FolderRepositoryImpl {
             DELETE FROM folders
             WHERE id = $1
             "#,
-            folder_id)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| DataError::DatabaseError(e))?;
+            folder_id
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(())
     }

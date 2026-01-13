@@ -1,12 +1,15 @@
 use homelab_core::file::{File, FileType as DomainFileType, UploadStatus as DomainUploadStatus};
+use homelab_core::file_label::FileLabel;
 use homelab_core::folder::Folder;
 use homelab_core::global_file::GlobalFile;
 use homelab_core::label::Label;
-use homelab_proto::nas::{FileLabelResponse, FileResponse, FileType as ProtoFileType, FolderResponse, GlobalFileResponse, LabelResponse, UploadStatus as ProtoUploadStatus};
-use homelab_proto::common::{EntityId};
+use homelab_proto::common::EntityId;
+use homelab_proto::nas::{
+    FileLabelResponse, FileResponse, FileType as ProtoFileType, FolderResponse, GlobalFileResponse,
+    LabelResponse, UploadStatus as ProtoUploadStatus,
+};
 use tonic::Status;
 use uuid::Uuid;
-use homelab_core::file_label::FileLabel;
 
 pub fn map_file_to_proto(f: File) -> FileResponse {
     FileResponse {
@@ -71,7 +74,7 @@ pub fn map_label_to_proto(l: Label) -> LabelResponse {
     }
 }
 
-pub fn map_file_label_to_proto (fl: FileLabel) -> FileLabelResponse {
+pub fn map_file_label_to_proto(fl: FileLabel) -> FileLabelResponse {
     FileLabelResponse {
         file_id: Option::from(map_id_to_proto(fl.file_id)),
         label_id: Option::from(map_id_to_proto(fl.label_id)),

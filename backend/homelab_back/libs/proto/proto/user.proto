@@ -22,8 +22,6 @@ message UserResponse {
   string email = 2;
   string full_name = 3;
   Role role = 4;
-  int64 allowed_storage = 5;
-  int64 taken_storage = 6;
   google.protobuf.Timestamp created_at = 7;
 }
 
@@ -39,7 +37,6 @@ message CreateUserRequest {
   string email = 1;
   string full_name = 2;
   string password = 3;
-  int64 allowed_storage = 4;
 }
 
 message UpdatePasswordRequest {

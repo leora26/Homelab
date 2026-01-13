@@ -1,12 +1,14 @@
 use crate::data::create_file_label_command::CreateFileLabelCommand;
-use crate::helpers::proto_mappers::{map_entity_id, map_file_label_to_proto, map_file_to_proto, map_label_to_proto};
+use crate::helpers::proto_mappers::{
+    map_entity_id, map_file_label_to_proto, map_file_to_proto, map_label_to_proto,
+};
+use crate::AppState;
+use derive_new::new;
 use homelab_proto::nas::file_label_service_server::FileLabelService;
 use homelab_proto::nas::{
     CreateFileLabelRequest, FileLabelResponse, FileListResponse, GetFilesForLabelRequest,
     GetLabelsForFileRequest, LabelListResponse,
 };
-use crate::AppState;
-use derive_new::new;
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
 
@@ -54,7 +56,9 @@ impl FileLabelService for GrpcFileLabelService {
 
         let proto_labels = labels.into_iter().map(map_label_to_proto).collect();
 
-        Ok(Response::new(LabelListResponse { labels: proto_labels }))
+        Ok(Response::new(LabelListResponse {
+            labels: proto_labels,
+        }))
     }
 
     async fn get_files_for_label(
@@ -74,6 +78,6 @@ impl FileLabelService for GrpcFileLabelService {
 
         let proto_files = files.into_iter().map(map_file_to_proto).collect();
 
-        Ok(Response::new(FileListResponse {files: proto_files}))
+        Ok(Response::new(FileListResponse { files: proto_files }))
     }
 }

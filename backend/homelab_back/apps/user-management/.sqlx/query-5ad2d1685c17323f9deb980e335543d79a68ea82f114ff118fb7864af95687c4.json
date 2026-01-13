@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id, email, full_name, password_hash, created_at,  role as \"role: _\", allowed_storage, taken_storage\n        FROM users\n        WHERE email = $1\n        ",
+  "query": "\n        SELECT id, email, full_name, password_hash, created_at,  role as \"role: _\"\n        FROM users\n        WHERE id = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -42,21 +42,11 @@
             }
           }
         }
-      },
-      {
-        "ordinal": 6,
-        "name": "allowed_storage",
-        "type_info": "Int8"
-      },
-      {
-        "ordinal": 7,
-        "name": "taken_storage",
-        "type_info": "Int8"
       }
     ],
     "parameters": {
       "Left": [
-        "Text"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -65,10 +55,8 @@
       false,
       false,
       false,
-      false,
-      false,
       false
     ]
   },
-  "hash": "5aa252c4a7bbe5efe7019d3ff1cc5d9e7e7a5c3f531a53b7979d6bbc2f171ad6"
+  "hash": "5ad2d1685c17323f9deb980e335543d79a68ea82f114ff118fb7864af95687c4"
 }

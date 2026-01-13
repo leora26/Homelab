@@ -6,5 +6,5 @@ use uuid::Uuid;
 pub struct ChangeLabelCommand {
     pub id: Uuid,
     pub name: String,
-    pub color: String
+    pub color: String,
 }

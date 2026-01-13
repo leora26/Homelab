@@ -1,19 +1,22 @@
-use actix_files::NamedFile;
 use crate::data::delete_chosen_files_command::DeleteChosenFilesCommand;
 use crate::data::init_file_command::InitFileCommand;
 use crate::data::search_query::SearchQuery;
 use crate::data::update_file_name_command::UpdateFileNameCommand;
 use crate::helpers::error_mapping::map_data_err_to_http;
 use crate::AppState;
+use actix_files::NamedFile;
 use actix_web::web::{Data, Json, Path, Query, ServiceConfig};
 use actix_web::{delete, error, get, patch, post, HttpResponse, Responder};
 use uuid::Uuid;
 
 #[get("/files/{id}/download")]
-async fn download_file(file_id: Path<Uuid>, app_state: Data<AppState>) -> actix_web::Result<NamedFile> {
+async fn download_file(
+    file_id: Path<Uuid>,
+    app_state: Data<AppState>,
+) -> actix_web::Result<NamedFile> {
     let id = file_id.into_inner();
 
-    let path = match app_state.file_service.get_file_for_streaming(id).await  {
+    let path = match app_state.file_service.get_file_for_streaming(id).await {
         Ok(path) => path,
         Err(e) => {
             tracing::error!("Failed to download a file: {:?}", e);
@@ -21,11 +24,10 @@ async fn download_file(file_id: Path<Uuid>, app_state: Data<AppState>) -> actix_
         }
     };
 
-    let named_file = NamedFile::open(path)
-        .map_err(|e| {
-            eprintln!("File exists in DB but not on disk: {:?}", e);
-            error::ErrorNotFound("File content is missing")
-        })?;
+    let named_file = NamedFile::open(path).map_err(|e| {
+        eprintln!("File exists in DB but not on disk: {:?}", e);
+        error::ErrorNotFound("File content is missing")
+    })?;
 
     Ok(named_file)
 }

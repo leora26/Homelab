@@ -1,0 +1,36 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO storage_profiles (user_id, allowed_storage, taken_storage)\n        VALUES ($1, $2, $3)\n        RETURNING user_id, allowed_storage, taken_storage\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "allowed_storage",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "taken_storage",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "3e3eee39586304adbdf362fb902fd8fcff63c3144a57c998f7511caa7ddf793b"
+}

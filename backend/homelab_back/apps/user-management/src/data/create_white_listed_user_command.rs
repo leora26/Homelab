@@ -4,5 +4,5 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize, new)]
 pub struct CreateWhiteListedUserCommand {
     pub email: String,
-    pub full_name: String
+    pub full_name: String,
 }

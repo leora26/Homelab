@@ -30,5 +30,4 @@ message CreateWhiteListedUserRequest {
 
 message ConfirmWhiteListedUsersRequest {
   common.EntityId id = 1;
-  int64 allowed_storage = 2;
 }

@@ -1,7 +1,7 @@
+use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
 use time::OffsetDateTime;
 use uuid::Uuid;
-use serde::{Serialize, Deserialize};
-use sqlx::FromRow;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, sqlx::Type)]
 pub enum ActionLogType {
@@ -10,7 +10,7 @@ pub enum ActionLogType {
     FolderCreation,
     FolderDeletion,
     UserCreation,
-    AccountCompletion
+    AccountCompletion,
 }
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]

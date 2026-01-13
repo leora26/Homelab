@@ -4,8 +4,8 @@ pub mod exception;
 pub mod grpc;
 pub mod handler;
 pub mod helpers;
-pub mod service;
 pub mod jobs;
+pub mod service;
 
 use crate::db::file_label_repository::FileLabelRepositoryImpl;
 use crate::db::file_repository::{FileRepository, FileRepositoryImpl};
@@ -13,7 +13,7 @@ use crate::db::folder_repository::FolderRepositoryImpl;
 use crate::db::global_file_repository::GlobalFileRepositoryImpl;
 use crate::db::label_repository::LabelRepositoryImpl;
 use crate::db::shared_file_repository::SharedFileRepositoryImpl;
-use crate::db::user_repository::UserRepositoryImpl;
+use crate::db::storage_profile_repository::StorageProfileRepositoryImpl;
 
 // TODO: add all other Grpc servers
 use homelab_proto::nas::file_service_server::FileServiceServer;
@@ -25,6 +25,8 @@ use crate::service::global_file_service::{GlobalFileService, GlobalFileServiceIm
 use crate::service::label_service::{LabelService, LabelServiceImpl};
 use crate::service::shared_file_service::{SharedFileService, SharedFileServiceImpl};
 
+use crate::grpc::file_grpc_service::GrpcFileService;
+use crate::jobs::delete_cron_job::init_delete_job;
 use actix_web::{web, App, HttpServer};
 use dotenvy::dotenv;
 use sqlx::postgres::PgPoolOptions;
@@ -33,9 +35,7 @@ use std::error::Error;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tonic::transport::Server;
-use crate::jobs::delete_cron_job::init_delete_job;
 use tracing_subscriber::EnvFilter;
-use crate::grpc::file_grpc_service::GrpcFileService;
 
 pub struct AppState {
     pub file_service: Arc<dyn FileService>,
@@ -89,7 +89,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     let file_repo = Arc::new(FileRepositoryImpl::new(pool.clone()));
-    let user_repo = Arc::new(UserRepositoryImpl::new(pool.clone()));
+    let storage_profile_repo = Arc::new(StorageProfileRepositoryImpl::new(pool.clone()));
     let folder_repo = Arc::new(FolderRepositoryImpl::new(pool.clone()));
     let share_file_repo = Arc::new(SharedFileRepositoryImpl::new(pool.clone()));
     let global_file_repo = Arc::new(GlobalFileRepositoryImpl::new(pool.clone()));
@@ -100,22 +100,25 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let file_service = Arc::new(FileServiceImpl::new(
         file_repo.clone(),
         folder_repo.clone(),
-        user_repo.clone(),
+        storage_profile_repo.clone(),
         root_path.to_path_buf(),
         global_file_repo.clone(),
     ));
     let shared_file_service = Arc::new(SharedFileServiceImpl::new(
         share_file_repo.clone(),
-        user_repo.clone(),
+        storage_profile_repo.clone(),
         file_repo.clone(),
     ));
     let global_file_service = Arc::new(GlobalFileServiceImpl::new(global_file_repo.clone()));
-    let label_service = Arc::new(LabelServiceImpl::new(label_repo.clone(), user_repo.clone()));
+    let label_service = Arc::new(LabelServiceImpl::new(
+        label_repo.clone(),
+        storage_profile_repo.clone(),
+    ));
     let file_label_service = Arc::new(FileLabelServiceImpl::new(
         label_repo.clone(),
         file_repo.clone(),
         file_label_repo.clone(),
-        user_repo.clone(),
+        storage_profile_repo.clone(),
     ));
 
     let _cleanup_scheduler = init_delete_job(file_service.clone()).await;
@@ -127,7 +130,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         file_repo: file_repo.clone(),
         global_file_service,
         label_service,
-        file_label_service
+        file_label_service,
     });
 
     let rest_addr = ("0.0.0.0", 8080);
@@ -168,7 +171,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             println!("🚀 Starting Hybrid Mode (REST + gRPC)");
 
             let app_state_arc = app_state.clone().into_inner();
-            
+
             let file_impl = GrpcFileService::new(app_state_arc.clone());
 
             let grpc_handle = Server::builder()

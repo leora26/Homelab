@@ -1,31 +1,36 @@
-use std::sync::Arc;
-use derive_new::new;
-use tonic::{Request, Response, Status};
-use crate::AppState;
 use crate::data::change_label_command::ChangeLabelCommand;
 use crate::data::create_label_command::CreateLabelCommand;
 use crate::helpers::proto_mappers::{map_entity_id, map_label_to_proto};
+use crate::AppState;
+use derive_new::new;
 use homelab_proto::nas::label_service_server::LabelService;
-use homelab_proto::nas::{ChangeLabelRequest, CreateLabelRequest, DeleteLabelRequest, LabelListResponse, LabelResponse};
+use homelab_proto::nas::{
+    ChangeLabelRequest, CreateLabelRequest, DeleteLabelRequest, LabelListResponse, LabelResponse,
+};
+use std::sync::Arc;
+use tonic::{Request, Response, Status};
 
 #[derive(new)]
 pub struct GrpcLabelService {
-    pub app_state: Arc<AppState>
+    pub app_state: Arc<AppState>,
 }
-
 
 #[tonic::async_trait]
 impl LabelService for GrpcLabelService {
-    async fn get_labels(&self, _ : Request<()>) -> Result<Response<LabelListResponse>, Status> {
+    async fn get_labels(&self, _: Request<()>) -> Result<Response<LabelListResponse>, Status> {
         let labels = self.app_state.label_service.get_all().await?;
 
-        let proto_labels = labels.into_iter().map(|l| map_label_to_proto(l))
-            .collect();
+        let proto_labels = labels.into_iter().map(|l| map_label_to_proto(l)).collect();
 
-        Ok(Response::new(LabelListResponse {labels: proto_labels}))
+        Ok(Response::new(LabelListResponse {
+            labels: proto_labels,
+        }))
     }
 
-    async fn create_label(&self, request: Request<CreateLabelRequest>) -> Result<Response<LabelResponse>, Status> {
+    async fn create_label(
+        &self,
+        request: Request<CreateLabelRequest>,
+    ) -> Result<Response<LabelResponse>, Status> {
         let req = request.into_inner();
 
         let owner_id = map_entity_id(req.owner_id)?;
@@ -37,7 +42,10 @@ impl LabelService for GrpcLabelService {
         Ok(Response::new(map_label_to_proto(label)))
     }
 
-    async fn delete_label(&self, request: Request<DeleteLabelRequest>) -> Result<Response<()>, Status> {
+    async fn delete_label(
+        &self,
+        request: Request<DeleteLabelRequest>,
+    ) -> Result<Response<()>, Status> {
         let req = request.into_inner();
 
         let label_id = map_entity_id(req.id)?;
@@ -47,7 +55,10 @@ impl LabelService for GrpcLabelService {
         Ok(Response::new(()))
     }
 
-    async fn change_label(&self, request: Request<ChangeLabelRequest>) -> Result<Response<LabelResponse>, Status> {
+    async fn change_label(
+        &self,
+        request: Request<ChangeLabelRequest>,
+    ) -> Result<Response<LabelResponse>, Status> {
         let req = request.into_inner();
 
         let label_id = map_entity_id(req.id)?;

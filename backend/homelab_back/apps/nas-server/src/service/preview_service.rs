@@ -1,6 +1,6 @@
-use homelab_core::file::{File, FileType};
 use derive_new::new;
 use fast_image_resize::{FilterType, Image, PixelType, ResizeAlg, Resizer};
+use homelab_core::file::{File, FileType};
 use std::num::NonZeroU32;
 use std::path::PathBuf;
 use std::process::Stdio;
@@ -33,18 +33,24 @@ impl PreviewService for PreviewServiceImpl {
                     let f_path = file_path.to_string_lossy().to_string();
                     let p_path = preview_path.to_string_lossy().to_string();
 
-                    let video_result = match Self::try_extract_cover(ffmpeg_binary, &f_path, &p_path).await {
-                        Ok(_) => Ok(()),
-                        Err(_) => {
-                            match Self::extract_frame_gpu(ffmpeg_binary, &f_path, &p_path).await {
-                                Ok(_) => Ok(()),
-                                Err(gpu_err) => {
-                                    eprintln!("GPU Preciew failed for {}: {}. Retrying with CPU", file.id, gpu_err);
-                                    Self::extract_frame_cpu(ffmpeg_binary, &f_path, &p_path).await
+                    let video_result =
+                        match Self::try_extract_cover(ffmpeg_binary, &f_path, &p_path).await {
+                            Ok(_) => Ok(()),
+                            Err(_) => {
+                                match Self::extract_frame_gpu(ffmpeg_binary, &f_path, &p_path).await
+                                {
+                                    Ok(_) => Ok(()),
+                                    Err(gpu_err) => {
+                                        eprintln!(
+                                            "GPU Preciew failed for {}: {}. Retrying with CPU",
+                                            file.id, gpu_err
+                                        );
+                                        Self::extract_frame_cpu(ffmpeg_binary, &f_path, &p_path)
+                                            .await
+                                    }
                                 }
                             }
-                        }
-                    };
+                        };
 
                     Ok(video_result)
                 }
@@ -60,7 +66,7 @@ impl PreviewService for PreviewServiceImpl {
 
                     match Self::generate_pdf_preview(&f_path, &preview_path).await {
                         Ok(_) => Ok(Ok(())),
-                        Err(e) => Ok(Err(e))
+                        Err(e) => Ok(Err(e)),
                     }
                 }
 
@@ -97,17 +103,22 @@ impl PreviewService for PreviewServiceImpl {
 }
 
 impl PreviewServiceImpl {
-
     async fn generate_pdf_preview(input: &str, output_path: &PathBuf) -> Result<(), String> {
         let parent = output_path.parent().ok_or("Invalid parent dir")?;
-        let temp_prefix = output_path.file_stem().ok_or("Invalid temp prefix")?.to_string_lossy();
+        let temp_prefix = output_path
+            .file_stem()
+            .ok_or("Invalid temp prefix")?
+            .to_string_lossy();
         let temp_prefix_path = parent.join(format!("{}_temp", temp_prefix));
 
         let status = Command::new("pdftoppm")
             .arg("-jpeg")
-            .arg("-f").arg("1")
-            .arg("-l").arg("1")
-            .arg("-scale-to").arg("320")
+            .arg("-f")
+            .arg("1")
+            .arg("-l")
+            .arg("1")
+            .arg("-scale-to")
+            .arg("320")
             .arg(input)
             .arg(&temp_prefix_path)
             .stdin(Stdio::null())

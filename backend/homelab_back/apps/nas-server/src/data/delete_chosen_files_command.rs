@@ -3,5 +3,5 @@ use uuid::Uuid;
 
 #[derive(Debug, Deserialize)]
 pub struct DeleteChosenFilesCommand {
-    pub files_ids: Vec<Uuid>
+    pub files_ids: Vec<Uuid>,
 }

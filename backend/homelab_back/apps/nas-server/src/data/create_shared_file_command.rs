@@ -5,5 +5,5 @@ use uuid::Uuid;
 pub struct CreateSharedFileCommand {
     pub user_id: Uuid,
     pub owner_id: Uuid,
-    pub file_id: Uuid
+    pub file_id: Uuid,
 }

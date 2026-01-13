@@ -1,7 +1,7 @@
-use actix_web::HttpResponse;
 use crate::helpers::data_error::DataError;
+use actix_web::HttpResponse;
 
-pub fn map_data_err_to_http (e: DataError) -> HttpResponse {
+pub fn map_data_err_to_http(e: DataError) -> HttpResponse {
     match e {
         DataError::EntityNotFoundException(msg) => HttpResponse::NotFound().body(msg),
         DataError::ValidationError(msg) => HttpResponse::BadRequest().body(msg),

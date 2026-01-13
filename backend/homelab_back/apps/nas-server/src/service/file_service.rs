@@ -1,4 +1,3 @@
-use homelab_core::constants::MB;
 use crate::data::copy_file_command::CopyFileCommand;
 use crate::data::init_file_command::InitFileCommand;
 use crate::data::move_file_command::MoveFileCommand;
@@ -6,23 +5,24 @@ use crate::data::update_file_name_command::UpdateFileNameCommand;
 use crate::db::file_repository::FileRepository;
 use crate::db::folder_repository::FolderRepository;
 use crate::db::global_file_repository::GlobalFileRepository;
-use crate::db::user_repository::UserRepository;
-use homelab_core::file::{File, UploadStatus};
-use homelab_core::folder::Folder;
-use homelab_core::global_file::GlobalFile;
-use homelab_core::user::User;
+use crate::db::storage_profile_repository::StorageProfileRepository;
 use crate::helpers::data_error::DataError;
 use crate::service::preview_service::{PreviewService, PreviewServiceImpl};
 use async_compression::tokio::write::{GzipDecoder, GzipEncoder};
 use async_trait::async_trait;
 use derive_new::new;
+use futures::stream::{self, StreamExt};
+use homelab_core::constants::MB;
+use homelab_core::file::{File, UploadStatus};
+use homelab_core::folder::Folder;
+use homelab_core::global_file::GlobalFile;
+use homelab_core::storage_profile::StorageProfile;
 use std::path::PathBuf;
 use std::sync::Arc;
-use tokio::{fs};
+use tokio::fs;
 use tokio::io::{AsyncWriteExt, BufReader, BufWriter};
 use tokio::sync::mpsc::Receiver;
 use uuid::Uuid;
-use futures::stream::{self, StreamExt};
 
 #[async_trait]
 pub trait FileService: Send + Sync {
@@ -61,7 +61,7 @@ pub trait FileService: Send + Sync {
 pub struct FileServiceImpl {
     file_repo: Arc<dyn FileRepository>,
     folder_repo: Arc<dyn FolderRepository>,
-    user_repo: Arc<dyn UserRepository>,
+    storage_profile_repo: Arc<dyn StorageProfileRepository>,
     storage_path: PathBuf,
     global_file_repo: Arc<dyn GlobalFileRepository>,
 }
@@ -97,17 +97,17 @@ impl FileService for FileServiceImpl {
             return Err(DataError::FileAlreadyExistsError);
         }
 
-        let user: User = self
-            .user_repo
+        let sp: StorageProfile = self
+            .storage_profile_repo
             .get_by_id(command.owner_id)
             .await?
             .ok_or_else(|| DataError::EntityNotFoundException("User".to_string()))?;
 
-        if user.validate_storage_size(command.expected_size) {
+        if sp.validate_storage_size(command.expected_size) {
             let f = File::new(
                 Uuid::new_v4(),
                 command.name,
-                user.id,
+                sp.user_id,
                 folder.id,
                 false,
                 command.expected_size,
@@ -266,13 +266,13 @@ impl FileService for FileServiceImpl {
             .await?
             .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
 
-        let user = self
-            .user_repo
+        let sp = self
+            .storage_profile_repo
             .get_by_id(command.user_id)
             .await?
             .ok_or_else(|| DataError::EntityNotFoundException("User".to_string()))?;
 
-        if !user.validate_storage_size(file.size) {
+        if !sp.validate_storage_size(file.size) {
             return Err(DataError::NoFreeStorageError);
         }
 
@@ -281,7 +281,7 @@ impl FileService for FileServiceImpl {
         let mut new_file = File::new(
             new_file_id,
             format!("{}_copy", file.name.clone()),
-            user.id,
+            sp.user_id,
             command.target_folder_id,
             false,
             file.size,
@@ -367,13 +367,13 @@ impl FileService for FileServiceImpl {
         let size_diff = new_total_bytes - old_size;
 
         if size_diff > 0 {
-            let user = self
-                .user_repo
+            let sp = self
+                .storage_profile_repo
                 .get_by_id(f.owner_id)
                 .await?
                 .ok_or_else(|| DataError::EntityNotFoundException("User".to_string()))?;
 
-            if !user.validate_storage_size(size_diff) {
+            if !sp.validate_storage_size(size_diff) {
                 let _ = tokio::fs::remove_file(&temp_path).await;
                 return Err(DataError::NoFreeStorageError);
             }
@@ -504,24 +504,23 @@ impl FileService for FileServiceImpl {
         if deleted_files.is_empty() {
             return Ok(());
         }
-        
+
         self.remove_deleted_files(deleted_files).await
     }
 
     async fn cleanup_expired_files(&self) -> Result<(), DataError> {
         let expired_files = self.file_repo.get_expired_files().await?;
-        
+
         if expired_files.is_empty() {
-            return Ok(());  
+            return Ok(());
         }
-        
+
         self.remove_deleted_files(expired_files).await
     }
 }
 
 impl FileServiceImpl {
     async fn remove_deleted_files(&self, deleted_files: Vec<File>) -> Result<(), DataError> {
-
         const CONCURRENCY_LIMIT: usize = 10;
 
         let results = stream::iter(deleted_files)
@@ -536,7 +535,7 @@ impl FileServiceImpl {
 
                         match fs::remove_file(gz_path).await {
                             Ok(_) => Ok(file.id),
-                            Err(e2) => Err((file.id, e2))
+                            Err(e2) => Err((file.id, e2)),
                         }
                     }
                     Err(e) => Err((file.id, e)),
@@ -554,7 +553,7 @@ impl FileServiceImpl {
         for res in results {
             match res {
                 Ok(id) => success_results.push(id),
-                Err(e) => error_results.push(e)
+                Err(e) => error_results.push(e),
             }
         }
 

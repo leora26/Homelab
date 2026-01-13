@@ -1,15 +1,15 @@
+use crate::helpers::data_error::DataError;
 use async_trait::async_trait;
+use homelab_core::white_listed_user::WhiteListedUser;
 use sqlx::PgPool;
 use uuid::Uuid;
-use homelab_core::white_listed_user::WhiteListedUser;
-use crate::helpers::data_error::DataError;
 
 #[async_trait]
 pub trait WhiteListedUserRepository: Send + Sync {
-    async fn create (&self, user: WhiteListedUser) -> Result<WhiteListedUser, DataError>;
-    async fn get_all (&self) -> Result<Vec<WhiteListedUser>, DataError>;
-    async fn delete_by_id (&self, user_id: Uuid) -> Result<(), DataError>;
-    async fn get_by_id (&self, user_id: Uuid) -> Result<Option<WhiteListedUser>, DataError>;
+    async fn create(&self, user: WhiteListedUser) -> Result<WhiteListedUser, DataError>;
+    async fn get_all(&self) -> Result<Vec<WhiteListedUser>, DataError>;
+    async fn delete_by_id(&self, user_id: Uuid) -> Result<(), DataError>;
+    async fn get_by_id(&self, user_id: Uuid) -> Result<Option<WhiteListedUser>, DataError>;
 }
 
 pub struct WhiteListedUserRepositoryImpl {
@@ -17,7 +17,9 @@ pub struct WhiteListedUserRepositoryImpl {
 }
 
 impl WhiteListedUserRepositoryImpl {
-    pub fn new (pool: PgPool) -> Self {Self {pool}}
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
+    }
 }
 
 #[async_trait]
@@ -35,9 +37,9 @@ impl WhiteListedUserRepository for WhiteListedUserRepositoryImpl {
             user.full_name,
             user.created_at
         )
-            .fetch_one(&self.pool)
-            .await
-            .map_err(|e| DataError::DatabaseError(e))?;
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(user)
     }
@@ -50,9 +52,9 @@ impl WhiteListedUserRepository for WhiteListedUserRepositoryImpl {
             FROM white_listed_users
             "#
         )
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| DataError::DatabaseError(e))?;
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(users)
     }
@@ -63,9 +65,10 @@ impl WhiteListedUserRepository for WhiteListedUserRepositoryImpl {
             DELETE FROM white_listed_users
             WHERE id = $1
             "#,
-            user_id)
-            .execute(&self.pool)
-            .await?;
+            user_id
+        )
+        .execute(&self.pool)
+        .await?;
 
         Ok(())
     }
@@ -80,9 +83,9 @@ impl WhiteListedUserRepository for WhiteListedUserRepositoryImpl {
             "#,
             user_id
         )
-            .fetch_optional(&self.pool)
-            .await
-            .map_err(|e| DataError::DatabaseError(e))?;
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(user)
     }

@@ -1,18 +1,22 @@
+use crate::helpers::data_error::DataError;
 use async_trait::async_trait;
 use derive_new::new;
+use homelab_core::label::Label;
 use sqlx::PgPool;
 use uuid::Uuid;
-use homelab_core::label::Label;
-use crate::helpers::data_error::DataError;
 
 #[async_trait]
 pub trait LabelRepository: Send + Sync {
-    async fn get_by_id (&self, id: Uuid) -> Result<Option<Label>, DataError>;
-    async fn get_all (&self) -> Result<Vec<Label>, DataError>;
+    async fn get_by_id(&self, id: Uuid) -> Result<Option<Label>, DataError>;
+    async fn get_all(&self) -> Result<Vec<Label>, DataError>;
     async fn create(&self, label: Label) -> Result<Label, DataError>;
     async fn delete(&self, id: Uuid) -> Result<(), DataError>;
     async fn update(&self, label: Label) -> Result<Label, DataError>;
-    async fn get_labels_by_file (&self, file_id: Uuid, owner_id: Uuid) -> Result<Vec<Label>, DataError>;
+    async fn get_labels_by_file(
+        &self,
+        file_id: Uuid,
+        owner_id: Uuid,
+    ) -> Result<Vec<Label>, DataError>;
 }
 
 #[derive(new)]
@@ -31,9 +35,9 @@ impl LabelRepository for LabelRepositoryImpl {
             "#,
             id
         )
-            .fetch_optional(&self.pool)
-            .await
-            .map_err(|e| DataError::DatabaseError(e))?;
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(label)
     }
@@ -45,9 +49,9 @@ impl LabelRepository for LabelRepositoryImpl {
             SELECT id, name, color, owner_id FROM labels
             "#
         )
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| DataError::DatabaseError(e))?;
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(labels)
     }
@@ -65,9 +69,9 @@ impl LabelRepository for LabelRepositoryImpl {
             label.color,
             label.owner_id,
         )
-            .fetch_one(&self.pool)
-            .await
-            .map_err(|e| DataError::DatabaseError(e))?;
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(label)
     }
@@ -100,14 +104,18 @@ impl LabelRepository for LabelRepositoryImpl {
             label.color,
             label.id
         )
-            .fetch_one(&self.pool)
-            .await
-            .map_err(|e| DataError::DatabaseError(e))?;
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(label)
     }
 
-    async fn get_labels_by_file(&self, file_id: Uuid, owner_id: Uuid) -> Result<Vec<Label>, DataError> {
+    async fn get_labels_by_file(
+        &self,
+        file_id: Uuid,
+        owner_id: Uuid,
+    ) -> Result<Vec<Label>, DataError> {
         let labels = sqlx::query_as!(
             Label,
             r#"
@@ -123,9 +131,9 @@ impl LabelRepository for LabelRepositoryImpl {
             file_id,
             owner_id
         )
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| DataError::DatabaseError(e))?;
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(labels)
     }
