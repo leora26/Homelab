@@ -7,6 +7,8 @@ use derive_new::new;
 use homelab_core::user::User;
 use std::sync::Arc;
 use uuid::Uuid;
+use homelab_core::events::UserCreatedEvent;
+use crate::events::rabbitmq::RabbitMqPublisher;
 
 #[async_trait]
 pub trait UserService: Send + Sync {
@@ -20,6 +22,7 @@ pub trait UserService: Send + Sync {
 #[derive(new)]
 pub struct UserServiceImpl {
     user_repo: Arc<dyn UserRepository>,
+    publisher: Arc<RabbitMqPublisher>
 }
 
 #[async_trait]
@@ -44,6 +47,15 @@ impl UserService for UserServiceImpl {
             command.password,
             cleaned_name,
         );
+
+        let event: UserCreatedEvent = UserCreatedEvent::new(
+            u.id,
+            10 * 1024 * 1024 * 1024, // 10GB
+        );
+
+        if let Err(e) = self.publisher.publish(&event).await {
+            eprintln!("Failed to publish event: {:?}", e);
+        }
 
         self.user_repo.create(u).await
     }

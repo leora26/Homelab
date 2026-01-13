@@ -9,3 +9,4 @@ pub mod shared_file;
 pub mod storage_profile;
 pub mod user;
 pub mod white_listed_user;
+pub mod events;

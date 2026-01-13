@@ -11,8 +11,10 @@ use std::env;
 use std::sync::Arc;
 use tonic::transport::Server;
 use tracing_subscriber::EnvFilter;
+use crate::events::rabbitmq::RabbitMqPublisher;
 
 pub mod data;
+pub mod events;
 pub mod db;
 pub mod grpc;
 pub mod handler;
@@ -51,10 +53,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("🚀 Server started successfully at http://127.0.0.1:8081");
 
+    let rabbit_url = std::env::var("RABBITMQ_URL")
+        .unwrap_or_else(|_| "amqp://admin:password@localhost:5672".to_string());
+
+    let publisher = Arc::new(RabbitMqPublisher::new(&rabbit_url).await?);
+
     let user_repo = Arc::new(UserRepositoryImpl::new(pool.clone()));
     let wlu_repo = Arc::new(WhiteListedUserRepositoryImpl::new(pool.clone()));
 
-    let user_service = Arc::new(UserServiceImpl::new(user_repo.clone()));
+    let user_service = Arc::new(UserServiceImpl::new(user_repo.clone(), publisher.clone()));
     let white_listed_user_service = Arc::new(WhiteListedServiceImpl::new(
         wlu_repo.clone(),
         user_repo.clone(),

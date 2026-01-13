@@ -6,6 +6,7 @@ pub mod handler;
 pub mod helpers;
 pub mod jobs;
 pub mod service;
+mod events;
 
 use crate::db::file_label_repository::FileLabelRepositoryImpl;
 use crate::db::file_repository::{FileRepository, FileRepositoryImpl};
@@ -36,6 +37,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tonic::transport::Server;
 use tracing_subscriber::EnvFilter;
+use crate::events::nas_event_handler::NasEventHandler;
+use crate::events::rabbitmq_consumer::RabbitMqConsumer;
+use crate::service::storage_profile_service::StorageProfileServiceImpl;
 
 pub struct AppState {
     pub file_service: Arc<dyn FileService>,
@@ -120,8 +124,22 @@ async fn main() -> Result<(), Box<dyn Error>> {
         file_label_repo.clone(),
         storage_profile_repo.clone(),
     ));
+    let storage_profile_service = Arc::new(StorageProfileServiceImpl::new(storage_profile_repo.clone()));
 
     let _cleanup_scheduler = init_delete_job(file_service.clone()).await;
+
+    let rabbit_url = std::env::var("RABBITMQ_URL")
+        .unwrap_or_else(|_| "amqp://admin:password@localhost:5672".to_string());
+
+    let event_handler = Arc::new(NasEventHandler::new(storage_profile_service.clone()));
+
+    tokio::spawn(async move {
+        let patterns = vec!["user.#", "file.#"];
+
+        if let Err(e) = RabbitMqConsumer::start(&rabbit_url, event_handler, patterns).await {
+            eprintln!("🔥 Consumer died: {}", e);
+        }
+    });
 
     let app_state = web::Data::new(AppState {
         file_service,
