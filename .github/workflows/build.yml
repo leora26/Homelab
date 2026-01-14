@@ -2,19 +2,47 @@ name: Build and Push Docker Image
 
 on:
   push:
-    branches: [ "main" ]
+    branches: 
+      - "main"
+    tags:
+      - "test-*"
     paths:
-      - 'backend/homelab_back/**'
+      - "backend/homelab_back/**"
       - ".github/workflows/build.yml"
-
   workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_BASE_NAME: ${{ github.repository }}
 
 jobs:
-  build-and-push:
+  check-changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      nas: ${{steps.filter.outputs.nas}}
+      user: ${{steps.filter.outputs.user}}
+      libs: ${{steps.filter.outputs.libs}}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            nas:
+              - 'backend/homelab_back/apps/nas-server/**'
+            user:
+              - 'backend/homelab_back/apps/user-management/**'
+            libs:
+              - 'backend/homelab_back/libs/**'
+              - 'backend/homelab_back/Cargo.toml'
+              - 'backend/homelab_back/Cargo.lock'
+
+  build-nas:
+    needs: check-changes
+    if: ${{ needs.check-changes.outputs.nas == 'true' || needs.check-changes.outputs.libs == 'true' }}    
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -24,33 +52,75 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Log in to the Container registry
+      - name: Log in to Container registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Extract metadata (tags, labels) for Docker
+      - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY}}/${{ env.IMAGE_BASE_NAME}}/nas-server
           tags: |
             type=raw,value=latest
             type=sha
 
-      - name: Build and push Docker image
+      - name: Build and push NAS
         uses: docker/build-push-action@v5
         with:
           context: ./backend/homelab_back
-          file: ./backend/homelab_back/Dockerfile
+          file: ./backend/homelab_back/apps/nas-server/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  build-user:
+    needs: check-changes
+    if: ${{ needs.check-changes.outputs.user == 'true' || needs.check-changes.outputs.libs == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+        
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_BASE_NAME }}/user-management
+          tags: |
+            type=raw,value=latest
+            type=sha
+
+      - name: Build and push User
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend/homelab_back
+          file: ./backend/homelab_back/apps/user-management/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          

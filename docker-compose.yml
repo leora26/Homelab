@@ -13,6 +13,22 @@ services:
     networks:
       - nas_net
 
+  # 🐰
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: nas_mq
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: password
+    ports:
+      - "5672:5672"   # Main communication port
+      - "15672:15672" # Management Dashboard (Browser)
+    volumes:
+      - ./rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - nas_net
+
 networks:
   nas_net:
     driver: bridge

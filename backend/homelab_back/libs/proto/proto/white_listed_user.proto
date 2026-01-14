@@ -1,0 +1,33 @@
+syntax = "proto3";
+package user;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+import "user.proto";
+import "types.proto";
+
+service WhiteListedUserService {
+  rpc GetAll (google.protobuf.Empty) returns (WhiteListedUserList);
+  rpc Create (CreateWhiteListedUserRequest) returns (WhiteListedUserResponse);
+  rpc Confirm (ConfirmWhiteListedUsersRequest) returns (UserResponse);
+}
+
+message WhiteListedUserList {
+  repeated WhiteListedUserResponse users = 1;
+}
+
+message WhiteListedUserResponse {
+  common.EntityId id = 1;
+  string email = 2;
+  string full_name = 3;
+  google.protobuf.Timestamp created_at = 4;
+}
+
+message CreateWhiteListedUserRequest {
+  string email = 1;
+  string full_name = 2;
+}
+
+message ConfirmWhiteListedUsersRequest {
+  common.EntityId id = 1;
+}

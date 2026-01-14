@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE users\n            SET email = $1, full_name = $2, role = $3, password_hash = $4\n            WHERE id = $5\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        {
+          "Custom": {
+            "name": "user_role",
+            "kind": {
+              "Enum": [
+                "user",
+                "admin"
+              ]
+            }
+          }
+        },
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a1e7b738d2756a6302bacf95aad6d970b1b3d973a5ad6cc3a23ecf39010e8147"
+}

@@ -1,0 +1,6 @@
+target/
+.git/
+.idea/
+postgres_data/
+rabbitmq_data/
+*.log
