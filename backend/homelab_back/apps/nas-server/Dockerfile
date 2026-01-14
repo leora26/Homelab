@@ -1,4 +1,4 @@
-FROM lukemathwalker/cargo-chef:latest-rust-1.75 AS chef
+FROM lukemathwalker/cargo-chef:latest-rust-1.83 AS chef
 WORKDIR /app
 
 FROM chef AS planner
@@ -8,7 +8,7 @@ RUN cargo chef prepare --recipe-path recipe.json --bin nas-server
 
 FROM chef AS builder
 COPY --from=planner /app/recipe.json recipe.json
-
+RUN echo "=== RECIPE DUMP ===" && cat recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json --bin nas-server
 COPY . .
 RUN cargo build --release --bin nas-server
