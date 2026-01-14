@@ -3,6 +3,8 @@ WORKDIR /app
 
 FROM chef AS planner
 COPY . .
+RUN echo "=== CONTENT OF ROOT CARGO.TOML ===" && cat Cargo.toml
+RUN echo "=== FILE STRUCTURE ===" && ls -R apps
 RUN cargo chef prepare --recipe-path recipe.json --bin nas-server
 
 FROM chef AS builder
