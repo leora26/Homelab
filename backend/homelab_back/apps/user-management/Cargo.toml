@@ -1,0 +1,25 @@
+[package]
+name = "user-management"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+homelab-core = { path = "../../libs/core" }
+homelab-proto = { path = "../../libs/proto" }
+
+tokio = { workspace = true }
+tonic = { workspace = true }
+sqlx = { workspace = true }
+dotenvy = { workspace = true }
+actix-web = { workspace = true }
+tracing-subscriber = {workspace = true}
+async-trait = {workspace = true}
+derive-new = {workspace = true}
+uuid = {workspace = true}
+serde= {workspace = true}
+thiserror = {workspace = true}
+tracing = {workspace = true}
+prost-types = {workspace = true}
+lapin = { workspace = true }
+deadpool-lapin = { workspace = true }
+serde_json = {workspace = true}

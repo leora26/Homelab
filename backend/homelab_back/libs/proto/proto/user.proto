@@ -1,0 +1,45 @@
+syntax = "proto3";
+package user;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+import "types.proto";
+
+service UserService {
+  rpc GetByEmail (GetUserByEmailRequest) returns (UserResponse);
+  rpc GetAll (google.protobuf.Empty) returns (UserList);
+  rpc Create (CreateUserRequest) returns (UserResponse);
+  rpc UpdatePassword (UpdatePasswordRequest) returns (google.protobuf.Empty);
+}
+
+enum Role {
+  ROLE_USER = 0;
+  ROLE_ADMIN = 1;
+}
+
+message UserResponse {
+  common.EntityId id = 1;
+  string email = 2;
+  string full_name = 3;
+  Role role = 4;
+  google.protobuf.Timestamp created_at = 7;
+}
+
+message UserList {
+  repeated UserResponse users = 1;
+}
+
+message GetUserByEmailRequest {
+  string email = 1;
+}
+
+message CreateUserRequest {
+  string email = 1;
+  string full_name = 2;
+  string password = 3;
+}
+
+message UpdatePasswordRequest {
+  common.EntityId id = 1;
+  string password = 2;
+}

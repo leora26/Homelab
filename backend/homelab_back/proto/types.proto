@@ -1,6 +1,0 @@
-syntax = "proto3";
-package nas;
-
-message EntityId {
-  string value = 1;
-}

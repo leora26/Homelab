@@ -1,0 +1,72 @@
+syntax = "proto3";
+package nas;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+import "user.proto";
+import "types.proto";
+import "file.proto";
+
+service FolderService {
+  rpc GetFolder (GetFolderRequest) returns (FolderResponse);
+  rpc GetSubfolders (GetAllSubfoldersRequest) returns (FolderResponseList);
+  rpc DeleteFolder (DeleteFolderRequest) returns (google.protobuf.Empty);
+  rpc GetFilesForFolder (GetFilesForFolderRequest) returns (FileListResponse);
+  rpc RenameFolder (RenameFolderRequest) returns (FolderResponse);
+  rpc SearchFolder (SearchFolderRequest) returns (FolderResponseList);
+  rpc DeleteChosenFolders (DeleteAllFolderRequest) returns (google.protobuf.Empty);
+  rpc MoveFolder (MoveFolderRequest) returns (FolderResponse);
+}
+
+message FolderResponse {
+  common.EntityId id = 1;
+  common.EntityId parent_folder_id = 2;
+  string name = 3;
+  common.EntityId owner_id = 4;
+  google.protobuf.Timestamp created_at = 5;
+}
+
+message FolderResponseList {
+  repeated FolderResponse folders = 1;
+}
+
+message GetFolderRequest {
+  common.EntityId id = 1;
+}
+
+message GetAllSubfoldersRequest {
+  common.EntityId id = 1;
+}
+
+message DeleteFolderRequest {
+  common.EntityId id = 1;
+}
+
+message DeleteAllFolderRequest {
+  repeated common.EntityId id = 1;
+}
+
+message GetFilesForFolderRequest {
+  common.EntityId id = 1;
+}
+
+message CreateFolderRequest {
+  common.EntityId parent_folder_id = 1;
+  string name = 2;
+  common.EntityId owner_id = 3;
+}
+
+
+message RenameFolderRequest {
+  common.EntityId id = 1;
+  string new_name = 2;
+}
+
+message SearchFolderRequest {
+  string query = 1;
+}
+
+message MoveFolderRequest {
+  common.EntityId target_folder = 1;
+  common.EntityId folder_id = 2;
+}

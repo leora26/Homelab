@@ -1,0 +1,32 @@
+[package]
+name = "nas-server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+homelab-core = { path = "../../libs/core" }
+homelab-proto = { path = "../../libs/proto" }
+
+tokio = { workspace = true }
+tonic = { workspace = true }
+sqlx = { workspace = true }
+dotenvy = { workspace = true }
+actix-web = { workspace = true }
+tracing-subscriber = {workspace = true}
+async-trait = {workspace = true}
+derive-new = {workspace = true}
+uuid = {workspace = true}
+async-compression = {workspace = true}
+futures = {workspace = true}
+async-recursion = {workspace = true}
+serde= {workspace = true}
+thiserror = {workspace = true}
+tracing = {workspace = true}
+actix-files = {workspace = true}
+prost-types = {workspace = true}
+tokio-cron-scheduler = {workspace = true}
+fast_image_resize = {workspace = true}
+image = {workspace = true}
+lapin = { workspace = true }
+deadpool-lapin = { workspace = true }
+serde_json = {workspace = true}
