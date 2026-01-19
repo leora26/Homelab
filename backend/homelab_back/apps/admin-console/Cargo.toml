@@ -1,5 +1,5 @@
 [package]
-name = "user-management"
+name = "admin-console"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,18 +7,17 @@ edition = "2021"
 homelab-core = { path = "../../libs/core" }
 homelab-proto = { path = "../../libs/proto" }
 
+prost-types = {workspace = true}
 tokio = { workspace = true }
 tonic = { workspace = true }
 sqlx = { workspace = true }
-dotenvy = { workspace = true }
-actix-web = { workspace = true }
-tracing-subscriber = {workspace = true}
 async-trait = {workspace = true}
+actix-web = {workspace = true}
 derive-new = {workspace = true}
 uuid = {workspace = true}
-serde= {workspace = true}
 thiserror = {workspace = true}
 tracing = {workspace = true}
-prost-types = {workspace = true}
 lapin = { workspace = true }
 serde_json = {workspace = true}
+tracing-subscriber = {workspace = true}
+dotenvy = {workspace = true}

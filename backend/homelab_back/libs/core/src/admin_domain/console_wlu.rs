@@ -1,13 +1,16 @@
-use derive_new::new;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-#[derive(Debug, Serialize, Deserialize, Clone, FromRow, new)]
-pub struct WhiteListedUser {
+#[derive(Debug, Serialize, Deserialize, Clone, FromRow)]
+pub struct ConsoleWhiteListedUser {
     pub id: Uuid,
+    pub user_id: Uuid,
     pub email: String,
     pub full_name: String,
+    pub is_confirmed: bool,
     pub created_at: OffsetDateTime,
+    pub updated_at: OffsetDateTime,
+    pub version: i16
 }

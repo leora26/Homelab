@@ -215,6 +215,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 
 [[package]]
+name = "admin-console"
+version = "0.1.0"
+dependencies = [
+ "actix-web",
+ "async-trait",
+ "derive-new",
+ "dotenvy",
+ "homelab-core",
+ "homelab-proto",
+ "lapin",
+ "prost-types",
+ "serde_json",
+ "sqlx",
+ "thiserror 2.0.17",
+ "tokio",
+ "tonic",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
 name = "aes"
 version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4465,7 +4487,6 @@ version = "0.1.0"
 dependencies = [
  "actix-web",
  "async-trait",
- "deadpool-lapin",
  "derive-new",
  "dotenvy",
  "homelab-core",

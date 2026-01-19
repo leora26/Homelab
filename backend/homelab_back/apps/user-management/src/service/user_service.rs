@@ -49,7 +49,10 @@ impl UserService for UserServiceImpl {
         );
 
         let event: UserCreatedEvent = UserCreatedEvent::new(
-            u.id,
+            u.id.clone(),
+            u.email.clone(),
+            u.full_name.clone(),
+            u.created_at.clone(),
             10 * 1024 * 1024 * 1024, // 10GB
         );
 

@@ -1,6 +1,5 @@
 pub mod data;
 pub mod db;
-pub mod exception;
 pub mod grpc;
 pub mod handler;
 pub mod helpers;

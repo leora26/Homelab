@@ -1,9 +1,13 @@
 use crate::data::create_white_listed_user_command::CreateWhiteListedUserCommand;
 use crate::db::user_repository::UserRepository;
 use crate::db::white_listed_user_repository::WhiteListedUserRepository;
+use crate::events::rabbitmq::RabbitMqPublisher;
 use crate::helpers::data_error::DataError;
 use crate::helpers::user_email::UserEmail;
+use actix_web::cookie::time::OffsetDateTime;
 use async_trait::async_trait;
+use derive_new::new;
+use homelab_core::events::{UserConfirmedEvent, WhiteListedUserCreatedEvent};
 use homelab_core::user::User;
 use homelab_core::white_listed_user::WhiteListedUser;
 use std::sync::Arc;
@@ -19,21 +23,11 @@ pub trait WhiteListedUserService: Send + Sync {
     ) -> Result<WhiteListedUser, DataError>;
 }
 
+#[derive(new)]
 pub struct WhiteListedServiceImpl {
     white_listed_repo: Arc<dyn WhiteListedUserRepository>,
     user_repo: Arc<dyn UserRepository>,
-}
-
-impl WhiteListedServiceImpl {
-    pub fn new(
-        white_listed_repo: Arc<dyn WhiteListedUserRepository>,
-        user_repo: Arc<dyn UserRepository>,
-    ) -> Self {
-        Self {
-            white_listed_repo,
-            user_repo,
-        }
-    }
+    publisher: Arc<RabbitMqPublisher>,
 }
 
 #[async_trait]
@@ -55,6 +49,12 @@ impl WhiteListedUserService for WhiteListedServiceImpl {
             DataError::EntityCreationError(format!("White listed user failed creation: {}", e))
         })?;
 
+        let event: UserConfirmedEvent = UserConfirmedEvent::new(user_id.clone());
+
+        if let Err(r) = self.publisher.publish(&event).await {
+            eprintln!("Failed to publish event: {:?}", r);
+        }
+
         self.white_listed_repo.delete_by_id(user_id).await?;
 
         Ok(saved_user)
@@ -69,7 +69,23 @@ impl WhiteListedUserService for WhiteListedServiceImpl {
 
         let clean_name = command.full_name.trim().to_string();
 
-        let u = WhiteListedUser::new(Uuid::new_v4(), valid_email.into_inner(), clean_name);
+        let u = WhiteListedUser::new(
+            Uuid::new_v4(),
+            valid_email.into_inner(),
+            clean_name,
+            OffsetDateTime::now_utc(),
+        );
+
+        let event: WhiteListedUserCreatedEvent = WhiteListedUserCreatedEvent::new(
+            u.id.clone(),
+            u.email.clone(),
+            u.full_name.clone(),
+            u.created_at.clone(),
+        );
+
+        if let Err(e) = self.publisher.publish(&event).await {
+            eprintln!("Failed to publish event: {:?}", e);
+        }
 
         self.white_listed_repo.create(u).await
     }
