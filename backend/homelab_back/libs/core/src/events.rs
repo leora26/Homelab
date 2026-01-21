@@ -23,6 +23,21 @@ impl DomainEvent for UserCreatedEvent {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, new)]
+pub struct UserUpdatedEvent {
+    pub user_id: Uuid,
+    pub email: String,
+    pub full_name: String,
+    pub allowed_storage: i64,
+    pub taken_storage: i64
+}
+
+impl DomainEvent for UserUpdatedEvent {
+    fn routing_key (&self) -> &'static str {
+        "user.updated"
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, new)]
 pub struct WhiteListedUserCreatedEvent {
     pub user_id: Uuid,
     pub email: String,
@@ -47,16 +62,5 @@ pub struct WhiteListedUserUpdated {
 impl DomainEvent for WhiteListedUserUpdated {
     fn routing_key(&self) -> &'static str {
         "whitelisted.user.updated"
-    }
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, new)]
-pub struct UserConfirmedEvent {
-    pub user_id: Uuid,
-}
-
-impl DomainEvent for UserConfirmedEvent {
-    fn routing_key(&self) -> &'static str {
-        "whitelisted.user.confirmed"
     }
 }

@@ -16,6 +16,7 @@ pub trait WluService: Send + Sync {
     async fn get_all_confirmed(&self) -> Result<Vec<ConsoleWhiteListedUser>, DataError>;
     async fn get_all_unconfirmed(&self) -> Result<Vec<ConsoleWhiteListedUser>, DataError>;
     async fn get_latest(&self, user_id: Uuid) -> Result<ConsoleWhiteListedUser, DataError>;
+    async fn get_versions(&self, user_id: Uuid) -> Result<Vec<ConsoleWhiteListedUser>, DataError>;
 }
 
 #[derive(new)]
@@ -73,5 +74,9 @@ impl WluService for WluServiceImpl {
 
     async fn get_latest(&self, user_id: Uuid) -> Result<ConsoleWhiteListedUser, DataError> {
         self.wlu_repo.get_latest_wlu(user_id).await
+    }
+
+    async fn get_versions(&self, user_id: Uuid) -> Result<Vec<ConsoleWhiteListedUser>, DataError> {
+        self.wlu_repo.get_all_wlu_versions(user_id).await
     }
 }

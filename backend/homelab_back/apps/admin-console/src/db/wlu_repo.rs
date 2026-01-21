@@ -12,6 +12,7 @@ pub trait WluRepo: Send + Sync {
     async fn get_confirmed_wlu(&self) -> Result<Vec<ConsoleWhiteListedUser>, DataError>;
     async fn get_not_confirmed_wlu(&self) -> Result<Vec<ConsoleWhiteListedUser>, DataError>;
     async fn get_latest_wlu(&self, user_id: Uuid) -> Result<ConsoleWhiteListedUser, DataError>;
+    async fn get_all_wlu_versions(&self, user_id: Uuid) -> Result<Vec<ConsoleWhiteListedUser>, DataError>;
 }
 
 #[derive(new)]
@@ -136,6 +137,32 @@ impl WluRepo for WluRepoImpl {
             user_id
         )
             .fetch_one(&self.pool)
+            .await
+            .map_err(|e| DataError::DatabaseError(e))?;
+
+        Ok(wlu)
+    }
+
+    async fn get_all_wlu_versions(&self, user_id: Uuid) -> Result<Vec<ConsoleWhiteListedUser>, DataError> {
+        let wlu = sqlx::query_as!(
+            ConsoleWhiteListedUser,
+            r#"
+            SELECT
+                id,
+                user_id,
+                email,
+                full_name,
+                is_confirmed,
+                created_at,
+                updated_at,
+                version
+            FROM console_wlu
+            WHERE user_id = $1
+            ORDER BY version DESC
+            "#,
+            user_id
+        )
+            .fetch_all(&self.pool)
             .await
             .map_err(|e| DataError::DatabaseError(e))?;
 

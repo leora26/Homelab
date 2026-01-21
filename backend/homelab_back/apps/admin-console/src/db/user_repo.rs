@@ -10,6 +10,7 @@ pub trait UserRepo: Send + Sync {
     async fn log_user(&self, user: ConsoleUser) -> Result<(), DataError>;
     async fn get_users(&self) -> Result<Vec<ConsoleUser>, DataError>;
     async fn get_latest_user(&self, user_id: Uuid) -> Result<ConsoleUser, DataError>;
+    async fn get_all_user_versions(&self, user_id: Uuid) -> Result<Vec<ConsoleUser>, DataError>;
 }
 
 #[derive(new)]
@@ -101,5 +102,32 @@ impl UserRepo for UserRepoImpl {
         .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(user)
+    }
+
+    async fn get_all_user_versions(&self, user_id: Uuid) -> Result<Vec<ConsoleUser>, DataError> {
+        let users = sqlx::query_as!(
+            ConsoleUser,
+            r#"
+            SELECT
+                id,
+                user_id,
+                email,
+                full_name,
+                allowed_storage,
+                taken_storage,
+                created_at,
+                updated_at,
+                version
+            FROM console_users
+            WHERE user_id = $1
+            ORDER BY version DESC
+            "#,
+            user_id
+        )
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| DataError::DatabaseError(e))?;
+
+        Ok(users)
     }
 }

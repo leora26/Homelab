@@ -1,9 +1,10 @@
+use derive_new::new;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-#[derive(Debug, Serialize, Deserialize, Clone, FromRow)]
+#[derive(Debug, Serialize, Deserialize, Clone, FromRow, new)]
 pub struct ConsoleUser {
     pub id: Uuid,
     pub user_id: Uuid,
