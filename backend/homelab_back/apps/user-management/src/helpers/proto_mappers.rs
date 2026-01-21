@@ -7,9 +7,7 @@ use uuid::Uuid;
 
 pub fn map_wlu_to_proto(u: WhiteListedUser) -> WhiteListedUserResponse {
     WhiteListedUserResponse {
-        id: Some(EntityId {
-            value: u.id.to_string(),
-        }),
+        id: Option::from(map_id_to_proto(u.id)),
         email: u.email,
         full_name: u.full_name,
         created_at: Some(prost_types::Timestamp {
@@ -21,9 +19,7 @@ pub fn map_wlu_to_proto(u: WhiteListedUser) -> WhiteListedUserResponse {
 
 pub fn map_user_to_proto(u: User) -> UserResponse {
     UserResponse {
-        id: Some(EntityId {
-            value: u.id.to_string(),
-        }),
+        id: Option::from(map_id_to_proto(u.id)),
         email: u.email,
         full_name: u.full_name,
         role: match u.role {
@@ -34,6 +30,12 @@ pub fn map_user_to_proto(u: User) -> UserResponse {
             seconds: u.created_at.unix_timestamp(),
             nanos: u.created_at.nanosecond() as i32,
         }),
+    }
+}
+
+pub fn map_id_to_proto(id: Uuid) -> EntityId {
+    EntityId {
+        value: id.to_string(),
     }
 }
 

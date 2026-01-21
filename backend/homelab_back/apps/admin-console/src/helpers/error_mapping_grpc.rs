@@ -10,7 +10,6 @@ impl From<DataError> for Status {
             DataError::DatabaseError(_) => Status::internal("A database error occurred"),
             DataError::WhiteListedUserDoesNotExist(msg) => Status::not_found(msg),
             DataError::UnknownError(msg) => Status::internal(msg),
-            _ => Status::internal("Internal server error"),
         }
     }
 }
