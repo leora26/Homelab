@@ -1155,39 +1155,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d7a1e2f27636f116493b8b860f5546edb47c8d8f8ea73e1d2a20be88e28d1fea"
 
 [[package]]
-name = "deadpool"
-version = "0.12.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0be2b1d1d6ec8d846f05e137292d0b89133caf95ef33695424c09568bdd39b1b"
-dependencies = [
- "deadpool-runtime",
- "lazy_static",
- "num_cpus",
- "tokio",
-]
-
-[[package]]
-name = "deadpool-lapin"
-version = "0.13.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76f6b4a42f555c2269105ac6d25ed3a6bf8e2221d7ab7bbef72efb002a28a353"
-dependencies = [
- "deadpool",
- "lapin",
- "tokio-executor-trait",
- "tokio-reactor-trait",
-]
-
-[[package]]
-name = "deadpool-runtime"
-version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "092966b41edc516079bdf31ec78a2e0588d1d0c08f78b91d8307215928642b2b"
-dependencies = [
- "tokio",
-]
-
-[[package]]
 name = "der"
 version = "0.7.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1866,11 +1833,13 @@ dependencies = [
 name = "homelab-core"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "derive-new",
+ "lapin",
  "serde",
  "sqlx",
- "thiserror 2.0.17",
  "time",
+ "tonic",
  "uuid",
 ]
 
@@ -2494,7 +2463,6 @@ dependencies = [
  "async-compression",
  "async-recursion",
  "async-trait",
- "deadpool-lapin",
  "derive-new",
  "dotenvy",
  "fast_image_resize",
@@ -2502,7 +2470,6 @@ dependencies = [
  "homelab-core",
  "homelab-proto",
  "image",
- "lapin",
  "prost-types",
  "serde",
  "serde_json",
@@ -2638,16 +2605,6 @@ checksum = "071dfc062690e90b734c0b2273ce72ad0ffa95f0c74596bc250dcfd960262841"
 dependencies = [
  "autocfg",
  "libm",
-]
-
-[[package]]
-name = "num_cpus"
-version = "1.17.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "91df4bbde75afed763b708b7eee1e8e7651e02d97f6d5dd763e89367e957b23b"
-dependencies = [
- "hermit-abi",
- "libc",
 ]
 
 [[package]]
@@ -4209,17 +4166,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tokio-executor-trait"
-version = "2.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6278565f9fd60c2d205dfbc827e8bb1236c2b1a57148708e95861eff7a6b3bad"
-dependencies = [
- "async-trait",
- "executor-trait 2.1.2",
- "tokio",
-]
-
-[[package]]
 name = "tokio-macros"
 version = "2.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4228,21 +4174,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "tokio-reactor-trait"
-version = "3.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "910df5b7ec6f1ac0b06ae5500382ffb4785b7fef218ddf065f18ca3fb67bc7fc"
-dependencies = [
- "async-trait",
- "futures-core",
- "futures-io",
- "reactor-trait 2.8.0",
- "tokio",
- "tokio-stream",
- "tokio-util",
 ]
 
 [[package]]
@@ -4264,7 +4195,6 @@ checksum = "9ae9cec805b01e8fc3fd2fe289f89149a9b66dd16786abd8b19cfa7b48cb0098"
 dependencies = [
  "bytes",
  "futures-core",
- "futures-io",
  "futures-sink",
  "pin-project-lite",
  "tokio",

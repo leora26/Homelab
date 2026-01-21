@@ -11,6 +11,8 @@ use crate::db::wlu_repo::WluRepoImpl;
 pub mod data;
 pub mod db;
 pub mod helpers;
+pub mod events;
+pub mod service;
 
 pub struct AppState {
 }

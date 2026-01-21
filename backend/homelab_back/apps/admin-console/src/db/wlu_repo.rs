@@ -25,14 +25,16 @@ impl WluRepo for WluRepoImpl {
         sqlx::query_as!(
             ConsoleWhiteListedUser,
             r#"
-            INSERT INTO console_wlu (id, user_id, email, full_name, created_at, version)
-            VALUES ($1, $2, $3, $4, $5, $6)
+            INSERT INTO console_wlu (id, user_id, email, full_name, is_confirmed, created_at, updated_at, version)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             "#,
             wlu.id,
             wlu.user_id,
             wlu.email,
             wlu.full_name,
+            wlu.is_confirmed,
             wlu.created_at,
+            wlu.updated_at,
             wlu.version
         )
             .execute(&self.pool)

@@ -37,7 +37,7 @@ use std::sync::Arc;
 use tonic::transport::Server;
 use tracing_subscriber::EnvFilter;
 use crate::events::nas_event_handler::NasEventHandler;
-use crate::events::rabbitmq_consumer::RabbitMqConsumer;
+use homelab_core::helpers::rabbitmq_consumer::RabbitMqConsumer;
 use crate::service::storage_profile_service::StorageProfileServiceImpl;
 
 pub struct AppState {
