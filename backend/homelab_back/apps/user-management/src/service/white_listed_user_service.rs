@@ -7,7 +7,7 @@ use crate::helpers::user_email::UserEmail;
 use actix_web::cookie::time::OffsetDateTime;
 use async_trait::async_trait;
 use derive_new::new;
-use homelab_core::events::{WhiteListedUserCreatedEvent, WhiteListedUserUpdated};
+use homelab_core::events::{WhiteListedUserCreatedEvent, WhiteListedUserUpdatedEvent};
 use homelab_core::user::User;
 use homelab_core::white_listed_user::WhiteListedUser;
 use std::sync::Arc;
@@ -49,7 +49,7 @@ impl WhiteListedUserService for WhiteListedServiceImpl {
             DataError::EntityCreationError(format!("White listed user failed creation: {}", e))
         })?;
 
-        let event = WhiteListedUserUpdated::new(
+        let event = WhiteListedUserUpdatedEvent::new(
             wlu.id,
             wlu.email,
             wlu.full_name,

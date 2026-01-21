@@ -9,7 +9,7 @@ use crate::db::user_repo::UserRepo;
 use crate::helpers::data_error::DataError;
 
 #[async_trait]
-pub trait UserService {
+pub trait UserService: Send + Sync {
     async fn log_new_user(&self, event: UserCreatedEvent) -> Result<(), DataError>;
     async fn log_updated_user(&self, event: UserUpdatedEvent) -> Result<(), DataError>;
     async fn get_all_users(&self) -> Result<Vec<ConsoleUser>, DataError>;

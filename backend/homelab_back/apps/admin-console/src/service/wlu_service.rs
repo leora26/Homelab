@@ -4,14 +4,14 @@ use async_trait::async_trait;
 use derive_new::new;
 use uuid::Uuid;
 use homelab_core::admin_domain::console_wlu::ConsoleWhiteListedUser;
-use homelab_core::events::{WhiteListedUserCreatedEvent, WhiteListedUserUpdated};
+use homelab_core::events::{WhiteListedUserCreatedEvent, WhiteListedUserUpdatedEvent};
 use crate::db::wlu_repo::WluRepo;
 use crate::helpers::data_error::DataError;
 
 #[async_trait]
 pub trait WluService: Send + Sync {
     async fn log_new_wlu(&self, event: WhiteListedUserCreatedEvent) -> Result<(), DataError>;
-    async fn log_updated_wlu(&self, event: WhiteListedUserUpdated) -> Result<(), DataError>;
+    async fn log_updated_wlu(&self, event: WhiteListedUserUpdatedEvent) -> Result<(), DataError>;
     async fn get_all(&self) -> Result<Vec<ConsoleWhiteListedUser>, DataError>;
     async fn get_all_confirmed(&self) -> Result<Vec<ConsoleWhiteListedUser>, DataError>;
     async fn get_all_unconfirmed(&self) -> Result<Vec<ConsoleWhiteListedUser>, DataError>;
@@ -41,7 +41,7 @@ impl WluService for WluServiceImpl {
         self.wlu_repo.log_wlu(logged_wlu).await
     }
 
-    async fn log_updated_wlu(&self, event: WhiteListedUserUpdated) -> Result<(), DataError> {
+    async fn log_updated_wlu(&self, event: WhiteListedUserUpdatedEvent) -> Result<(), DataError> {
         let logged_wlu = self.wlu_repo.get_latest_wlu(event.user_id)
             .await
             .map_err(|_| DataError::EntityNotFoundException("ConsoleWhitelistedUser".to_string()))?;
