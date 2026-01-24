@@ -6,6 +6,7 @@ migrate:
 prepare:
     cd apps/nas-server; cargo sqlx prepare
     cd apps/user-management; cargo sqlx prepare
+    cd apps/admin-console; cargo sqlx prepare
 
 build:
     cargo build

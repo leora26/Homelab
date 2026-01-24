@@ -21,5 +21,4 @@ thiserror = {workspace = true}
 tracing = {workspace = true}
 prost-types = {workspace = true}
 lapin = { workspace = true }
-deadpool-lapin = { workspace = true }
 serde_json = {workspace = true}

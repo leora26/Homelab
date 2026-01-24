@@ -65,6 +65,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let white_listed_user_service = Arc::new(WhiteListedServiceImpl::new(
         wlu_repo.clone(),
         user_repo.clone(),
+        publisher.clone()
     ));
 
     let app_state = web::Data::new(AppState {

@@ -25,9 +25,12 @@ services:
       - "5672:5672"   # Main communication port
       - "15672:15672" # Management Dashboard (Browser)
     volumes:
-      - ./rabbitmq_data:/var/lib/rabbitmq
+      - rabbitmq_data:/var/lib/rabbitmq
     networks:
       - nas_net
+
+volumes:
+  rabbitmq_data:
 
 networks:
   nas_net:

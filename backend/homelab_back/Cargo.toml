@@ -2,6 +2,7 @@
 members = [
     "apps/nas-server",
     "apps/user-management",
+    "apps/admin-console",
     "libs/core",
     "libs/proto"
 ]

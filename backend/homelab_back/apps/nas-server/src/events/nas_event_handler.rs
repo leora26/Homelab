@@ -2,7 +2,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use derive_new::new;
 use homelab_core::events::UserCreatedEvent;
-use crate::events::event_handler::EventHandler;
+use homelab_core::helpers::event_handler::EventHandler;
 use crate::service::storage_profile_service::StorageProfileService;
 
 #[derive(new)]

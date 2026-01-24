@@ -9,3 +9,7 @@ pub mod nas {
 pub mod user {
     tonic::include_proto!("user");
 }
+
+pub mod admin {
+    tonic::include_proto!("admin");
+}

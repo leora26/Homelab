@@ -1,0 +1,36 @@
+syntax = "proto3";
+package admin;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+import "types.proto";
+
+service ConsoleUserService {
+  rpc GetAll(google.protobuf.Empty) returns (ConsoleUserListResponse);
+  rpc GetLatestVersion (GetLatestUserVersionRequest) returns (ConsoleUserResponse);
+  rpc GetAllUserVersions (GetAllUserVersionsRequest) returns (ConsoleUserListResponse);
+}
+
+message ConsoleUserResponse {
+  common.EntityId id = 1;
+  common.EntityId user_id = 2;
+  string email = 3;
+  string full_name = 4;
+  int64 allowed_storage = 5;
+  int64 taken_storage = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+  int32 version = 9;
+}
+
+message ConsoleUserListResponse {
+  repeated ConsoleUserResponse users = 1;
+}
+
+message GetLatestUserVersionRequest {
+  common.EntityId user_id = 1;
+}
+
+message GetAllUserVersionsRequest {
+  common.EntityId user_id = 1;
+}

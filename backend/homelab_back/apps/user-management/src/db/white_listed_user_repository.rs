@@ -1,5 +1,6 @@
 use crate::helpers::data_error::DataError;
 use async_trait::async_trait;
+use derive_new::new;
 use homelab_core::white_listed_user::WhiteListedUser;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -12,14 +13,9 @@ pub trait WhiteListedUserRepository: Send + Sync {
     async fn get_by_id(&self, user_id: Uuid) -> Result<Option<WhiteListedUser>, DataError>;
 }
 
+#[derive(new)]
 pub struct WhiteListedUserRepositoryImpl {
     pool: PgPool,
-}
-
-impl WhiteListedUserRepositoryImpl {
-    pub fn new(pool: PgPool) -> Self {
-        Self { pool }
-    }
 }
 
 #[async_trait]
