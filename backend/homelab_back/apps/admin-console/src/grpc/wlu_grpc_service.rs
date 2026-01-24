@@ -2,7 +2,7 @@ use std::sync::Arc;
 use derive_new::new;
 use tonic::{Request, Response, Status};
 use homelab_proto::admin::console_wlu_service_server::ConsoleWluService;
-use homelab_proto::admin::{ConsoleWluListResponse, ConsoleWluResponse, GetAllWluVersionsRequest, GetLatestWluRequest};
+use homelab_proto::admin::{ConfirmWluRequest, ConsoleWluListResponse, ConsoleWluResponse, GetAllWluVersionsRequest, GetLatestWluRequest};
 use crate::AppState;
 use crate::helpers::proto_mappers::{map_console_wlu, map_entity_id};
 
@@ -56,5 +56,15 @@ impl ConsoleWluService for GrpcWluService {
         let proto_users = users.into_iter().map(map_console_wlu).collect();
 
         Ok(Response::new(ConsoleWluListResponse {users: proto_users}))
+    }
+
+    async fn confirm_wlu(&self, request: Request<ConfirmWluRequest>) -> Result<Response<()>, Status> {
+        let req = request.into_inner();
+
+        let user_id = map_entity_id(req.id)?;
+
+        let _ = self.app_state.wlu_client.confirm(user_id).await;
+
+        Ok(Response::new(()))
     }
 }

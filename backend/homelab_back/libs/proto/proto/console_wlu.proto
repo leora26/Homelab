@@ -11,6 +11,7 @@ service ConsoleWluService {
   rpc GetAllUnconfirmed (google.protobuf.Empty) returns (ConsoleWluListResponse);
   rpc GetLatestVersion (GetLatestWluRequest) returns (ConsoleWluResponse);
   rpc GetAllWluVersion (GetAllWluVersionsRequest) returns (ConsoleWluListResponse);
+  rpc ConfirmWlu(ConfirmWluRequest) returns (google.protobuf.Empty);
 }
 
 message ConsoleWluResponse {
@@ -34,4 +35,8 @@ message GetLatestWluRequest {
 
 message GetAllWluVersionsRequest {
   common.EntityId user_id = 1;
+}
+
+message ConfirmWluRequest {
+  common.EntityId id = 1;
 }

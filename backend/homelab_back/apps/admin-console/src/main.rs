@@ -12,6 +12,7 @@ use homelab_proto::admin::console_wlu_service_server::ConsoleWluServiceServer;
 use crate::db::user_repo::UserRepoImpl;
 use crate::db::wlu_repo::WluRepoImpl;
 use crate::events::nas_event_handler::NasEventHandler;
+use crate::grpc::clients::wlu_grpc_client::{WluRemoteClient, WluRemoteClientImpl};
 use crate::grpc::user_grpc_service::GrpcUserService;
 use crate::grpc::wlu_grpc_service::GrpcWluService;
 use crate::service::user_service::{UserService, UserServiceImpl};
@@ -26,7 +27,8 @@ pub mod grpc;
 
 pub struct AppState {
     user_service: Arc<dyn UserService>,
-    wlu_service: Arc<dyn WluService>
+    wlu_service: Arc<dyn WluService>,
+    wlu_client: Arc<dyn WluRemoteClient>
 }
 
 #[actix_web::main]
@@ -42,9 +44,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .to_lowercase();
 
     let database_url = env::var("DATABASE_URL").expect("DATABSE_URL must be set in .env file");
-
-    // let root_folder_path =
-    //     env::var("ROOT_FOLDER_PATH").expect("ROOT_FOLDER_PATH must be set in .env file");
 
     let pool = PgPoolOptions::new()
         .max_connections(5)
@@ -79,9 +78,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
     });
 
+    let wlu_service_url = env::var("USER_SERVICE_URL")
+        .unwrap_or_else(|_| "http://localhost:50052".to_string());
+
+    println!("Connecting to User Service at {}...", wlu_service_url);
+    let wlu_client_impl = WluRemoteClientImpl::connect(wlu_service_url).await?;
+
     let app_state = web::Data::new(AppState {
         user_service,
-        wlu_service
+        wlu_service,
+        wlu_client: Arc::new(wlu_client_impl),
     });
 
     let grpc_addr: std::net::SocketAddr = "[::1]:50053".parse().unwrap();
