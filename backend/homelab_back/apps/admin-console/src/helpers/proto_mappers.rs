@@ -1,9 +1,50 @@
 use homelab_core::admin_domain::console_user::ConsoleUser;
-use homelab_proto::admin::{ConsoleUserResponse, ConsoleWluResponse};
+use homelab_proto::admin::{ConsoleFileResponse, ConsoleUserResponse, ConsoleWluResponse};
 use homelab_proto::common::EntityId;
 use tonic::Status;
 use uuid::Uuid;
+use homelab_core::admin_domain::console_file::ConsoleFile;
 use homelab_core::admin_domain::console_wlu::ConsoleWhiteListedUser;
+use homelab_core::file::{FileType as DomainFileType, UploadStatus as DomainUploadStatus};
+use homelab_proto::nas::{
+    FileType as ProtoFileType, UploadStatus as ProtoUploadStatus,
+};
+
+
+pub fn map_console_file(f: ConsoleFile) -> ConsoleFileResponse {
+    ConsoleFileResponse {
+        id: Option::from(map_id_to_proto(f.id)),
+        file_id: Option::from(map_id_to_proto(f.file_id)),
+        file_type: match f.file_type {
+            DomainFileType::Image => ProtoFileType::Image,
+            DomainFileType::Text => ProtoFileType::Text,
+            DomainFileType::Video => ProtoFileType::Video,
+            DomainFileType::Audio => ProtoFileType::Audio,
+            DomainFileType::Pdf => ProtoFileType::Pdf,
+            DomainFileType::Unknown => ProtoFileType::Unknown,
+        } as i32,
+        is_deleted: f.is_deleted,
+        ttl: Some(prost_types::Timestamp {
+            seconds: f.ttl.unwrap().unix_timestamp(),
+            nanos: f.ttl.unwrap().nanosecond() as i32,
+        }),
+        size: f.size,
+        upload_status: match f.upload_status {
+            DomainUploadStatus::Failed => ProtoUploadStatus::Failed,
+            DomainUploadStatus::Completed => ProtoUploadStatus::Completed,
+            DomainUploadStatus::Pending => ProtoUploadStatus::Pending,
+        } as i32,
+        created_at: Some(prost_types::Timestamp {
+            seconds: f.created_at.unix_timestamp(),
+            nanos: f.created_at.nanosecond() as i32,
+        }),
+        updated_at: Some(prost_types::Timestamp {
+            seconds: f.updated_at.unix_timestamp(),
+            nanos: f.updated_at.nanosecond() as i32,
+        }),
+        version: f.version as i32
+    }
+}
 
 pub fn map_console_user(u: ConsoleUser) -> ConsoleUserResponse {
     ConsoleUserResponse {

@@ -14,14 +14,15 @@ service ConsoleFileService {
 
 message ConsoleFileResponse {
   common.EntityId id = 1;
-  nas.FileType file_type = 2;
-  bool is_deleted = 3;
-  google.protobuf.Timestamp ttl = 4;
-  int64 size = 5;
-  nas.UploadStatus upload_status = 6;
-  google.protobuf.Timestamp created_at = 7;
-  google.protobuf.Timestamp updated_at = 8;
-  int32 version = 9;
+  common.EntityId file_id = 2;
+  nas.FileType file_type = 3;
+  bool is_deleted = 4;
+  google.protobuf.Timestamp ttl = 5;
+  int64 size = 6;
+  nas.UploadStatus upload_status = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+  int32 version = 10;
 }
 
 message ConsoleFileListResponse {

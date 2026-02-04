@@ -9,12 +9,14 @@ use tracing_subscriber::EnvFilter;
 use homelab_core::helpers::rabbitmq_consumer::RabbitMqConsumer;
 use homelab_proto::admin::console_user_service_server::ConsoleUserServiceServer;
 use homelab_proto::admin::console_wlu_service_server::ConsoleWluServiceServer;
+use crate::db::file_repo::FileRepoImpl;
 use crate::db::user_repo::UserRepoImpl;
 use crate::db::wlu_repo::WluRepoImpl;
 use crate::events::homelab_event_handler::HomelabEventHandler;
 use crate::grpc::clients::wlu_grpc_client::{WluRemoteClient, WluRemoteClientImpl};
 use crate::grpc::user_grpc_service::GrpcUserService;
 use crate::grpc::wlu_grpc_service::GrpcWluService;
+use crate::service::file_service::{FileService, FileServiceImpl};
 use crate::service::user_service::{UserService, UserServiceImpl};
 use crate::service::wlu_service::{WluService, WluServiceImpl};
 
@@ -28,6 +30,7 @@ pub mod grpc;
 pub struct AppState {
     user_service: Arc<dyn UserService>,
     wlu_service: Arc<dyn WluService>,
+    file_service: Arc<dyn FileService>,
     wlu_client: Arc<dyn WluRemoteClient>
 }
 
@@ -58,9 +61,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let console_user_repo = Arc::new(UserRepoImpl::new(pool.clone()));
     let console_wlu_repo = Arc::new(WluRepoImpl::new(pool.clone()));
+    let console_file_repo = Arc::new(FileRepoImpl::new(pool.clone()));
 
     let user_service = Arc::new(UserServiceImpl::new(console_user_repo.clone()));
     let wlu_service = Arc::new(WluServiceImpl::new(console_wlu_repo.clone()));
+    let file_service = Arc::new(FileServiceImpl::new(console_file_repo.clone()));
 
     let rabbit_url = env::var("RABBITMQ_URL")
         .unwrap_or_else(|_| "amqp://admin:password@localhost:5672".to_string());
@@ -87,6 +92,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let app_state = web::Data::new(AppState {
         user_service,
         wlu_service,
+        file_service,
         wlu_client: Arc::new(wlu_client_impl),
     });
 
