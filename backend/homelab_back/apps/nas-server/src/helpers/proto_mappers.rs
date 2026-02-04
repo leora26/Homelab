@@ -36,6 +36,14 @@ pub fn map_file_to_proto(f: File) -> FileResponse {
             DomainUploadStatus::Completed => ProtoUploadStatus::Completed,
             DomainUploadStatus::Pending => ProtoUploadStatus::Pending,
         } as i32,
+        created_at: Some(prost_types::Timestamp {
+            seconds: f.created_at.unix_timestamp(),
+            nanos: f.created_at.nanosecond() as i32,
+        }),
+        updated_at: Some(prost_types::Timestamp {
+            seconds: f.updated_at.unix_timestamp(),
+            nanos: f.updated_at.nanosecond() as i32,
+        })
     }
 }
 

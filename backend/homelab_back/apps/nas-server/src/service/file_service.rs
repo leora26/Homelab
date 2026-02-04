@@ -19,6 +19,7 @@ use homelab_core::global_file::GlobalFile;
 use homelab_core::storage_profile::StorageProfile;
 use std::path::PathBuf;
 use std::sync::Arc;
+use sqlx::types::time::OffsetDateTime;
 use tokio::fs;
 use tokio::io::{AsyncWriteExt, BufReader, BufWriter};
 use tokio::sync::mpsc::Receiver;
@@ -111,6 +112,8 @@ impl FileService for FileServiceImpl {
                 folder.id,
                 false,
                 command.expected_size,
+                OffsetDateTime::now_utc(),
+                OffsetDateTime::now_utc(),
             );
 
             if command.is_global {
@@ -285,6 +288,8 @@ impl FileService for FileServiceImpl {
             command.target_folder_id,
             false,
             file.size,
+            file.created_at,
+            OffsetDateTime::now_utc(),
         );
 
         new_file.upload_status = UploadStatus::Completed;

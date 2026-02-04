@@ -11,7 +11,7 @@ use homelab_proto::admin::console_user_service_server::ConsoleUserServiceServer;
 use homelab_proto::admin::console_wlu_service_server::ConsoleWluServiceServer;
 use crate::db::user_repo::UserRepoImpl;
 use crate::db::wlu_repo::WluRepoImpl;
-use crate::events::nas_event_handler::NasEventHandler;
+use crate::events::homelab_event_handler::HomelabEventHandler;
 use crate::grpc::clients::wlu_grpc_client::{WluRemoteClient, WluRemoteClientImpl};
 use crate::grpc::user_grpc_service::GrpcUserService;
 use crate::grpc::wlu_grpc_service::GrpcWluService;
@@ -65,7 +65,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let rabbit_url = env::var("RABBITMQ_URL")
         .unwrap_or_else(|_| "amqp://admin:password@localhost:5672".to_string());
 
-    let event_handler = Arc::new(NasEventHandler::new(
+    let event_handler = Arc::new(HomelabEventHandler::new(
         user_service.clone(),
         wlu_service.clone()
     ));

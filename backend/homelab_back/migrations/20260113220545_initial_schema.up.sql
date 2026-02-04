@@ -62,7 +62,9 @@ CREATE TABLE files
     is_deleted       BOOLEAN       NOT NULL DEFAULT FALSE,
     ttl              TIMESTAMPTZ,
     size             BIGINT        NOT NULL,
-    upload_status    upload_status NOT NULL
+    upload_status    upload_status NOT NULL,
+    created_at       TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    updated_at       TIMESTAMPTZ   NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE action_logs

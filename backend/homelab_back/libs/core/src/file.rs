@@ -54,6 +54,8 @@ pub struct File {
     pub ttl: Option<OffsetDateTime>,
     pub size: i64,
     pub upload_status: UploadStatus,
+    pub created_at: OffsetDateTime,
+    pub updated_at: OffsetDateTime
 }
 
 impl File {
@@ -68,6 +70,8 @@ impl File {
         parent_folder_id: Uuid,
         is_deleted: bool,
         size: i64,
+        created_at: OffsetDateTime,
+        updated_at: OffsetDateTime
     ) -> Self {
         let file_type: FileType = File::get_file_type(&name);
 
@@ -81,6 +85,8 @@ impl File {
             ttl: None,
             size,
             upload_status: UploadStatus::Pending,
+            created_at,
+            updated_at
         }
     }
 

@@ -7,13 +7,13 @@ use crate::service::user_service::UserService;
 use crate::service::wlu_service::WluService;
 
 #[derive(new)]
-pub struct NasEventHandler {
+pub struct HomelabEventHandler {
     user_service: Arc<dyn UserService>,
     wlu_service: Arc<dyn WluService>
 }
 
 #[async_trait]
-impl EventHandler for NasEventHandler {
+impl EventHandler for HomelabEventHandler {
     async fn handle(&self, routing_key: &str, data: &[u8]) -> Result<(), String> {
         match routing_key {
             "user.created" => {

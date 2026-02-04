@@ -1,0 +1,27 @@
+syntax = "proto3";
+package admin;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+import "types.proto";
+import "file.proto";
+
+service ConsoleFileService {
+  
+}
+
+message ConsoleFileResponse {
+  common.EntityId id = 1;
+  nas.FileType file_type = 2;
+  bool is_deleted = 3;
+  google.protobuf.Timestamp ttl = 4;
+  int64 size = 5;
+  nas.UploadStatus upload_status = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+  int32 version = 9;
+}
+
+message ConsoleFileListResponse {
+  repeated ConsoleFileResponse files = 1;
+}
