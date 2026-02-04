@@ -7,7 +7,9 @@ import "types.proto";
 import "file.proto";
 
 service ConsoleFileService {
-  
+  rpc GetAll(google.protobuf.Empty) returns (ConsoleFileListResponse);
+  rpc GetLatestVersion (GetLatestFileVersionRequest) returns (ConsoleFileResponse);
+  rpc GetAllFileVersions (GetAllFileVersionsRequest) returns (ConsoleFileListResponse);
 }
 
 message ConsoleFileResponse {
@@ -24,4 +26,12 @@ message ConsoleFileResponse {
 
 message ConsoleFileListResponse {
   repeated ConsoleFileResponse files = 1;
+}
+
+message GetLatestFileVersionRequest {
+  common.EntityId file_id = 1;
+}
+
+message GetAllFileVersionsRequest {
+  common.EntityId file_id = 1;
 }

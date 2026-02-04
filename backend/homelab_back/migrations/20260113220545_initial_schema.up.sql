@@ -132,5 +132,19 @@ CREATE TABLE console_wlu
     version      SMALLINT    NOT NULL DEFAULT 1
 );
 
+CREATE TABLE console_file
+(
+    id            UUID PRIMARY KEY,
+    file_id       UUID          NOT NULL,
+    file_type     file_type     NOT NULL,
+    is_deleted    BOOLEAN       NOT NULL DEFAULT FALSE,
+    ttl           TIMESTAMPTZ,
+    size          BIGINT        NOT NULL,
+    upload_status upload_status NOT NULL,
+    created_at    TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    updated_at    TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    version       SMALLINT      NOT NULL DEFAULT 1
+);
+
 CREATE INDEX idx_file_labels_label_id ON file_labels (label_id);
 CREATE INDEX idx_file_labels_file_id ON file_labels (file_id);
