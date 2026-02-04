@@ -72,7 +72,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let event_handler = Arc::new(HomelabEventHandler::new(
         user_service.clone(),
-        wlu_service.clone()
+        wlu_service.clone(),
+        file_service.clone(),
     ));
 
     tokio::spawn(async move {

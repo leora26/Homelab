@@ -86,7 +86,6 @@ impl DomainEvent for FileUploadedEvent {
 #[derive(Deserialize, Serialize, Debug, Clone, new)]
 pub struct FileUpdatedEvent {
     pub file_id: Uuid,
-    pub file_type: FileType,
     pub is_deleted: bool,
     pub ttl: Option<OffsetDateTime>,
     pub size: i64,

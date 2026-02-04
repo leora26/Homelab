@@ -24,6 +24,8 @@ use tokio::fs;
 use tokio::io::{AsyncWriteExt, BufReader, BufWriter};
 use tokio::sync::mpsc::Receiver;
 use uuid::Uuid;
+use homelab_core::events::{FileUpdatedEvent, FileUploadedEvent};
+use crate::events::rabbitmq::RabbitMqPublisher;
 
 #[async_trait]
 pub trait FileService: Send + Sync {
@@ -65,6 +67,7 @@ pub struct FileServiceImpl {
     storage_profile_repo: Arc<dyn StorageProfileRepository>,
     storage_path: PathBuf,
     global_file_repo: Arc<dyn GlobalFileRepository>,
+    publisher: Arc<RabbitMqPublisher>
 }
 
 #[async_trait]
@@ -121,6 +124,20 @@ impl FileService for FileServiceImpl {
                 let global_file = GlobalFile::new(Uuid::new_v4(), original);
 
                 self.global_file_repo.save(global_file).await?;
+            }
+            
+            let event: FileUploadedEvent = FileUploadedEvent::new(
+                f.id.clone(),
+                f.file_type.clone(),
+                f.is_deleted.clone(),
+                f.ttl.clone(),
+                f.size.clone(),
+                f.upload_status.clone(),
+                f.created_at.clone(),
+            );
+            
+            if let Err(e) = self.publisher.publish(&event).await {
+                eprintln!("Failed to publish event: {:?}", e);
             }
 
             self.file_repo.save(f).await
@@ -191,9 +208,21 @@ impl FileService for FileServiceImpl {
         f.update_status(UploadStatus::Completed);
         self.file_repo.update(f.clone()).await?;
 
+        let event: FileUpdatedEvent = FileUpdatedEvent::new(
+            f.id.clone(),
+            f.is_deleted.clone(),
+            f.ttl.clone(),
+            f.size.clone(),
+            f.upload_status.clone(),
+        );
+        
+        if let Err(e) = self.publisher.publish(&event).await {
+            eprintln!("Failed to publish event: {:?}", e);
+        }
+        
         // After the file has been uploaded we need to create a preview of this file
         PreviewServiceImpl::spawn_generation(f, self.storage_path.clone());
-
+        
         Ok(())
     }
 
@@ -222,6 +251,18 @@ impl FileService for FileServiceImpl {
 
         file.set_as_undeleted();
 
+        let event: FileUpdatedEvent = FileUpdatedEvent::new(
+            file.id.clone(),
+            file.is_deleted.clone(),
+            file.ttl.clone(),
+            file.size.clone(),
+            file.upload_status.clone(),
+        );
+
+        if let Err(e) = self.publisher.publish(&event).await {
+            eprintln!("Failed to publish event: {:?}", e);
+        }
+
         self.file_repo.update(file).await
     }
 
@@ -244,6 +285,18 @@ impl FileService for FileServiceImpl {
             .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
 
         file.set_as_deleted();
+
+        let event: FileUpdatedEvent = FileUpdatedEvent::new(
+            file.id.clone(),
+            file.is_deleted.clone(),
+            file.ttl.clone(),
+            file.size.clone(),
+            file.upload_status.clone(),
+        );
+
+        if let Err(e) = self.publisher.publish(&event).await {
+            eprintln!("Failed to publish event: {:?}", e);
+        }
 
         let _ = self.file_repo.update(file).await?;
 
@@ -341,7 +394,7 @@ impl FileService for FileServiceImpl {
 
         let temp_path = parent.join(format!("{}.tmp", f.id));
 
-        let file_handle = tokio::fs::File::create(&temp_path)
+        let file_handle = fs::File::create(&temp_path)
             .await
             .map_err(|e| DataError::IOError(e.to_string()))?;
 
@@ -390,6 +443,19 @@ impl FileService for FileServiceImpl {
         }
 
         f.update_size(new_total_bytes);
+        
+        let event: FileUpdatedEvent = FileUpdatedEvent::new(
+            f.id.clone(),
+            f.is_deleted.clone(),
+            f.ttl.clone(),
+            f.size.clone(),
+            f.upload_status.clone(),
+        );
+
+        if let Err(e) = self.publisher.publish(&event).await {
+            eprintln!("Failed to publish event: {:?}", e);
+        }
+        
         self.file_repo.update(f).await?;
 
         Ok(())

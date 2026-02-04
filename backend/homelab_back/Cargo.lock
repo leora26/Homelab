@@ -2470,6 +2470,7 @@ dependencies = [
  "homelab-core",
  "homelab-proto",
  "image",
+ "lapin",
  "prost-types",
  "serde",
  "serde_json",
