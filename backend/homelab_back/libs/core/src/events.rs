@@ -89,7 +89,7 @@ pub struct FileUpdatedEvent {
     pub file_type: FileType,
     pub is_deleted: bool,
     pub ttl: Option<OffsetDateTime>,
-    
+    pub size: i64,
     pub upload_status: UploadStatus,
 }
 
