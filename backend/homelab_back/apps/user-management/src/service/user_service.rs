@@ -1,14 +1,14 @@
 use crate::data::create_user_command::CreateUserCommand;
 use crate::db::user_repository::UserRepository;
+use crate::events::rabbitmq::RabbitMqPublisher;
 use crate::helpers::data_error::DataError;
 use crate::helpers::user_email::UserEmail;
 use async_trait::async_trait;
 use derive_new::new;
+use homelab_core::events::{UserCreatedEvent, UserUpdatedEvent};
 use homelab_core::user::User;
 use std::sync::Arc;
 use uuid::Uuid;
-use homelab_core::events::UserCreatedEvent;
-use crate::events::rabbitmq::RabbitMqPublisher;
 
 #[async_trait]
 pub trait UserService: Send + Sync {
@@ -17,12 +17,13 @@ pub trait UserService: Send + Sync {
     async fn create(&self, command: CreateUserCommand) -> Result<User, DataError>;
     async fn get_by_id(&self, id: Uuid) -> Result<Option<User>, DataError>;
     async fn update_password(&self, id: Uuid, pass: &str) -> Result<(), DataError>;
+    async fn toggle_blocked(&self, id: Uuid, blocked: bool) -> Result<(), DataError>;
 }
 
 #[derive(new)]
 pub struct UserServiceImpl {
     user_repo: Arc<dyn UserRepository>,
-    publisher: Arc<RabbitMqPublisher>
+    publisher: Arc<RabbitMqPublisher>,
 }
 
 #[async_trait]
@@ -74,6 +75,33 @@ impl UserService for UserServiceImpl {
             })?;
 
         user.set_password(pass);
+
+        self.user_repo.save(user).await?;
+
+        Ok(())
+    }
+
+    async fn toggle_blocked(&self, id: Uuid, blocked: bool) -> Result<(), DataError> {
+        let mut user =
+            self.user_repo.get_by_id(id).await?.ok_or_else(|| {
+                DataError::EntityNotFoundException(format!("User not found: {}", id))
+            })?;
+
+        user.toggle_blocked(blocked);
+
+        let event: UserUpdatedEvent = UserUpdatedEvent::new(
+            user.id.clone(),
+            Some(user.email.clone()),
+            Some(user.full_name.clone()),
+
+            None,
+            None,
+            user.is_blocked.clone(),
+        );
+
+        if let Err(e) = self.publisher.publish(&event).await {
+            eprintln!("Failed to publish event: {:?}", e);
+        }
 
         self.user_repo.save(user).await?;
 

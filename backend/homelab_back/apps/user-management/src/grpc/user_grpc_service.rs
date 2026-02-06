@@ -3,9 +3,7 @@ use crate::helpers::proto_mappers::{map_entity_id, map_user_to_proto};
 use crate::AppState;
 use derive_new::new;
 use homelab_proto::user::user_service_server::UserService;
-use homelab_proto::user::{
-    CreateUserRequest, GetUserByEmailRequest, UpdatePasswordRequest, UserList, UserResponse,
-};
+use homelab_proto::user::{CreateUserRequest, GetUserByEmailRequest, ToggleBlockStatusRequest, UpdatePasswordRequest, UserList, UserResponse};
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
 
@@ -67,5 +65,9 @@ impl UserService for GrpcUserService {
             .await?;
 
         Ok(Response::new(()))
+    }
+
+    async fn toggle_b_lock_state(&self, request: Request<ToggleBlockStatusRequest>) -> Result<Response<()>, Status> {
+        todo!()
     }
 }

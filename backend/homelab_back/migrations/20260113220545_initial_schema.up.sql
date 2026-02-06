@@ -25,14 +25,16 @@ CREATE TABLE users
     full_name     TEXT UNIQUE NOT NULL,
     password_hash TEXT        NOT NULL,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    role          user_role   NOT NULL
+    role          user_role   NOT NULL,
+    is_blocked    BOOL        NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE storage_profiles
 (
     user_id         UUID PRIMARY KEY REFERENCES users (id) ON DELETE CASCADE,
     allowed_storage BIGINT NOT NULL DEFAULT 10737418240, -- Default 10GB
-    taken_storage   BIGINT NOT NULL DEFAULT 0
+    taken_storage   BIGINT NOT NULL DEFAULT 0,
+    is_blocked      BOOL   NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE white_listed_users
@@ -117,7 +119,8 @@ CREATE TABLE console_users
     taken_storage   BIGINT      NOT NULL DEFAULT 0,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    version         SMALLINT    NOT NULL DEFAULT 1
+    version         SMALLINT    NOT NULL DEFAULT 1,
+    is_blocked      BOOL        NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE console_wlu

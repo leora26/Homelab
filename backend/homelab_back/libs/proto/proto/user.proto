@@ -10,6 +10,7 @@ service UserService {
   rpc GetAll (google.protobuf.Empty) returns (UserList);
   rpc Create (CreateUserRequest) returns (UserResponse);
   rpc UpdatePassword (UpdatePasswordRequest) returns (google.protobuf.Empty);
+  rpc ToggleBLockState (ToggleBlockStatusRequest) returns (google.protobuf.Empty);
 }
 
 enum Role {
@@ -42,4 +43,9 @@ message CreateUserRequest {
 message UpdatePasswordRequest {
   common.EntityId id = 1;
   string password = 2;
+}
+
+message ToggleBlockStatusRequest {
+  common.EntityId id = 1;
+  bool is_blocked = 2;
 }
