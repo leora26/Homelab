@@ -22,7 +22,7 @@ message UserResponse {
   string email = 2;
   string full_name = 3;
   Role role = 4;
-  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp created_at = 5;
 }
 
 message UserList {

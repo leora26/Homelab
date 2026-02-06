@@ -1,11 +1,11 @@
 use std::sync::Arc;
-use crate::events::event_handler::EventHandler;
 use lapin::{
     options::{BasicAckOptions, BasicConsumeOptions, QueueBindOptions, QueueDeclareOptions, ExchangeDeclareOptions},
     types::FieldTable,
     Connection, ConnectionProperties, Result, ExchangeKind,
 };
 use tonic::codegen::tokio_stream::StreamExt;
+use crate::helpers::event_handler::EventHandler;
 
 pub struct RabbitMqConsumer;
 

@@ -1,6 +1,5 @@
 pub mod data;
 pub mod db;
-pub mod exception;
 pub mod grpc;
 pub mod handler;
 pub mod helpers;
@@ -38,7 +37,8 @@ use std::sync::Arc;
 use tonic::transport::Server;
 use tracing_subscriber::EnvFilter;
 use crate::events::nas_event_handler::NasEventHandler;
-use crate::events::rabbitmq_consumer::RabbitMqConsumer;
+use homelab_core::helpers::rabbitmq_consumer::RabbitMqConsumer;
+use crate::events::rabbitmq::RabbitMqPublisher;
 use crate::service::storage_profile_service::StorageProfileServiceImpl;
 
 pub struct AppState {
@@ -92,6 +92,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
+    let rabbit_url = std::env::var("RABBITMQ_URL")
+        .unwrap_or_else(|_| "amqp://admin:password@localhost:5672".to_string());
+
+    let publisher = Arc::new(RabbitMqPublisher::new(&rabbit_url).await?);
+
     let file_repo = Arc::new(FileRepositoryImpl::new(pool.clone()));
     let storage_profile_repo = Arc::new(StorageProfileRepositoryImpl::new(pool.clone()));
     let folder_repo = Arc::new(FolderRepositoryImpl::new(pool.clone()));
@@ -107,6 +112,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         storage_profile_repo.clone(),
         root_path.to_path_buf(),
         global_file_repo.clone(),
+        publisher
     ));
     let shared_file_service = Arc::new(SharedFileServiceImpl::new(
         share_file_repo.clone(),

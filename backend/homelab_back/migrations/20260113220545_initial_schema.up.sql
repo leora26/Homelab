@@ -20,12 +20,12 @@ CREATE TYPE upload_status AS ENUM (
 
 CREATE TABLE users
 (
-    id              UUID PRIMARY KEY,
-    email           TEXT UNIQUE NOT NULL,
-    full_name       TEXT UNIQUE NOT NULL,
-    password_hash   TEXT        NOT NULL,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    role            user_role   NOT NULL
+    id            UUID PRIMARY KEY,
+    email         TEXT UNIQUE NOT NULL,
+    full_name     TEXT UNIQUE NOT NULL,
+    password_hash TEXT        NOT NULL,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    role          user_role   NOT NULL
 );
 
 CREATE TABLE storage_profiles
@@ -62,7 +62,9 @@ CREATE TABLE files
     is_deleted       BOOLEAN       NOT NULL DEFAULT FALSE,
     ttl              TIMESTAMPTZ,
     size             BIGINT        NOT NULL,
-    upload_status    upload_status NOT NULL
+    upload_status    upload_status NOT NULL,
+    created_at       TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    updated_at       TIMESTAMPTZ   NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE action_logs
@@ -105,5 +107,44 @@ CREATE TABLE file_labels
     PRIMARY KEY (file_id, label_id)
 );
 
-CREATE INDEX idx_file_labels_label_id ON file_labels(label_id);
-CREATE INDEX idx_file_labels_file_id ON file_labels(file_id);
+CREATE TABLE console_users
+(
+    id              UUID PRIMARY KEY,
+    user_id         UUID        NOT NULL,
+    email           TEXT UNIQUE NOT NULL,
+    full_name       TEXT UNIQUE NOT NULL,
+    allowed_storage BIGINT      NOT NULL DEFAULT 10737418240,
+    taken_storage   BIGINT      NOT NULL DEFAULT 0,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    version         SMALLINT    NOT NULL DEFAULT 1
+);
+
+CREATE TABLE console_wlu
+(
+    id           UUID PRIMARY KEY,
+    user_id      UUID        NOT NULL,
+    email        TEXT UNIQUE NOT NULL,
+    full_name    TEXT        NOT NULL,
+    is_confirmed BOOL        NOT NULL DEFAULT FALSE,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    version      SMALLINT    NOT NULL DEFAULT 1
+);
+
+CREATE TABLE console_file
+(
+    id            UUID PRIMARY KEY,
+    file_id       UUID          NOT NULL,
+    file_type     file_type     NOT NULL,
+    is_deleted    BOOLEAN       NOT NULL DEFAULT FALSE,
+    ttl           TIMESTAMPTZ,
+    size          BIGINT        NOT NULL,
+    upload_status upload_status NOT NULL,
+    created_at    TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    updated_at    TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    version       SMALLINT      NOT NULL DEFAULT 1
+);
+
+CREATE INDEX idx_file_labels_label_id ON file_labels (label_id);
+CREATE INDEX idx_file_labels_file_id ON file_labels (file_id);

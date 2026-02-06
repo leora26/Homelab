@@ -1,0 +1,38 @@
+syntax = "proto3";
+package admin;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+import "types.proto";
+import "file.proto";
+
+service ConsoleFileService {
+  rpc GetAll(google.protobuf.Empty) returns (ConsoleFileListResponse);
+  rpc GetLatestVersion (GetLatestFileVersionRequest) returns (ConsoleFileResponse);
+  rpc GetAllFileVersions (GetAllFileVersionsRequest) returns (ConsoleFileListResponse);
+}
+
+message ConsoleFileResponse {
+  common.EntityId id = 1;
+  common.EntityId file_id = 2;
+  nas.FileType file_type = 3;
+  bool is_deleted = 4;
+  google.protobuf.Timestamp ttl = 5;
+  int64 size = 6;
+  nas.UploadStatus upload_status = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+  int32 version = 10;
+}
+
+message ConsoleFileListResponse {
+  repeated ConsoleFileResponse files = 1;
+}
+
+message GetLatestFileVersionRequest {
+  common.EntityId file_id = 1;
+}
+
+message GetAllFileVersionsRequest {
+  common.EntityId file_id = 1;
+}

@@ -13,16 +13,10 @@ use uuid::Uuid;
 
 pub fn map_file_to_proto(f: File) -> FileResponse {
     FileResponse {
-        id: Some(EntityId {
-            value: f.id.to_string(),
-        }),
+        id: Option::from(map_id_to_proto(f.id)),
         name: f.name,
-        owner_id: Some(EntityId {
-            value: f.owner_id.to_string(),
-        }),
-        parent_folder_id: Some(EntityId {
-            value: f.parent_folder_id.to_string(),
-        }),
+        owner_id: Option::from(map_id_to_proto(f.owner_id)),
+        parent_folder_id: Option::from(map_id_to_proto(f.parent_folder_id)),
         file_type: match f.file_type {
             DomainFileType::Image => ProtoFileType::Image,
             DomainFileType::Text => ProtoFileType::Text,
@@ -42,6 +36,14 @@ pub fn map_file_to_proto(f: File) -> FileResponse {
             DomainUploadStatus::Completed => ProtoUploadStatus::Completed,
             DomainUploadStatus::Pending => ProtoUploadStatus::Pending,
         } as i32,
+        created_at: Some(prost_types::Timestamp {
+            seconds: f.created_at.unix_timestamp(),
+            nanos: f.created_at.nanosecond() as i32,
+        }),
+        updated_at: Some(prost_types::Timestamp {
+            seconds: f.updated_at.unix_timestamp(),
+            nanos: f.updated_at.nanosecond() as i32,
+        })
     }
 }
 

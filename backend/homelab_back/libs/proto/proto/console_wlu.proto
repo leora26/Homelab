@@ -1,0 +1,42 @@
+syntax = "proto3";
+package admin;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+import "types.proto";
+
+service ConsoleWluService {
+  rpc GetAllWlu (google.protobuf.Empty) returns (ConsoleWluListResponse);
+  rpc GetAllConfirmed (google.protobuf.Empty) returns (ConsoleWluListResponse);
+  rpc GetAllUnconfirmed (google.protobuf.Empty) returns (ConsoleWluListResponse);
+  rpc GetLatestVersion (GetLatestWluRequest) returns (ConsoleWluResponse);
+  rpc GetAllWluVersion (GetAllWluVersionsRequest) returns (ConsoleWluListResponse);
+  rpc ConfirmWlu(ConfirmWluRequest) returns (google.protobuf.Empty);
+}
+
+message ConsoleWluResponse {
+  common.EntityId id = 1;
+  common.EntityId user_id = 2;
+  string email = 3;
+  string full_name = 4;
+  bool is_confirmed = 5;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+  int32 version = 9;
+}
+
+message ConsoleWluListResponse {
+  repeated ConsoleWluResponse users = 1;
+}
+
+message GetLatestWluRequest {
+  common.EntityId user_id = 1;
+}
+
+message GetAllWluVersionsRequest {
+  common.EntityId user_id = 1;
+}
+
+message ConfirmWluRequest {
+  common.EntityId id = 1;
+}

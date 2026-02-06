@@ -8,6 +8,8 @@ serde = { workspace = true }
 sqlx = { workspace = true }
 uuid = { workspace = true }
 time = { workspace = true }
-thiserror = {workspace = true}
+async-trait = {workspace = true}
+tonic = {workspace = true}
+lapin = {workspace = true}
 
-derive-new = "0.7.0"
+derive-new = {workspace = true}

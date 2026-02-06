@@ -39,7 +39,7 @@ impl FileRepository for FileRepositoryImpl {
         let file = sqlx::query_as!(
         File,
             r#"
-            SELECT id, name, owner_id, parent_folder_id, file_type as "file_type: _", is_deleted, ttl, size, upload_status as "upload_status: _"
+            SELECT id, name, owner_id, parent_folder_id, file_type as "file_type: _", is_deleted, ttl, size, upload_status as "upload_status: _", created_at, updated_at
             FROM files
             WHERE id = $1 AND is_deleted = FALSE
             "#,
@@ -56,7 +56,7 @@ impl FileRepository for FileRepositoryImpl {
         let f: Vec<File> = sqlx::query_as!(
             File,
             r#"
-            SELECT id, name, owner_id, file_type as "file_type: _", parent_folder_id, is_deleted, ttl, size, upload_status as "upload_status: _"
+            SELECT id, name, owner_id, file_type as "file_type: _", parent_folder_id, is_deleted, ttl, size, upload_status as "upload_status: _", created_at, updated_at
             FROM files
             WHERE is_deleted = TRUE AND owner_id = $1
             "#,
@@ -73,7 +73,7 @@ impl FileRepository for FileRepositoryImpl {
         let f: Vec<File> = sqlx::query_as!(
             File,
             r#"
-            SELECT id, name, owner_id, file_type as "file_type: _", parent_folder_id, is_deleted, ttl, size, upload_status as "upload_status: _"
+            SELECT id, name, owner_id, file_type as "file_type: _", parent_folder_id, is_deleted, ttl, size, upload_status as "upload_status: _", created_at, updated_at
             FROM files
             WHERE is_deleted = FALSE AND id = ANY($1)
             "#,
@@ -90,7 +90,7 @@ impl FileRepository for FileRepositoryImpl {
         let f: Vec<File> = sqlx::query_as!(
             File,
             r#"
-            SELECT id, name, owner_id, file_type as "file_type: _", parent_folder_id, is_deleted, ttl, size, upload_status as "upload_status: _"
+            SELECT id, name, owner_id, file_type as "file_type: _", parent_folder_id, is_deleted, ttl, size, upload_status as "upload_status: _", created_at, updated_at
             FROM files
             WHERE LOWER(name) LIKE LOWER($1) AND is_deleted = FALSE
             "#,
@@ -111,7 +111,7 @@ impl FileRepository for FileRepositoryImpl {
         let file = sqlx::query_as!(
             File,
             r#"
-            SELECT id, name, owner_id, parent_folder_id, file_type as "file_type: _", is_deleted, ttl, size, upload_status as "upload_status: _"
+            SELECT id, name, owner_id, parent_folder_id, file_type as "file_type: _", is_deleted, ttl, size, upload_status as "upload_status: _", created_at, updated_at
             FROM files
             WHERE parent_folder_id = $1 AND name = $2 AND is_deleted = FALSE
             "#,
@@ -129,9 +129,9 @@ impl FileRepository for FileRepositoryImpl {
         let f = sqlx::query_as!(
         File,
         r#"
-        INSERT INTO files (id, name, owner_id, parent_folder_id, file_type, is_deleted, size, upload_status)
-        VALUES ($1,$2, $3, $4, $5, $6, $7, $8)
-        RETURNING id, name, owner_id,parent_folder_id, file_type as "file_type: _", is_deleted, ttl, size, upload_status as "upload_status: _"
+        INSERT INTO files (id, name, owner_id, parent_folder_id, file_type, is_deleted, size, upload_status, created_at, updated_at)
+        VALUES ($1,$2, $3, $4, $5, $6, $7, $8, $9, $10)
+        RETURNING id, name, owner_id,parent_folder_id, file_type as "file_type: _", is_deleted, ttl, size, upload_status as "upload_status: _", created_at, updated_at
         "#,
             file.id,
             file.name,
@@ -140,7 +140,9 @@ impl FileRepository for FileRepositoryImpl {
             file.file_type as _,
             file.is_deleted,
             file.size,
-            file.upload_status as _
+            file.upload_status as _,
+            file.created_at,
+            file.updated_at
     )
             .fetch_one(&self.pool)
             .await
@@ -154,9 +156,9 @@ impl FileRepository for FileRepositoryImpl {
             File,
             r#"
             UPDATE files
-            SET name = $1, owner_id = $2, file_type = $3, parent_folder_id = $4, is_deleted = $5, ttl = $6, size = $7, upload_status = $8
+            SET name = $1, owner_id = $2, file_type = $3, parent_folder_id = $4, is_deleted = $5, ttl = $6, size = $7, upload_status = $8, created_at = $10, updated_at = $11
             WHERE id = $9 and is_deleted = FALSE
-            RETURNING id, name, owner_id, file_type as "file_type: _", parent_folder_id, is_deleted, ttl, size, upload_status as "upload_status: _"
+            RETURNING id, name, owner_id, file_type as "file_type: _", parent_folder_id, is_deleted, ttl, size, upload_status as "upload_status: _", created_at, updated_at
             "#,
             file.name,
             file.owner_id,
@@ -166,7 +168,9 @@ impl FileRepository for FileRepositoryImpl {
             file.ttl,
             file.size,
             file.upload_status as _,
-            file.id
+            file.id,
+            file.created_at,
+            file.updated_at
         )
             .fetch_one(&self.pool)
             .await
@@ -221,7 +225,9 @@ impl FileRepository for FileRepositoryImpl {
                 f.is_deleted,
                 f.ttl,
                 f.size,
-                f.upload_status as "upload_status: _"
+                f.upload_status as "upload_status: _", 
+                f.created_at, 
+                f.updated_at
             FROM files f
             INNER JOIN file_labels fl ON f.id = fl.file_id
             WHERE fl.label_id = $1 AND f.owner_id = $2
@@ -241,7 +247,7 @@ impl FileRepository for FileRepositoryImpl {
             File,
             r#"
             SELECT id, name, owner_id, file_type as "file_type: _", parent_folder_id, 
-               is_deleted, ttl, size, upload_status as "upload_status: _"
+               is_deleted, ttl, size, upload_status as "upload_status: _", created_at, updated_at
             FROM files
             WHERE is_deleted = TRUE 
               AND ttl IS NOT NULL 

@@ -108,7 +108,7 @@ impl FolderRepository for FolderRepositoryImpl {
         let files = sqlx::query_as!(
             File,
             r#"
-            SELECT id, name, owner_id, parent_folder_id, file_type as "file_type: _", is_deleted, ttl, size, upload_status as "upload_status: _"
+            SELECT id, name, owner_id, parent_folder_id, file_type as "file_type: _", is_deleted, ttl, size, upload_status as "upload_status: _", created_at, updated_at
             FROM files
             WHERE parent_folder_id = $1 AND file_type = ANY($2::file_type[]) AND is_deleted = FALSE
             "#,
@@ -126,7 +126,7 @@ impl FolderRepository for FolderRepositoryImpl {
         let files = sqlx::query_as!(
         File,
         r#"
-        SELECT id, name, owner_id, parent_folder_id, file_type as "file_type: _", is_deleted, ttl, size, upload_status as "upload_status: _"
+        SELECT id, name, owner_id, parent_folder_id, file_type as "file_type: _", is_deleted, ttl, size, upload_status as "upload_status: _", created_at, updated_at
         FROM files
         WHERE parent_folder_id = $1 AND is_deleted = FALSE
         "#,

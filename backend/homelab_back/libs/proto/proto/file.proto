@@ -48,6 +48,8 @@ message FileResponse {
   google.protobuf.Timestamp ttl = 7;
   int64 size = 8;
   UploadStatus upload_status = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
 }
 
 message FileListResponse {

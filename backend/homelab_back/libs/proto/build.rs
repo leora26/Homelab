@@ -10,6 +10,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("cargo:rerun-if-changed=proto/folder.proto");
     println!("cargo:rerun-if-changed=proto/label.proto");
     println!("cargo:rerun-if-changed=proto/file_label.proto");
+    println!("cargo:rerun-if-changed=proto/console_wlu.proto");
+    println!("cargo:rerun-if-changed=proto/console_user.proto");
+    println!("cargo:rerun-if-changed=proto/console_file.proto");
     println!("cargo:rerun-if-changed=proto/types.proto");
 
     tonic_build::configure().compile_protos(
@@ -21,6 +24,9 @@ fn main() -> Result<(), Box<dyn Error>> {
             "proto/folder.proto",
             "proto/label.proto",
             "proto/file_label.proto",
+            "proto/console_wlu.proto",
+            "proto/console_user.proto",
+            "proto/console_file.proto",
             "proto/types.proto",
         ],
         &["proto"],

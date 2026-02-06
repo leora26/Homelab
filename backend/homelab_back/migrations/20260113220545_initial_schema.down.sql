@@ -9,6 +9,10 @@ DROP TABLE IF EXISTS white_listed_users;
 DROP TABLE IF EXISTS storage_profiles;
 DROP TABLE IF EXISTS users;
 
+DROP TABLE IF EXISTS console_users;
+DROP TABLE IF EXISTS console_wlu;
+DROP TABLE IF EXISTS console_file;
+
 DROP TYPE IF EXISTS upload_status;
 DROP TYPE IF EXISTS access_type;
 DROP TYPE IF EXISTS action_log_type;
