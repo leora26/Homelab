@@ -5,7 +5,7 @@ use crate::helpers::data_error::DataError;
 use crate::helpers::user_email::UserEmail;
 use async_trait::async_trait;
 use derive_new::new;
-use homelab_core::events::{UserCreatedEvent, UserUpdatedEvent};
+use homelab_core::events::{UserBlockedEvent, UserCreatedEvent, UserUpdatedEvent};
 use homelab_core::user::User;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -89,21 +89,29 @@ impl UserService for UserServiceImpl {
 
         user.toggle_blocked(blocked);
 
-        let event: UserUpdatedEvent = UserUpdatedEvent::new(
+        let updated_event: UserUpdatedEvent = UserUpdatedEvent::new(
             user.id.clone(),
             Some(user.email.clone()),
             Some(user.full_name.clone()),
-
             None,
             None,
             user.is_blocked.clone(),
         );
 
-        if let Err(e) = self.publisher.publish(&event).await {
+        if let Err(e) = self.publisher.publish(&updated_event).await {
             eprintln!("Failed to publish event: {:?}", e);
         }
 
-        self.user_repo.save(user).await?;
+        let blocked_event: UserBlockedEvent = UserBlockedEvent::new(
+            user.id.clone(),
+            user.is_blocked.clone(),
+        );
+
+        if let Err(e) = self.publisher.publish(&blocked_event).await {
+            eprintln!("Failed to publish event: {:?}", e);
+        }
+
+        self.user_repo.toggle_blocked(user).await?;
 
         Ok(())
     }

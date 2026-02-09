@@ -12,6 +12,7 @@ pub trait UserRepository: Send + Sync {
     async fn create(&self, user: User) -> Result<User, DataError>;
     async fn get_by_id(&self, id: Uuid) -> Result<Option<User>, DataError>;
     async fn save(&self, user: User) -> Result<(), DataError>;
+    async fn toggle_blocked(&self, user: User) -> Result<(), DataError>;
 }
 
 pub struct UserRepositoryImpl {
@@ -30,7 +31,7 @@ impl UserRepository for UserRepositoryImpl {
         let user = sqlx::query_as!(
             User,
             r#"
-        SELECT id, email, full_name, password_hash, created_at,  role as "role: _"
+        SELECT id, email, full_name, password_hash, created_at,  role as "role: _", is_blocked
         FROM users
         WHERE email = $1
         "#,
@@ -47,7 +48,7 @@ impl UserRepository for UserRepositoryImpl {
         let users = sqlx::query_as!(
             User,
             r#"
-        SELECT id, email, full_name, password_hash, created_at,  role as "role: _"
+        SELECT id, email, full_name, password_hash, created_at,  role as "role: _", is_blocked
         FROM users
         "#
         )
@@ -62,15 +63,16 @@ impl UserRepository for UserRepositoryImpl {
         let user = sqlx::query_as!(
             User,
             r#"
-        INSERT INTO users (id, email, full_name, password_hash, role)
-        VALUES ($1, $2, $3, $4, $5)
-        RETURNING id, email, full_name, password_hash, created_at, role as "role: _"
+        INSERT INTO users (id, email, full_name, password_hash, role, is_blocked)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id, email, full_name, password_hash, created_at, role as "role: _", is_blocked
         "#,
             user.id,
             user.email,
             user.full_name,
             user.password_hash,
             user.role as Role,
+            user.is_blocked,
         )
         .fetch_one(&self.pool)
         .await?;
@@ -82,7 +84,7 @@ impl UserRepository for UserRepositoryImpl {
         let user = sqlx::query_as!(
             User,
             r#"
-        SELECT id, email, full_name, password_hash, created_at,  role as "role: _"
+        SELECT id, email, full_name, password_hash, created_at,  role as "role: _", is_blocked
         FROM users
         WHERE id = $1
         "#,
@@ -111,6 +113,23 @@ impl UserRepository for UserRepositoryImpl {
         .execute(&self.pool)
         .await
         .map_err(|e| DataError::DatabaseError(e))?;
+
+        Ok(())
+    }
+
+    async fn toggle_blocked(&self, user: User) -> Result<(), DataError> {
+        sqlx::query!(
+            r#"
+            UPDATE users
+            SET is_blocked = $1
+            WHERE id = $2
+            "#,
+            user.is_blocked,
+            user.id
+        )
+            .execute(&self.pool)
+            .await
+            .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(())
     }

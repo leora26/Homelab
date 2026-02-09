@@ -98,3 +98,16 @@ impl DomainEvent for FileUpdatedEvent {
         "file.updated"
     }
 }
+
+#[derive(Deserialize, Serialize, Debug, Clone, new)]
+pub struct UserBlockedEvent {
+    pub user_id: Uuid,
+    pub is_deleted: bool,
+}
+
+
+impl DomainEvent for UserBlockedEvent {
+    fn routing_key(&self) -> &'static str {
+        "blocked.blocked"
+    }
+}

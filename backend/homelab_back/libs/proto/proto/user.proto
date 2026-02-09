@@ -10,7 +10,7 @@ service UserService {
   rpc GetAll (google.protobuf.Empty) returns (UserList);
   rpc Create (CreateUserRequest) returns (UserResponse);
   rpc UpdatePassword (UpdatePasswordRequest) returns (google.protobuf.Empty);
-  rpc ToggleBLockState (ToggleBlockStatusRequest) returns (google.protobuf.Empty);
+  rpc ToggleBlockState (ToggleBlockStatusRequest) returns (google.protobuf.Empty);
 }
 
 enum Role {
