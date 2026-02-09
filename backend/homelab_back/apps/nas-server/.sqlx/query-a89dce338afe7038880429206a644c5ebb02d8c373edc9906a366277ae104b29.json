@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT id, name, owner_id, file_type as \"file_type: _\", parent_folder_id, \n               is_deleted, ttl, size, upload_status as \"upload_status: _\"\n            FROM files\n            WHERE is_deleted = TRUE \n              AND ttl IS NOT NULL \n              AND ttl < NOW()\n            ",
+  "query": "\n            SELECT id, name, owner_id, file_type as \"file_type: _\", parent_folder_id, is_deleted, ttl, size, upload_status as \"upload_status: _\", created_at, updated_at\n            FROM files\n            WHERE is_deleted = TRUE AND owner_id = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -72,10 +72,22 @@
             }
           }
         }
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Uuid"
+      ]
     },
     "nullable": [
       false,
@@ -86,8 +98,10 @@
       false,
       true,
       false,
+      false,
+      false,
       false
     ]
   },
-  "hash": "b6fc089f689cf037ccc6a8531109483cbf341b866acaee30fdc6a226fdf9cbf8"
+  "hash": "a89dce338afe7038880429206a644c5ebb02d8c373edc9906a366277ae104b29"
 }

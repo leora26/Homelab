@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id, email, full_name, password_hash, created_at,  role as \"role: _\"\n        FROM users\n        WHERE email = $1\n        ",
+  "query": "\n        SELECT id, email, full_name, password_hash, created_at,  role as \"role: _\", is_blocked\n        FROM users\n        WHERE id = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -42,11 +42,16 @@
             }
           }
         }
+      },
+      {
+        "ordinal": 6,
+        "name": "is_blocked",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
       "Left": [
-        "Text"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -55,8 +60,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "6e3200b06b8c0278c6e7c52cddc3d91414592a52034b61fa1fd87ab157776298"
+  "hash": "df68d38dfbd8061341c5f2c3c2a6f09ac7a4345985590c9b87abe27cb26a9f81"
 }

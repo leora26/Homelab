@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        INSERT INTO storage_profiles (user_id, allowed_storage, taken_storage)\n        VALUES ($1, $2, $3)\n        RETURNING user_id, allowed_storage, taken_storage\n        ",
+  "query": "\n        INSERT INTO storage_profiles (user_id, allowed_storage, taken_storage, is_blocked)\n        VALUES ($1, $2, $3, $4)\n        RETURNING user_id, allowed_storage, taken_storage, is_blocked\n        ",
   "describe": {
     "columns": [
       {
@@ -17,20 +17,27 @@
         "ordinal": 2,
         "name": "taken_storage",
         "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "is_blocked",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
       "Left": [
         "Uuid",
         "Int8",
-        "Int8"
+        "Int8",
+        "Bool"
       ]
     },
     "nullable": [
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "3e3eee39586304adbdf362fb902fd8fcff63c3144a57c998f7511caa7ddf793b"
+  "hash": "7ec330cbbeaf3a46e5d1037faf9c6dbcd73654fc483ae13f9e3b607f27b5de9a"
 }

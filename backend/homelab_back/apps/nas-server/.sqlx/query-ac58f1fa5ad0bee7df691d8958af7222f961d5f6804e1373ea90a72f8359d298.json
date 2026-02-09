@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id, name, owner_id, parent_folder_id, file_type as \"file_type: _\", is_deleted, ttl, size, upload_status as \"upload_status: _\"\n        FROM files\n        WHERE parent_folder_id = $1 AND is_deleted = FALSE\n        ",
+  "query": "\n        INSERT INTO files (id, name, owner_id, parent_folder_id, file_type, is_deleted, size, upload_status, created_at, updated_at)\n        VALUES ($1,$2, $3, $4, $5, $6, $7, $8, $9, $10)\n        RETURNING id, name, owner_id,parent_folder_id, file_type as \"file_type: _\", is_deleted, ttl, size, upload_status as \"upload_status: _\", created_at, updated_at\n        ",
   "describe": {
     "columns": [
       {
@@ -72,11 +72,55 @@
             }
           }
         }
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "Uuid",
+        "Text",
+        "Uuid",
+        "Uuid",
+        {
+          "Custom": {
+            "name": "file_type",
+            "kind": {
+              "Enum": [
+                "Text",
+                "Image",
+                "Video",
+                "Audio",
+                "Pdf",
+                "Unknown"
+              ]
+            }
+          }
+        },
+        "Bool",
+        "Int8",
+        {
+          "Custom": {
+            "name": "upload_status",
+            "kind": {
+              "Enum": [
+                "Pending",
+                "Completed",
+                "Failed"
+              ]
+            }
+          }
+        },
+        "Timestamptz",
+        "Timestamptz"
       ]
     },
     "nullable": [
@@ -88,8 +132,10 @@
       false,
       true,
       false,
+      false,
+      false,
       false
     ]
   },
-  "hash": "c02188148cd333175dcbfc5311eee21cddd6e53f4c581e55dcf4ea1f82c0a93e"
+  "hash": "ac58f1fa5ad0bee7df691d8958af7222f961d5f6804e1373ea90a72f8359d298"
 }

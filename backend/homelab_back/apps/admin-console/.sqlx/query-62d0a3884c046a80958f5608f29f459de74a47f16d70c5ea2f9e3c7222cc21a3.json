@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT id, name, owner_id, parent_folder_id, file_type as \"file_type: _\", is_deleted, ttl, size, upload_status as \"upload_status: _\"\n            FROM files\n            WHERE parent_folder_id = $1 AND name = $2 AND is_deleted = FALSE\n            ",
+  "query": "\n            SELECT\n                id,\n                file_id,\n                file_type as \"file_type: _\",\n                is_deleted,\n                ttl,\n                size,\n                upload_status as \"upload_status: _\",\n                created_at,\n                updated_at,\n                version\n            FROM console_file\n            ",
   "describe": {
     "columns": [
       {
@@ -10,21 +10,11 @@
       },
       {
         "ordinal": 1,
-        "name": "name",
-        "type_info": "Text"
+        "name": "file_id",
+        "type_info": "Uuid"
       },
       {
         "ordinal": 2,
-        "name": "owner_id",
-        "type_info": "Uuid"
-      },
-      {
-        "ordinal": 3,
-        "name": "parent_folder_id",
-        "type_info": "Uuid"
-      },
-      {
-        "ordinal": 4,
         "name": "file_type: _",
         "type_info": {
           "Custom": {
@@ -43,22 +33,22 @@
         }
       },
       {
-        "ordinal": 5,
+        "ordinal": 3,
         "name": "is_deleted",
         "type_info": "Bool"
       },
       {
-        "ordinal": 6,
+        "ordinal": 4,
         "name": "ttl",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 7,
+        "ordinal": 5,
         "name": "size",
         "type_info": "Int8"
       },
       {
-        "ordinal": 8,
+        "ordinal": 6,
         "name": "upload_status: _",
         "type_info": {
           "Custom": {
@@ -72,25 +62,38 @@
             }
           }
         }
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "version",
+        "type_info": "Int2"
       }
     ],
     "parameters": {
-      "Left": [
-        "Uuid",
-        "Text"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
       false,
       false,
       false,
-      false,
-      false,
       true,
+      false,
+      false,
+      false,
       false,
       false
     ]
   },
-  "hash": "1365c48e31be669f24ed099fe2ed6367b544b7f2e3b7fbf8ed32c05b3eea24f0"
+  "hash": "62d0a3884c046a80958f5608f29f459de74a47f16d70c5ea2f9e3c7222cc21a3"
 }

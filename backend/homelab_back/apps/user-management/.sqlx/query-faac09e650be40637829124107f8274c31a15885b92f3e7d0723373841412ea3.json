@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        INSERT INTO users (id, email, full_name, password_hash, role)\n        VALUES ($1, $2, $3, $4, $5)\n        RETURNING id, email, full_name, password_hash, created_at, role as \"role: _\"\n        ",
+  "query": "\n        SELECT id, email, full_name, password_hash, created_at,  role as \"role: _\", is_blocked\n        FROM users\n        WHERE email = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -42,25 +42,16 @@
             }
           }
         }
+      },
+      {
+        "ordinal": 6,
+        "name": "is_blocked",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid",
-        "Text",
-        "Text",
-        "Text",
-        {
-          "Custom": {
-            "name": "user_role",
-            "kind": {
-              "Enum": [
-                "user",
-                "admin"
-              ]
-            }
-          }
-        }
+        "Text"
       ]
     },
     "nullable": [
@@ -69,8 +60,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "8c82c430d0beb39d08e0be997e305096ebd8c9c1d281f1b90f0ae644bf434485"
+  "hash": "faac09e650be40637829124107f8274c31a15885b92f3e7d0723373841412ea3"
 }

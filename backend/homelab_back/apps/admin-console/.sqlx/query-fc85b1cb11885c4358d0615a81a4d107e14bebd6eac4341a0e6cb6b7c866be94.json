@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT id, name, owner_id, parent_folder_id, file_type as \"file_type: _\", is_deleted, ttl, size, upload_status as \"upload_status: _\"\n            FROM files\n            WHERE parent_folder_id = $1 AND file_type = ANY($2::file_type[]) AND is_deleted = FALSE\n            ",
+  "query": "\n            SELECT\n                id,\n                file_id,\n                file_type as \"file_type: _\",\n                is_deleted,\n                ttl,\n                size,\n                upload_status as \"upload_status: _\",\n                created_at,\n                updated_at,\n                version\n            FROM console_file\n            WHERE file_id = $1\n            ORDER BY version DESC\n            LIMIT 1\n            ",
   "describe": {
     "columns": [
       {
@@ -10,21 +10,11 @@
       },
       {
         "ordinal": 1,
-        "name": "name",
-        "type_info": "Text"
+        "name": "file_id",
+        "type_info": "Uuid"
       },
       {
         "ordinal": 2,
-        "name": "owner_id",
-        "type_info": "Uuid"
-      },
-      {
-        "ordinal": 3,
-        "name": "parent_folder_id",
-        "type_info": "Uuid"
-      },
-      {
-        "ordinal": 4,
         "name": "file_type: _",
         "type_info": {
           "Custom": {
@@ -43,22 +33,22 @@
         }
       },
       {
-        "ordinal": 5,
+        "ordinal": 3,
         "name": "is_deleted",
         "type_info": "Bool"
       },
       {
-        "ordinal": 6,
+        "ordinal": 4,
         "name": "ttl",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 7,
+        "ordinal": 5,
         "name": "size",
         "type_info": "Int8"
       },
       {
-        "ordinal": 8,
+        "ordinal": 6,
         "name": "upload_status: _",
         "type_info": {
           "Custom": {
@@ -72,33 +62,26 @@
             }
           }
         }
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "version",
+        "type_info": "Int2"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid",
-        {
-          "Custom": {
-            "name": "file_type[]",
-            "kind": {
-              "Array": {
-                "Custom": {
-                  "name": "file_type",
-                  "kind": {
-                    "Enum": [
-                      "Text",
-                      "Image",
-                      "Video",
-                      "Audio",
-                      "Pdf",
-                      "Unknown"
-                    ]
-                  }
-                }
-              }
-            }
-          }
-        }
+        "Uuid"
       ]
     },
     "nullable": [
@@ -106,12 +89,13 @@
       false,
       false,
       false,
-      false,
-      false,
       true,
+      false,
+      false,
+      false,
       false,
       false
     ]
   },
-  "hash": "a738d7f4736bac293fa8dc799dc74c61d3e403eb92aa8a00345daf36b5fbc15a"
+  "hash": "fc85b1cb11885c4358d0615a81a4d107e14bebd6eac4341a0e6cb6b7c866be94"
 }

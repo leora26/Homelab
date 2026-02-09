@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            UPDATE files\n            SET name = $1, owner_id = $2, file_type = $3, parent_folder_id = $4, is_deleted = $5, ttl = $6, size = $7, upload_status = $8\n            WHERE id = $9 and is_deleted = FALSE\n            RETURNING id, name, owner_id, file_type as \"file_type: _\", parent_folder_id, is_deleted, ttl, size, upload_status as \"upload_status: _\"\n            ",
+  "query": "\n            UPDATE files\n            SET name = $1, owner_id = $2, file_type = $3, parent_folder_id = $4, is_deleted = $5, ttl = $6, size = $7, upload_status = $8, created_at = $10, updated_at = $11\n            WHERE id = $9 and is_deleted = FALSE\n            RETURNING id, name, owner_id, file_type as \"file_type: _\", parent_folder_id, is_deleted, ttl, size, upload_status as \"upload_status: _\", created_at, updated_at\n            ",
   "describe": {
     "columns": [
       {
@@ -72,6 +72,16 @@
             }
           }
         }
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
@@ -109,7 +119,9 @@
             }
           }
         },
-        "Uuid"
+        "Uuid",
+        "Timestamptz",
+        "Timestamptz"
       ]
     },
     "nullable": [
@@ -121,8 +133,10 @@
       false,
       true,
       false,
+      false,
+      false,
       false
     ]
   },
-  "hash": "6384d9d5d7a96b2b3401a513cf822d4407d351913083b261f74cf2db75635868"
+  "hash": "9ddff378e0c47f43f5f18a5fe5316d61af9c9f002bc5e3059170741bca62203c"
 }

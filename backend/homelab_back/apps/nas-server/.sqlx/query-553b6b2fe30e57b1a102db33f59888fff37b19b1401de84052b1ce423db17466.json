@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                f.id,\n                f.name,\n                f.owner_id,\n                f.parent_folder_id,\n                f.file_type as \"file_type: _\",\n                f.is_deleted,\n                f.ttl,\n                f.size,\n                f.upload_status as \"upload_status: _\"\n            FROM files f\n            INNER JOIN file_labels fl ON f.id = fl.file_id\n            WHERE fl.label_id = $1 AND f.owner_id = $2\n            ",
+  "query": "\n        SELECT id, name, owner_id, parent_folder_id, file_type as \"file_type: _\", is_deleted, ttl, size, upload_status as \"upload_status: _\", created_at, updated_at\n        FROM files\n        WHERE parent_folder_id = $1 AND is_deleted = FALSE\n        ",
   "describe": {
     "columns": [
       {
@@ -72,11 +72,20 @@
             }
           }
         }
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid",
         "Uuid"
       ]
     },
@@ -89,8 +98,10 @@
       false,
       true,
       false,
+      false,
+      false,
       false
     ]
   },
-  "hash": "852a4ea8abe8f8b375028e89b4878fa2aecb90d4021523fa3778dd0c40f61de6"
+  "hash": "553b6b2fe30e57b1a102db33f59888fff37b19b1401de84052b1ce423db17466"
 }

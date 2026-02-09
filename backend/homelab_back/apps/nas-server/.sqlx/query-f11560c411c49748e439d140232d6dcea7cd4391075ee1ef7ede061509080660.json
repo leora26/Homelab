@@ -1,0 +1,129 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT id, name, owner_id, parent_folder_id, file_type as \"file_type: _\", is_deleted, ttl, size, upload_status as \"upload_status: _\", created_at, updated_at\n            FROM files\n            WHERE parent_folder_id = $1 AND file_type = ANY($2::file_type[]) AND is_deleted = FALSE\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "owner_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "parent_folder_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "file_type: _",
+        "type_info": {
+          "Custom": {
+            "name": "file_type",
+            "kind": {
+              "Enum": [
+                "Text",
+                "Image",
+                "Video",
+                "Audio",
+                "Pdf",
+                "Unknown"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "is_deleted",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 6,
+        "name": "ttl",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "size",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 8,
+        "name": "upload_status: _",
+        "type_info": {
+          "Custom": {
+            "name": "upload_status",
+            "kind": {
+              "Enum": [
+                "Pending",
+                "Completed",
+                "Failed"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        {
+          "Custom": {
+            "name": "file_type[]",
+            "kind": {
+              "Array": {
+                "Custom": {
+                  "name": "file_type",
+                  "kind": {
+                    "Enum": [
+                      "Text",
+                      "Image",
+                      "Video",
+                      "Audio",
+                      "Pdf",
+                      "Unknown"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "f11560c411c49748e439d140232d6dcea7cd4391075ee1ef7ede061509080660"
+}

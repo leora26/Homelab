@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT id, name, owner_id, parent_folder_id, file_type as \"file_type: _\", is_deleted, ttl, size, upload_status as \"upload_status: _\"\n            FROM files\n            WHERE id = $1 AND is_deleted = FALSE\n            ",
+  "query": "\n            SELECT id, name, owner_id, file_type as \"file_type: _\", parent_folder_id, is_deleted, ttl, size, upload_status as \"upload_status: _\", created_at, updated_at\n            FROM files\n            WHERE is_deleted = FALSE AND id = ANY($1)\n            ",
   "describe": {
     "columns": [
       {
@@ -20,11 +20,6 @@
       },
       {
         "ordinal": 3,
-        "name": "parent_folder_id",
-        "type_info": "Uuid"
-      },
-      {
-        "ordinal": 4,
         "name": "file_type: _",
         "type_info": {
           "Custom": {
@@ -41,6 +36,11 @@
             }
           }
         }
+      },
+      {
+        "ordinal": 4,
+        "name": "parent_folder_id",
+        "type_info": "Uuid"
       },
       {
         "ordinal": 5,
@@ -72,11 +72,21 @@
             }
           }
         }
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "UuidArray"
       ]
     },
     "nullable": [
@@ -88,8 +98,10 @@
       false,
       true,
       false,
+      false,
+      false,
       false
     ]
   },
-  "hash": "815eb596cd839c20342078b47673f1ad818796943aa27a3437c98661536c6fd4"
+  "hash": "842ab23fe84f5197bcf514b0ebce2891cd030a92e47886a6c39b615c95ffdad4"
 }

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT user_id, allowed_storage, taken_storage\n        FROM storage_profiles\n        WHERE user_id = $1\n        ",
+  "query": "\n        SELECT user_id, allowed_storage, taken_storage, is_blocked\n        FROM storage_profiles\n        WHERE user_id = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -17,6 +17,11 @@
         "ordinal": 2,
         "name": "taken_storage",
         "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "is_blocked",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
@@ -27,8 +32,9 @@
     "nullable": [
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "c1210216005db3d1e6e0d2323fd8a6847c8eb8790bac36f7202eaaecbc405c71"
+  "hash": "548ae3d3a4f5bee5f8a107a19b8f694dea04f4774434e08b9577771828b87a03"
 }

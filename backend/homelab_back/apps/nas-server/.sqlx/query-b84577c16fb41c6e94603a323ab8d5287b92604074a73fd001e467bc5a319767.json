@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        INSERT INTO files (id, name, owner_id, parent_folder_id, file_type, is_deleted, size, upload_status)\n        VALUES ($1,$2, $3, $4, $5, $6, $7, $8)\n        RETURNING id, name, owner_id,parent_folder_id, file_type as \"file_type: _\", is_deleted, ttl, size, upload_status as \"upload_status: _\"\n        ",
+  "query": "\n            SELECT id, name, owner_id, parent_folder_id, file_type as \"file_type: _\", is_deleted, ttl, size, upload_status as \"upload_status: _\", created_at, updated_at\n            FROM files\n            WHERE id = $1 AND is_deleted = FALSE\n            ",
   "describe": {
     "columns": [
       {
@@ -72,43 +72,21 @@
             }
           }
         }
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid",
-        "Text",
-        "Uuid",
-        "Uuid",
-        {
-          "Custom": {
-            "name": "file_type",
-            "kind": {
-              "Enum": [
-                "Text",
-                "Image",
-                "Video",
-                "Audio",
-                "Pdf",
-                "Unknown"
-              ]
-            }
-          }
-        },
-        "Bool",
-        "Int8",
-        {
-          "Custom": {
-            "name": "upload_status",
-            "kind": {
-              "Enum": [
-                "Pending",
-                "Completed",
-                "Failed"
-              ]
-            }
-          }
-        }
+        "Uuid"
       ]
     },
     "nullable": [
@@ -120,8 +98,10 @@
       false,
       true,
       false,
+      false,
+      false,
       false
     ]
   },
-  "hash": "82ff2aa306011ae5832fbeae97816e29fc4372e5c800bbfabda4cdf98c10b580"
+  "hash": "b84577c16fb41c6e94603a323ab8d5287b92604074a73fd001e467bc5a319767"
 }
