@@ -8,6 +8,7 @@ pub struct StorageProfile {
     pub user_id: Uuid,
     pub allowed_storage: i64,
     pub taken_storage: i64,
+    pub is_blocked: bool,
 }
 
 impl StorageProfile {
@@ -19,5 +20,9 @@ impl StorageProfile {
         } else {
             true
         }
+    }
+
+    pub fn reduce_taken_storage_size(&mut self, size: i64) {
+        self.taken_storage -= size;
     }
 }

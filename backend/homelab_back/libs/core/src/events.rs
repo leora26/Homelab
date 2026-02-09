@@ -26,10 +26,11 @@ impl DomainEvent for UserCreatedEvent {
 #[derive(Deserialize, Serialize, Debug, Clone, new)]
 pub struct UserUpdatedEvent {
     pub user_id: Uuid,
-    pub email: String,
-    pub full_name: String,
-    pub allowed_storage: i64,
-    pub taken_storage: i64
+    pub email: Option<String>,
+    pub full_name: Option<String>,
+    pub allowed_storage: Option<i64>,
+    pub taken_storage: Option<i64>,
+    pub is_blocked: bool,
 }
 
 impl DomainEvent for UserUpdatedEvent {
@@ -95,5 +96,18 @@ pub struct FileUpdatedEvent {
 impl DomainEvent for FileUpdatedEvent {
     fn routing_key(&self) -> &'static str {
         "file.updated"
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, new)]
+pub struct UserBlockedEvent {
+    pub user_id: Uuid,
+    pub is_deleted: bool,
+}
+
+
+impl DomainEvent for UserBlockedEvent {
+    fn routing_key(&self) -> &'static str {
+        "blocked.blocked"
     }
 }

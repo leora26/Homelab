@@ -24,6 +24,7 @@ pub struct User {
     pub created_at: OffsetDateTime,
 
     pub role: Role,
+    pub is_blocked: bool,
 }
 
 impl User {
@@ -36,6 +37,7 @@ impl User {
             password_hash: Some(Self::hash_password(&password)),
             created_at: OffsetDateTime::now_utc(),
             role: Role::User,
+            is_blocked: false
         }
     }
 
@@ -47,6 +49,7 @@ impl User {
             password_hash: None,
             created_at: OffsetDateTime::now_utc(),
             role: Role::User,
+            is_blocked: false
         }
     }
 
@@ -56,6 +59,10 @@ impl User {
 
     pub fn set_password(&mut self, pass: &str) {
         self.password_hash = Some(Self::hash_password(pass))
+    }
+    
+    pub fn toggle_blocked (&mut self, is_blocked: bool ) {
+        self.is_blocked = is_blocked
     }
 
     fn hash_password(password: &str) -> String {

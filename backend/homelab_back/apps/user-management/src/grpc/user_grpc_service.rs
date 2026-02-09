@@ -4,7 +4,8 @@ use crate::AppState;
 use derive_new::new;
 use homelab_proto::user::user_service_server::UserService;
 use homelab_proto::user::{
-    CreateUserRequest, GetUserByEmailRequest, UpdatePasswordRequest, UserList, UserResponse,
+    CreateUserRequest, GetUserByEmailRequest, ToggleBlockStatusRequest, UpdatePasswordRequest,
+    UserList, UserResponse,
 };
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
@@ -64,6 +65,22 @@ impl UserService for GrpcUserService {
         self.app_state
             .user_service
             .update_password(user_id, &req.password)
+            .await?;
+
+        Ok(Response::new(()))
+    }
+
+    async fn toggle_block_state(
+        &self,
+        request: Request<ToggleBlockStatusRequest>,
+    ) -> Result<Response<()>, Status> {
+        let req = request.into_inner();
+
+        let user_id = map_entity_id(req.id)?;
+
+        self.app_state
+            .user_service
+            .toggle_blocked(user_id, req.is_blocked)
             .await?;
 
         Ok(Response::new(()))

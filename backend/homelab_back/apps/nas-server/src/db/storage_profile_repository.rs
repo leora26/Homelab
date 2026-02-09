@@ -9,6 +9,11 @@ pub trait StorageProfileRepository: Send + Sync {
     async fn create(&self, storage_profile: StorageProfile) -> Result<StorageProfile, DataError>;
     async fn get_by_id(&self, id: Uuid) -> Result<Option<StorageProfile>, DataError>;
     async fn save(&self, storage_profile: StorageProfile) -> Result<(), DataError>;
+    async fn toggle_blocked(
+        &self,
+        profile: StorageProfile,
+        is_deleted: bool,
+    ) -> Result<(), DataError>;
 }
 
 pub struct StorageProfileRepositoryImpl {
@@ -27,13 +32,14 @@ impl StorageProfileRepository for StorageProfileRepositoryImpl {
         let sp = sqlx::query_as!(
             StorageProfile,
             r#"
-        INSERT INTO storage_profiles (user_id, allowed_storage, taken_storage)
-        VALUES ($1, $2, $3)
-        RETURNING user_id, allowed_storage, taken_storage
+        INSERT INTO storage_profiles (user_id, allowed_storage, taken_storage, is_blocked)
+        VALUES ($1, $2, $3, $4)
+        RETURNING user_id, allowed_storage, taken_storage, is_blocked
         "#,
             storage_profile.user_id,
             storage_profile.allowed_storage,
-            storage_profile.taken_storage
+            storage_profile.taken_storage,
+            storage_profile.is_blocked,
         )
         .fetch_one(&self.pool)
         .await?;
@@ -45,7 +51,7 @@ impl StorageProfileRepository for StorageProfileRepositoryImpl {
         let sp = sqlx::query_as!(
             StorageProfile,
             r#"
-        SELECT user_id, allowed_storage, taken_storage
+        SELECT user_id, allowed_storage, taken_storage, is_blocked
         FROM storage_profiles
         WHERE user_id = $1
         "#,
@@ -68,6 +74,27 @@ impl StorageProfileRepository for StorageProfileRepositoryImpl {
             storage_profile.allowed_storage,
             storage_profile.taken_storage,
             storage_profile.user_id
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| DataError::DatabaseError(e))?;
+
+        Ok(())
+    }
+
+    async fn toggle_blocked(
+        &self,
+        profile: StorageProfile,
+        is_deleted: bool,
+    ) -> Result<(), DataError> {
+        sqlx::query!(
+            r#"
+            UPDATE storage_profiles
+            SET is_blocked = $1
+            WHERE user_id = $2
+            "#,
+            is_deleted,
+            profile.user_id
         )
         .execute(&self.pool)
         .await

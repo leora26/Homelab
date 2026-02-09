@@ -50,8 +50,8 @@ impl UserService for UserServiceImpl {
             logged_user.user_id,
             logged_user.email,
             logged_user.full_name,
-            event.allowed_storage,
-            event.taken_storage,
+            event.allowed_storage.unwrap(),
+            event.taken_storage.unwrap(),
             logged_user.created_at,
             OffsetDateTime::now_utc(),
             logged_user.version + 1

@@ -1,3 +1,4 @@
+use std::collections::{HashMap};
 use crate::data::copy_file_command::CopyFileCommand;
 use crate::data::init_file_command::InitFileCommand;
 use crate::data::move_file_command::MoveFileCommand;
@@ -6,6 +7,7 @@ use crate::db::file_repository::FileRepository;
 use crate::db::folder_repository::FolderRepository;
 use crate::db::global_file_repository::GlobalFileRepository;
 use crate::db::storage_profile_repository::StorageProfileRepository;
+use crate::events::rabbitmq::RabbitMqPublisher;
 use crate::helpers::data_error::DataError;
 use crate::service::preview_service::{PreviewService, PreviewServiceImpl};
 use async_compression::tokio::write::{GzipDecoder, GzipEncoder};
@@ -13,19 +15,18 @@ use async_trait::async_trait;
 use derive_new::new;
 use futures::stream::{self, StreamExt};
 use homelab_core::constants::MB;
+use homelab_core::events::{FileUpdatedEvent, FileUploadedEvent, UserUpdatedEvent};
 use homelab_core::file::{File, UploadStatus};
 use homelab_core::folder::Folder;
 use homelab_core::global_file::GlobalFile;
 use homelab_core::storage_profile::StorageProfile;
+use sqlx::types::time::OffsetDateTime;
 use std::path::PathBuf;
 use std::sync::Arc;
-use sqlx::types::time::OffsetDateTime;
 use tokio::fs;
 use tokio::io::{AsyncWriteExt, BufReader, BufWriter};
 use tokio::sync::mpsc::Receiver;
 use uuid::Uuid;
-use homelab_core::events::{FileUpdatedEvent, FileUploadedEvent};
-use crate::events::rabbitmq::RabbitMqPublisher;
 
 #[async_trait]
 pub trait FileService: Send + Sync {
@@ -67,7 +68,7 @@ pub struct FileServiceImpl {
     storage_profile_repo: Arc<dyn StorageProfileRepository>,
     storage_path: PathBuf,
     global_file_repo: Arc<dyn GlobalFileRepository>,
-    publisher: Arc<RabbitMqPublisher>
+    publisher: Arc<RabbitMqPublisher>,
 }
 
 #[async_trait]
@@ -125,8 +126,8 @@ impl FileService for FileServiceImpl {
 
                 self.global_file_repo.save(global_file).await?;
             }
-            
-            let event: FileUploadedEvent = FileUploadedEvent::new(
+
+            let file_event: FileUploadedEvent = FileUploadedEvent::new(
                 f.id.clone(),
                 f.file_type.clone(),
                 f.is_deleted.clone(),
@@ -135,8 +136,21 @@ impl FileService for FileServiceImpl {
                 f.upload_status.clone(),
                 f.created_at.clone(),
             );
-            
-            if let Err(e) = self.publisher.publish(&event).await {
+
+            if let Err(e) = self.publisher.publish(&file_event).await {
+                eprintln!("Failed to publish event: {:?}", e);
+            }
+
+            let sp_event: UserUpdatedEvent = UserUpdatedEvent::new(
+                sp.user_id.clone(),
+                None,
+                None,
+                Some(sp.allowed_storage.clone()),
+                Some(sp.taken_storage.clone()),
+                sp.is_blocked.clone(),
+            );
+
+            if let Err(e) = self.publisher.publish(&sp_event).await {
                 eprintln!("Failed to publish event: {:?}", e);
             }
 
@@ -215,14 +229,14 @@ impl FileService for FileServiceImpl {
             f.size.clone(),
             f.upload_status.clone(),
         );
-        
+
         if let Err(e) = self.publisher.publish(&event).await {
             eprintln!("Failed to publish event: {:?}", e);
         }
-        
+
         // After the file has been uploaded we need to create a preview of this file
         PreviewServiceImpl::spawn_generation(f, self.storage_path.clone());
-        
+
         Ok(())
     }
 
@@ -360,6 +374,20 @@ impl FileService for FileServiceImpl {
             return Err(DataError::IOError(e.to_string()));
         }
 
+
+        let sp_event: UserUpdatedEvent = UserUpdatedEvent::new(
+            sp.user_id.clone(),
+            None,
+            None,
+            Some(sp.allowed_storage.clone()),
+            Some(sp.taken_storage.clone()),
+            sp.is_blocked.clone(),
+        );
+
+        if let Err(e) = self.publisher.publish(&sp_event).await {
+            eprintln!("Failed to publish event: {:?}", e);
+        }
+
         match self.file_repo.save(new_file).await {
             Ok(uploaded_file) => Ok(uploaded_file),
             Err(err) => {
@@ -443,7 +471,7 @@ impl FileService for FileServiceImpl {
         }
 
         f.update_size(new_total_bytes);
-        
+
         let event: FileUpdatedEvent = FileUpdatedEvent::new(
             f.id.clone(),
             f.is_deleted.clone(),
@@ -455,7 +483,7 @@ impl FileService for FileServiceImpl {
         if let Err(e) = self.publisher.publish(&event).await {
             eprintln!("Failed to publish event: {:?}", e);
         }
-        
+
         self.file_repo.update(f).await?;
 
         Ok(())
@@ -576,6 +604,26 @@ impl FileService for FileServiceImpl {
             return Ok(());
         }
 
+        let mut sp = self.storage_profile_repo.get_by_id(user_id).await
+            .map_err(|e| DataError::EntityNotFoundException(e.to_string()))?.unwrap();
+
+        let total_size_to_reduce: i64 = deleted_files.iter().map(|f| f.size).sum();
+
+        sp.reduce_taken_storage_size(total_size_to_reduce);
+
+        let sp_event: UserUpdatedEvent = UserUpdatedEvent::new(
+            sp.user_id.clone(),
+            None,
+            None,
+            Some(sp.allowed_storage.clone()),
+            Some(sp.taken_storage.clone()),
+            sp.is_blocked.clone(),
+        );
+
+        if let Err(e) = self.publisher.publish(&sp_event).await {
+            eprintln!("Failed to publish event: {:?}", e);
+        }
+
         self.remove_deleted_files(deleted_files).await
     }
 
@@ -585,6 +633,38 @@ impl FileService for FileServiceImpl {
         if expired_files.is_empty() {
             return Ok(());
         }
+
+        let mut files_by_owner = HashMap::new();
+
+        for file in expired_files.clone() {
+            files_by_owner
+                .entry(file.owner_id.clone())
+                .or_insert_with(Vec::new)
+                .push(file);
+        }
+
+        for (owner_id, files)  in files_by_owner {
+            let mut sp = self.storage_profile_repo.get_by_id(owner_id).await
+                .map_err(|e| DataError::EntityNotFoundException(e.to_string()))?.unwrap();
+
+            let total_size_to_reduce: i64 = files.iter().map(|f| f.size).sum();
+
+            sp.reduce_taken_storage_size(total_size_to_reduce);
+
+            let sp_event: UserUpdatedEvent = UserUpdatedEvent::new(
+                sp.user_id.clone(),
+                None,
+                None,
+                Some(sp.allowed_storage.clone()),
+                Some(sp.taken_storage.clone()),
+                sp.is_blocked.clone(),
+            );
+
+            if let Err(e) = self.publisher.publish(&sp_event).await {
+                eprintln!("Failed to publish event: {:?}", e);
+            }
+        }
+
 
         self.remove_deleted_files(expired_files).await
     }
