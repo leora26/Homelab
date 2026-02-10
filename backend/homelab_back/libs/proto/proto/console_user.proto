@@ -9,6 +9,8 @@ service ConsoleUserService {
   rpc GetAll(google.protobuf.Empty) returns (ConsoleUserListResponse);
   rpc GetLatestVersion (GetLatestUserVersionRequest) returns (ConsoleUserResponse);
   rpc GetAllUserVersions (GetAllUserVersionsRequest) returns (ConsoleUserListResponse);
+  rpc ToggleBlocked (ToggleBlockedRequest) returns (google.protobuf.Empty);
+
 }
 
 message ConsoleUserResponse {
@@ -33,4 +35,9 @@ message GetLatestUserVersionRequest {
 
 message GetAllUserVersionsRequest {
   common.EntityId user_id = 1;
+}
+
+message ToggleBlockedRequest {
+  common.EntityId user_id = 1;
+  bool is_blocked = 2;
 }

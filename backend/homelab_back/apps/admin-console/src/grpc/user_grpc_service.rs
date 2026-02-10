@@ -2,7 +2,7 @@ use std::sync::Arc;
 use derive_new::new;
 use tonic::{Request, Response, Status};
 use homelab_proto::admin::console_user_service_server::ConsoleUserService;
-use homelab_proto::admin::{ConsoleUserListResponse, ConsoleUserResponse, GetAllUserVersionsRequest, GetLatestUserVersionRequest};
+use homelab_proto::admin::{ConsoleUserListResponse, ConsoleUserResponse, GetAllUserVersionsRequest, GetLatestUserVersionRequest, ToggleBlockedRequest};
 use crate::AppState;
 use crate::helpers::proto_mappers::{map_console_user, map_entity_id};
 
@@ -41,5 +41,15 @@ impl ConsoleUserService for GrpcUserService {
         let proto_users = users.into_iter().map(|u| map_console_user(u)).collect();
 
         Ok(Response::new(ConsoleUserListResponse { users: proto_users }))
+    }
+
+    async fn toggle_blocked(&self, request: Request<ToggleBlockedRequest>) -> Result<Response<()>, Status> {
+        let req = request.into_inner();
+
+        let user_id = map_entity_id(req.user_id)?;
+
+        let _ = self.app_state.user_client.toggle_blocked(user_id, req.is_blocked).await;
+
+        Ok(Response::new(()))
     }
 }

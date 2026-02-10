@@ -13,6 +13,7 @@ use crate::db::file_repo::FileRepoImpl;
 use crate::db::user_repo::UserRepoImpl;
 use crate::db::wlu_repo::WluRepoImpl;
 use crate::events::homelab_event_handler::HomelabEventHandler;
+use crate::grpc::clients::user_grpc_client::{UserRemoteClient, UserRemoteClientImpl};
 use crate::grpc::clients::wlu_grpc_client::{WluRemoteClient, WluRemoteClientImpl};
 use crate::grpc::user_grpc_service::GrpcUserService;
 use crate::grpc::wlu_grpc_service::GrpcWluService;
@@ -31,7 +32,8 @@ pub struct AppState {
     user_service: Arc<dyn UserService>,
     wlu_service: Arc<dyn WluService>,
     file_service: Arc<dyn FileService>,
-    wlu_client: Arc<dyn WluRemoteClient>
+    wlu_client: Arc<dyn WluRemoteClient>,
+    user_client: Arc<dyn UserRemoteClient>,
 }
 
 #[actix_web::main]
@@ -84,17 +86,19 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
     });
 
-    let wlu_service_url = env::var("USER_SERVICE_URL")
+    let user_client_url = env::var("USER_SERVICE_URL")
         .unwrap_or_else(|_| "http://localhost:50052".to_string());
 
-    println!("Connecting to User Service at {}...", wlu_service_url);
-    let wlu_client_impl = WluRemoteClientImpl::connect(wlu_service_url).await?;
+    println!("Connecting to User Service at {}...", user_client_url);
+    let wlu_client_impl = WluRemoteClientImpl::connect(user_client_url.clone()).await?;
+    let user_client_impl = UserRemoteClientImpl::connect(user_client_url.clone()).await?;
 
     let app_state = web::Data::new(AppState {
         user_service,
         wlu_service,
         file_service,
         wlu_client: Arc::new(wlu_client_impl),
+        user_client: Arc::new(user_client_impl),
     });
 
     let grpc_addr: std::net::SocketAddr = "[::1]:50053".parse().unwrap();
