@@ -51,7 +51,7 @@ CREATE TABLE folders
     name             TEXT        NOT NULL,
     owner_id         UUID        NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    parent_folder_id UUID        NOT NULL REFERENCES folders (id) ON DELETE CASCADE
+    parent_folder_id UUID        REFERENCES folders (id) ON DELETE CASCADE
 );
 
 CREATE TABLE files

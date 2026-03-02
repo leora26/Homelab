@@ -63,7 +63,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .unwrap_or_else(|_| "hybrid".to_string())
         .to_lowercase();
 
-    let database_url = env::var("DATABASE_URL").expect("DATABSE_URL must be set in .env file");
+    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set in .env file");
 
     let root_folder_path =
         env::var("ROOT_FOLDER_PATH").expect("ROOT_FOLDER_PATH must be set in .env file");

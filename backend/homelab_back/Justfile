@@ -3,6 +3,12 @@ set shell := ["powershell.exe", "-c"]
 migrate:
     sqlx migrate run
 
+revert:
+    sqlx migrate revert
+
+reset:
+    sqlx database reset -y
+
 prepare:
     cd apps/nas-server; cargo sqlx prepare
     cd apps/user-management; cargo sqlx prepare
@@ -15,3 +21,6 @@ ready: migrate prepare
     cargo fmt
     cargo test
     @echo "✅ Ready to push!"
+
+populate:
+    cargo run -p nas-server --bin seed
