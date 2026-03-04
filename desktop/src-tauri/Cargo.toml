@@ -29,3 +29,5 @@ tonic = "0.12"
 prost = "0.13"
 
 prost-types = "0.13"
+chrono = "0.4"
+tauri-plugin-shell = "2.3.5"

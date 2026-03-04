@@ -15,6 +15,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         proto_root.join("file_label.proto"),
         proto_root.join("global_file.proto"),
         proto_root.join("white_listed_user.proto"),
+        proto_root.join("storage_profile.proto"),
     ];
 
     for proto in protos {
