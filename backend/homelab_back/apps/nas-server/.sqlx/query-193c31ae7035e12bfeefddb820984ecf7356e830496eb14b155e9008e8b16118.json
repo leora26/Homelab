@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO files (id, name, owner_id, file_type, parent_folder_id, size, upload_status)\n        VALUES ($1, $2, $3, 'Text', $4, $5, 'Completed')\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Uuid",
+        "Uuid",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "193c31ae7035e12bfeefddb820984ecf7356e830496eb14b155e9008e8b16118"
+}

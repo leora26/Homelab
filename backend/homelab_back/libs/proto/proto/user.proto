@@ -6,6 +6,7 @@ import "google/protobuf/empty.proto";
 import "types.proto";
 
 service UserService {
+  rpc GetById (GetUserByIdRequest) returns (UserResponse);
   rpc GetByEmail (GetUserByEmailRequest) returns (UserResponse);
   rpc GetAll (google.protobuf.Empty) returns (UserList);
   rpc Create (CreateUserRequest) returns (UserResponse);
@@ -28,6 +29,10 @@ message UserResponse {
 
 message UserList {
   repeated UserResponse users = 1;
+}
+
+message GetUserByIdRequest {
+  common.EntityId id = 1;
 }
 
 message GetUserByEmailRequest {

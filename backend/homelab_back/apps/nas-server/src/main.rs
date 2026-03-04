@@ -38,8 +38,18 @@ use tonic::transport::Server;
 use tracing_subscriber::EnvFilter;
 use crate::events::nas_event_handler::NasEventHandler;
 use homelab_core::helpers::rabbitmq_consumer::RabbitMqConsumer;
+use homelab_proto::nas::file_label_service_server::FileLabelServiceServer;
+use homelab_proto::nas::folder_service_server::FolderServiceServer;
+use homelab_proto::nas::global_file_service_server::GlobalFileServiceServer;
+use homelab_proto::nas::label_service_server::LabelServiceServer;
+use homelab_proto::nas::storage_profile_service_server::StorageProfileServiceServer;
 use crate::events::rabbitmq::RabbitMqPublisher;
-use crate::service::storage_profile_service::StorageProfileServiceImpl;
+use crate::grpc::file_label_grpc_service::GrpcFileLabelService;
+use crate::grpc::folder_grpc_service::GrpcFolderService;
+use crate::grpc::global_file_grpc_service::GrpcGlobalFileService;
+use crate::grpc::grpc_label_service::GrpcLabelService;
+use crate::grpc::storage_profile_grpc_service::GrpcStorageProfileService;
+use crate::service::storage_profile_service::{StorageProfileService, StorageProfileServiceImpl};
 
 pub struct AppState {
     pub file_service: Arc<dyn FileService>,
@@ -49,6 +59,7 @@ pub struct AppState {
     pub global_file_service: Arc<dyn GlobalFileService>,
     pub label_service: Arc<dyn LabelService>,
     pub file_label_service: Arc<dyn FileLabelService>,
+    pub storage_profile_service: Arc<dyn StorageProfileService>,
 }
 
 #[actix_web::main]
@@ -155,6 +166,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         global_file_service,
         label_service,
         file_label_service,
+        storage_profile_service
     });
 
     let rest_addr = ("0.0.0.0", 8080);
@@ -185,9 +197,19 @@ async fn main() -> Result<(), Box<dyn Error>> {
             let app_state_arc = app_state.clone().into_inner();
 
             let file_impl = GrpcFileService::new(app_state_arc.clone());
+            let folder_impl = GrpcFolderService::new(app_state_arc.clone());
+            let file_label_impl = GrpcFileLabelService::new(app_state_arc.clone());
+            let global_file_impl = GrpcGlobalFileService::new(app_state_arc.clone());
+            let label_impl = GrpcLabelService::new(app_state_arc.clone());
+            let storage_profile_impl = GrpcStorageProfileService::new(app_state_arc.clone());
 
             Server::builder()
                 .add_service(FileServiceServer::new(file_impl))
+                .add_service(FolderServiceServer::new(folder_impl))
+                .add_service(FileLabelServiceServer::new(file_label_impl))
+                .add_service(GlobalFileServiceServer::new(global_file_impl))
+                .add_service(LabelServiceServer::new(label_impl))
+                .add_service(StorageProfileServiceServer::new(storage_profile_impl))
                 .serve(grpc_addr)
                 .await?;
         }

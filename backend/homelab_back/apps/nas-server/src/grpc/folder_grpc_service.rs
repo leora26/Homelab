@@ -10,9 +10,11 @@ use homelab_proto::nas::{
     MoveFolderRequest, RenameFolderRequest, SearchFolderRequest,
 };
 use std::sync::Arc;
+use derive_new::new;
 use tonic::{Request, Response, Status};
 use uuid::Uuid;
 
+#[derive(new)]
 pub struct GrpcFolderService {
     app_state: Arc<AppState>,
 }

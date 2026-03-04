@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use async_trait::async_trait;
 use derive_new::new;
+use uuid::Uuid;
 use homelab_core::events::{UserBlockedEvent, UserCreatedEvent};
 use homelab_core::storage_profile::StorageProfile;
 use crate::db::storage_profile_repository::StorageProfileRepository;
@@ -10,6 +11,7 @@ use crate::helpers::data_error::DataError;
 pub trait StorageProfileService: Send + Sync {
     async fn save_storage_profile (&self, event: UserCreatedEvent) -> Result<StorageProfile, DataError>;
     async fn toggle_storage_profile(&self, event: UserBlockedEvent) -> Result<(), DataError>;
+    async fn get_by_id(&self, id: Uuid) -> Result<Option<StorageProfile>, DataError>;
 }
 
 #[derive(new)]
@@ -39,5 +41,9 @@ impl StorageProfileService for StorageProfileServiceImpl {
 
         Ok(())
 
+    }
+
+    async fn get_by_id(&self, id: Uuid) -> Result<Option<StorageProfile>, DataError> {
+        self.storage_profile_repo.get_by_id(id).await
     }
 }

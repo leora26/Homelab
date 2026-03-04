@@ -1,0 +1,21 @@
+syntax = "proto3";
+package nas;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+import "types.proto";
+
+service StorageProfileService {
+  rpc GetById (GetStorageProfileByIdRequest) returns (StorageProfileResponse);
+}
+
+message StorageProfileResponse {
+  common.EntityId user_id = 1;
+  int64 allowed_storage = 2;
+  int64 taken_storage = 3;
+  bool is_blocked = 4;
+}
+
+message GetStorageProfileByIdRequest {
+  common.EntityId id = 1;
+}

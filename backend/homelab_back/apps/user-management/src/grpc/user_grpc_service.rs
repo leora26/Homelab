@@ -3,10 +3,7 @@ use crate::helpers::proto_mappers::{map_entity_id, map_user_to_proto};
 use crate::AppState;
 use derive_new::new;
 use homelab_proto::user::user_service_server::UserService;
-use homelab_proto::user::{
-    CreateUserRequest, GetUserByEmailRequest, ToggleBlockStatusRequest, UpdatePasswordRequest,
-    UserList, UserResponse,
-};
+use homelab_proto::user::{CreateUserRequest, GetUserByEmailRequest, GetUserByIdRequest, ToggleBlockStatusRequest, UpdatePasswordRequest, UserList, UserResponse};
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
 
@@ -17,6 +14,21 @@ pub struct GrpcUserService {
 
 #[tonic::async_trait]
 impl UserService for GrpcUserService {
+    async fn get_by_id(&self, request: Request<GetUserByIdRequest>) -> Result<Response<UserResponse>, Status> {
+        let req = request.into_inner();
+
+        let user_id = map_entity_id(req.id)?;
+
+        let user = self
+            .app_state
+            .user_service
+            .get_by_id(user_id)
+            .await?
+            .ok_or_else(|| Status::not_found(format!("No user found for the given id: {}", user_id)))?;
+
+        Ok(Response::new(map_user_to_proto(user)))
+    }
+
     async fn get_by_email(
         &self,
         request: Request<GetUserByEmailRequest>,
