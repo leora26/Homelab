@@ -55,7 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     sqlx::query!(
         r#"
         INSERT INTO files (id, name, owner_id, file_type, parent_folder_id, size, upload_status)
-        VALUES ($1, $2, $3, 'Text', $4, $5, 'Completed')
+        VALUES ($1, $2, $3, 'text', $4, $5, 'completed')
         "#,
         file_id,
         "test_document.txt",

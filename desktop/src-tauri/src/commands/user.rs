@@ -1,19 +1,11 @@
-use serde::Serialize;
 use crate::common::EntityId;
 use crate::user::user_service_client::UserServiceClient;
 use crate::user::GetUserByIdRequest;
 use crate::AppState;
 use tauri::State;
 use tonic::Request;
+use crate::types::model::UserProfileView;
 use crate::utils::format_timestamp;
-
-#[derive(Serialize)]
-pub struct UserProfileView {
-    pub id: String,
-    pub email: String,
-    pub name: String,
-    pub created_at: String,
-}
 
 #[tauri::command]
 pub async fn get_user_profile(
@@ -30,9 +22,12 @@ pub async fn get_user_profile(
     let response = client
         .get_by_id(request)
         .await
-        .map_err(|e| format!("gRPC error while fetching user details {}", e.message()))?;
+        .map_err(|e| {
+            eprintln!("🛑 gRPC Error Code when fetching user details: {:?}", e.code());
+            format!("gRPC error details when fetching user details: [{:?}] {}", e.code(), e.message())
+        });
 
-    let user_data = response.into_inner();
+    let user_data = response?.into_inner();
 
 
     Ok(UserProfileView {

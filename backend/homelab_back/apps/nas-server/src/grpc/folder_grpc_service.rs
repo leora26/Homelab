@@ -4,11 +4,7 @@ use crate::helpers::proto_mappers::{map_entity_id, map_file_to_proto, map_folder
 use crate::AppState;
 use async_trait::async_trait;
 use homelab_proto::nas::folder_service_server::FolderService;
-use homelab_proto::nas::{
-    DeleteAllFolderRequest, DeleteFolderRequest, FileListResponse, FolderResponse,
-    FolderResponseList, GetAllSubfoldersRequest, GetFilesForFolderRequest, GetFolderRequest,
-    MoveFolderRequest, RenameFolderRequest, SearchFolderRequest,
-};
+use homelab_proto::nas::{DeleteAllFolderRequest, DeleteFolderRequest, FileListResponse, FolderResponse, FolderResponseList, GetAllSubfoldersRequest, GetFilesForFolderRequest, GetFolderRequest, GetRootFolderRequest, MoveFolderRequest, RenameFolderRequest, SearchFolderRequest};
 use std::sync::Arc;
 use derive_new::new;
 use tonic::{Request, Response, Status};
@@ -21,6 +17,21 @@ pub struct GrpcFolderService {
 
 #[async_trait]
 impl FolderService for GrpcFolderService {
+    async fn get_root_folder(&self, request: Request<GetRootFolderRequest>) -> Result<Response<FolderResponse>, Status> {
+        let req = request.into_inner();
+
+        let user_id = map_entity_id(req.user_id)?;
+
+        let folder = self
+            .app_state
+            .folder_service
+            .get_root(user_id)
+            .await?
+            .ok_or_else(|| Status::not_found(format!("Failed to find root {}", user_id)))?;
+
+        Ok(Response::new(map_folder_to_proto(folder)))
+    }
+
     async fn get_folder(
         &self,
         request: Request<GetFolderRequest>,

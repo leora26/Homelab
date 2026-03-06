@@ -12,6 +12,8 @@ pub mod user {
 
 pub mod utils;
 pub mod commands;
+pub mod types;
+pub mod helpers;
 use tonic::transport::{Channel, Endpoint};
 
 pub struct AppState {
@@ -37,6 +39,8 @@ pub async fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::user::get_user_profile,
             commands::storage_profile::get_storage_profile,
+            commands::folder::get_root_folder,
+            commands::folder::get_files_for_folder,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

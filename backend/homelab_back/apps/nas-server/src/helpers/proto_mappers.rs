@@ -33,9 +33,9 @@ pub fn map_file_to_proto(f: File) -> FileResponse {
             DomainFileType::Unknown => ProtoFileType::Unknown,
         } as i32,
         is_deleted: f.is_deleted,
-        ttl: Some(prost_types::Timestamp {
-            seconds: f.ttl.unwrap().unix_timestamp(),
-            nanos: f.ttl.unwrap().nanosecond() as i32,
+        ttl: f.ttl.map(|t| prost_types::Timestamp {
+            seconds: t.unix_timestamp(),
+            nanos: t.nanosecond() as i32,
         }),
         size: f.size,
         upload_status: match f.upload_status {
@@ -64,7 +64,7 @@ pub fn map_global_file_to_proto(g: GlobalFile) -> GlobalFileResponse {
 pub fn map_folder_to_proto(f: Folder) -> FolderResponse {
     FolderResponse {
         id: Option::from(map_id_to_proto(f.id)),
-        parent_folder_id: Option::from(map_id_to_proto(f.parent_folder_id.unwrap())),
+        parent_folder_id: f.parent_folder_id.map(map_id_to_proto),
         name: f.name,
         owner_id: Option::from(map_id_to_proto(f.owner_id)),
         created_at: Some(prost_types::Timestamp {

@@ -1,17 +1,9 @@
-use serde::Serialize;
 use tonic::Request;
 use crate::AppState;
 use crate::common::EntityId;
 use crate::nas::GetStorageProfileByIdRequest;
 use crate::nas::storage_profile_service_client::StorageProfileServiceClient;
-
-#[derive(Serialize)]
-pub struct StorageProfileView {
-    pub user_id: String,
-    pub allowed_storage: i64,
-    pub taken_storage: i64,
-    pub is_blocked: bool,
-}
+use crate::types::model::StorageProfileView;
 
 #[tauri::command]
 pub async fn get_storage_profile(
@@ -28,8 +20,8 @@ pub async fn get_storage_profile(
         .get_by_id(request)
         .await
         .map_err(|e| {
-            eprintln!("🛑 gRPC Error Code: {:?}", e.code());
-            format!("gRPC error details: [{:?}] {}", e.code(), e.message())
+            eprintln!("🛑 gRPC Error Code when fetching storage profile: {:?}", e.code());
+            format!("gRPC error details when fetching storage profile: [{:?}] {}", e.code(), e.message())
         })?;
 
     let sp_data = response.into_inner();

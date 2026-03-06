@@ -12,12 +12,12 @@
             "name": "file_type",
             "kind": {
               "Enum": [
-                "Text",
-                "Image",
-                "Video",
-                "Audio",
-                "Pdf",
-                "Unknown"
+                "text",
+                "image",
+                "video",
+                "audio",
+                "pdf",
+                "unknown"
               ]
             }
           }
@@ -30,9 +30,9 @@
             "name": "upload_status",
             "kind": {
               "Enum": [
-                "Pending",
-                "Completed",
-                "Failed"
+                "pending",
+                "completed",
+                "failed"
               ]
             }
           }

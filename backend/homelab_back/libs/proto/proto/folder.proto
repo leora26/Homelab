@@ -8,6 +8,7 @@ import "types.proto";
 import "file.proto";
 
 service FolderService {
+  rpc GetRootFolder (GetRootFolderRequest) returns (FolderResponse);
   rpc GetFolder (GetFolderRequest) returns (FolderResponse);
   rpc GetSubfolders (GetAllSubfoldersRequest) returns (FolderResponseList);
   rpc DeleteFolder (DeleteFolderRequest) returns (google.protobuf.Empty);
@@ -28,6 +29,10 @@ message FolderResponse {
 
 message FolderResponseList {
   repeated FolderResponse folders = 1;
+}
+
+message GetRootFolderRequest {
+  common.EntityId user_id = 1;
 }
 
 message GetFolderRequest {

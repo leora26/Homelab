@@ -3,28 +3,15 @@
     import { onMount } from "svelte";
     import UserCard from "$lib/components/UserCard.svelte";
     import StorageCard from "$lib/components/StorageCard.svelte";
+    import type {StorageProfileView, UserProfileView} from "$lib/types/models";
 
-    let userId = "b692e956-4c37-4b3a-8080-ec4aa2af2e6b";
-
-    interface UserProfile {
-        id: string;
-        email: string;
-        name: string;
-        created_at: string;
-    }
-
-    interface StorageProfile {
-        user_id: string;
-        allowed_storage: number;
-        taken_storage: number;
-        is_blocked: boolean;
-    }
+    let userId = "4a352510-842b-40dd-8810-7227b6b4c2c0";
 
     let error = $state<string | null>(null);
     let isLoading = $state(true);
 
-    let user = $state<UserProfile | null>(null);
-    let sp = $state<StorageProfile | null>(null);
+    let user = $state<UserProfileView | null>(null);
+    let sp = $state<StorageProfileView | null>(null);
 
     let percentage = $derived(
         sp ? (Number(sp.taken_storage) / Number(sp.allowed_storage)) * 100 : 0
@@ -35,8 +22,8 @@
     onMount(async () => {
         try {
             const [fetchedUser, fetchedSp] = await Promise.all([
-                invoke<UserProfile>('get_user_profile', { userId }),
-                invoke<StorageProfile>('get_storage_profile', { userId })
+                invoke<UserProfileView>('get_user_profile', { userId }),
+                invoke<StorageProfileView>('get_storage_profile', { userId })
             ]);
 
             user = fetchedUser;

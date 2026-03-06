@@ -1,5 +1,5 @@
 CREATE TYPE file_type AS ENUM (
-    'Text', 'Image', 'Video', 'Audio', 'Pdf', 'Unknown'
+    'text', 'image', 'video', 'audio', 'pdf', 'unknown'
 );
 
 CREATE TYPE user_role AS ENUM (
@@ -15,7 +15,7 @@ CREATE TYPE access_type AS ENUM (
 );
 
 CREATE TYPE upload_status AS ENUM (
-    'Pending', 'Completed', 'Failed'
+    'pending', 'completed', 'failed'
 );
 
 CREATE TABLE users
