@@ -7,7 +7,7 @@
         folder: FolderView;
         activeFolderId: string | null;
         onSelect: (folderId: string) => void;
-        onContextMenu: (e: MouseEvent, folderId: string) => void;
+        onContextMenu: (e: MouseEvent, folderId: string, folderName: string) => void;
         depth?: number;
     }
 
@@ -52,7 +52,7 @@
         tabindex="0"
         oncontextmenu={(e) => {
             e.preventDefault();
-            onContextMenu(e, folder.id)
+            onContextMenu(e, folder.id, folder.name)
         }}
 >
     <span class="chevron" class:expanded={isExpanded}>

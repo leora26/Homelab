@@ -5,6 +5,7 @@
         type: 'text' | 'number';
         placeholder?: string;
         required?: boolean;
+        defaultValue?: string | number;
     }
 
     interface Props {
@@ -39,7 +40,7 @@
             isSubmitting = false;
             let initialData: Record<string, string | number> = {};
             for (const field of fields) {
-                initialData[field.name] = field.type === 'number' ? 0 : '';
+                initialData[field.name] = field.defaultValue ?? (field.type === 'number' ? 0 : '');
             }
             formData = initialData;
         }
@@ -88,7 +89,8 @@
                 {#each fields as field}
                     <div class="form-group">
                         <label for={field.name}>
-                            {field.label} {#if field.required}<span class="required">*</span>{/if}
+                            {field.label}
+                            {#if field.required}<span class="required">*</span>{/if}
                         </label>
                         <input
                                 type={field.type}
@@ -120,7 +122,10 @@
 <style>
     .modal-backdrop {
         position: fixed;
-        top: 0; left: 0; width: 100vw; height: 100vh;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
         background: rgba(0, 0, 0, 0.4);
         display: flex;
         align-items: center;
@@ -134,7 +139,7 @@
         border-radius: 10px;
         width: 100%;
         max-width: 400px;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
         display: flex;
         flex-direction: column;
         overflow: hidden;
@@ -144,7 +149,12 @@
         padding: 1.25rem 1.5rem;
         border-bottom: 1px solid #e1e4e8;
     }
-    .modal-header h3 { margin: 0; font-size: 1.15rem; color: #1e1e2f; }
+
+    .modal-header h3 {
+        margin: 0;
+        font-size: 1.15rem;
+        color: #1e1e2f;
+    }
 
     .modal-body {
         padding: 1.5rem;
@@ -159,8 +169,16 @@
         gap: 0.5rem;
     }
 
-    .form-group label { font-size: 0.9rem; font-weight: 500; color: #444; }
-    .required { color: #c62828; margin-left: 0.2rem; }
+    .form-group label {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: #444;
+    }
+
+    .required {
+        color: #c62828;
+        margin-left: 0.2rem;
+    }
 
     .form-group input {
         padding: 0.6rem 0.8rem;
@@ -169,7 +187,11 @@
         font-size: 1rem;
         outline: none;
     }
-    .form-group input:focus { border-color: #007bff; box-shadow: 0 0 0 3px rgba(0,123,255,0.1); }
+
+    .form-group input:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+    }
 
     .error-banner {
         background: #ffebee;
@@ -197,7 +219,19 @@
         border: none;
         transition: opacity 0.2s;
     }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .btn.primary { background: #007bff; color: white; }
-    .btn.secondary { background: #f0f2f5; border: 1px solid #d1d5db; }
+
+    .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .btn.primary {
+        background: #007bff;
+        color: white;
+    }
+
+    .btn.secondary {
+        background: #f0f2f5;
+        border: 1px solid #d1d5db;
+    }
 </style>

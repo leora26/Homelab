@@ -44,6 +44,7 @@ pub async fn run() {
             commands::folder::get_subfolders,
             commands::folder::create_folder,
             commands::folder::delete_selected_folder,
+            commands::folder::rename_folder,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

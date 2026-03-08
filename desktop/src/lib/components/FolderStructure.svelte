@@ -4,7 +4,8 @@
     import type {FolderView} from "$lib/types/models";
     import {userId} from "$lib/types/tempUserId";
     import FolderTreeItem from "./FolderTreeItem.svelte";
-    import FormModal from "$lib/components/common/FormModal.svelte";
+    import FormModal, {type FormField} from "$lib/components/common/FormModal.svelte";
+    import ContextMenu, {type ContextMenuOption} from "$lib/components/common/ContextMenu.svelte";
 
     interface FolderStructureProps {
         activeFolderId: string | null;
@@ -23,9 +24,10 @@
     let rootFolder = $state<FolderView | null>(null);
 
     let isDeleteModalOpen = $state(false);
+    let isRenameModalOpen = $state(false);
     let folderToDeleteId = $state<string | null>(null);
 
-    let contextMenu = $state({ isOpen: false, x: 0, y: 0, targetId: '' });
+    let contextMenu = $state({isOpen: false, x: 0, y: 0, targetId: '', targetName: ''});
 
     onMount(async () => {
         try {
@@ -41,8 +43,14 @@
         }
     });
 
-    const handleContextMenu = (e: MouseEvent, folderId: string) => {
-        contextMenu = { isOpen: true, x: e.clientX, y: e.clientY, targetId: folderId };
+    const handleContextMenu = (e: MouseEvent, folderId: string, folderName: string) => {
+        contextMenu = {
+            isOpen: true,
+            x: e.clientX,
+            y: e.clientY,
+            targetId: folderId,
+            targetName: folderName
+        };
     };
 
     const closeContextMenu = () => {
@@ -53,6 +61,67 @@
         if (folderId === rootFolder?.id) return;
         folderToDeleteId = folderId;
         isDeleteModalOpen = true;
+    };
+
+    const triggerRename = () => {
+        if (contextMenu.targetId === rootFolder?.id) return; // Prevent renaming root
+        isRenameModalOpen = true;
+    };
+
+    let renameFields = $derived<FormField[]>([
+        {
+            name: "newFolderName",
+            label: "Folder Name",
+            type: "text",
+            required: true,
+            defaultValue: contextMenu.targetName
+        }
+    ]);
+
+    let menuOptions = $derived.by<ContextMenuOption[]>(() => {
+        const options: ContextMenuOption[] = [
+            {
+                label: 'New Subfolder',
+                icon: '📁',
+                action: () => onRequestNewFolder(contextMenu.targetId)
+            }
+        ];
+
+        if (contextMenu.targetId !== rootFolder?.id) {
+            options.push(
+                {
+                    label: 'Rename',
+                    icon: '✏️',
+                    action: triggerRename
+                },
+                {
+                    label: 'Delete',
+                    icon: '🗑️',
+                    danger: true,
+                    action: () => triggerDelete(contextMenu.targetId)
+                }
+            );
+        }
+
+        return options;
+    });
+
+    const confirmRenameFolder = async (data: Record<string, string | number>) => {
+        const newName = String(data.newFolderName).trim();
+
+        if (newName === contextMenu.targetName) {
+            isRenameModalOpen = false;
+            return;
+        }
+
+        await invoke('rename_folder', {
+            folderId: contextMenu.targetId,
+            newName: newName
+        });
+
+        console.log(`Successfully renamed folder to: ${newName}`);
+        isRenameModalOpen = false;
+
     };
 
     const confirmDeleteFolder = async () => {
@@ -70,11 +139,13 @@
     };
 </script>
 
-<svelte:window onclick={closeContextMenu} onscroll={closeContextMenu} />
+<svelte:window onclick={closeContextMenu} onscroll={closeContextMenu}/>
 
 <aside class="sidebar">
     {#if isLoading}
-        <div class="full-center"><div class="spinner"></div></div>
+        <div class="full-center">
+            <div class="spinner"></div>
+        </div>
     {:else if error}
         <div class="full-center error">⚠️ {error}</div>
     {:else if rootFolder}
@@ -92,21 +163,22 @@
 </aside>
 
 {#if contextMenu.isOpen}
-    <div
-            class="context-menu"
-            style="top: {contextMenu.y}px; left: {contextMenu.x}px;"
-    >
-        <button onclick={() => onRequestNewFolder(contextMenu.targetId)}>
-            📁 New Subfolder
-        </button>
-
-        {#if contextMenu.targetId !== rootFolder?.id}
-            <button class="danger" onclick={() => triggerDelete(contextMenu.targetId)}>
-                🗑️ Delete
-            </button>
-        {/if}
-    </div>
+    <ContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            options={menuOptions}
+    />
 {/if}
+
+<FormModal
+        isOpen={isRenameModalOpen}
+        title="Rename Folder"
+        fields={renameFields}
+        submitText="Save Changes"
+        loadingText="Saving..."
+        onClose={() => isRenameModalOpen = false}
+        onSubmit={confirmRenameFolder}
+/>
 
 <FormModal
         isOpen={isDeleteModalOpen}

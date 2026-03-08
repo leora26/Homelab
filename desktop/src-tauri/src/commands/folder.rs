@@ -1,6 +1,6 @@
 use crate::common::EntityId;
 use crate::nas::folder_service_client::FolderServiceClient;
-use crate::nas::{CreateFolderRequest, DeleteFolderRequest, GetAllSubfoldersRequest, GetFilesForFolderRequest, GetRootFolderRequest};
+use crate::nas::{CreateFolderRequest, DeleteFolderRequest, GetAllSubfoldersRequest, GetFilesForFolderRequest, GetRootFolderRequest, RenameFolderRequest};
 use crate::types::model::{FileView, FolderView};
 use crate::AppState;
 use tonic::Request;
@@ -144,4 +144,31 @@ pub async fn delete_selected_folder(
         })?;
 
     Ok(())
+}
+
+#[tauri::command]
+pub async fn rename_folder(
+    folder_id: String,
+    new_name: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<FolderView, String> {
+    let mut client = FolderServiceClient::new(state.nas_grpc_channel.clone());
+
+    let request = tonic::Request::new(RenameFolderRequest {
+        id: Some(EntityId { value: folder_id}),
+        new_name: new_name.clone(),
+    });
+
+    let response = client.rename_folder(request).await.map_err(|e| {
+        eprintln!("🛑 gRPC Error Code when renaming folder: {:?}", e.code());
+        format!(
+            "gRPC error details when renaming folder: [{:?}] {}",
+            e.code(),
+            e.message()
+        )
+    });
+
+    let rename = response?.into_inner();
+
+    Ok(map_folder_proto_to_view(rename))
 }
