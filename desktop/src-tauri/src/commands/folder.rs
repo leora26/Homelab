@@ -1,6 +1,6 @@
 use crate::common::EntityId;
 use crate::nas::folder_service_client::FolderServiceClient;
-use crate::nas::{GetAllSubfoldersRequest, GetFilesForFolderRequest, GetRootFolderRequest};
+use crate::nas::{CreateFolderRequest, DeleteFolderRequest, GetAllSubfoldersRequest, GetFilesForFolderRequest, GetRootFolderRequest};
 use crate::types::model::{FileView, FolderView};
 use crate::AppState;
 use tonic::Request;
@@ -90,4 +90,58 @@ pub async fn get_subfolders (
         .map(|f| map_folder_proto_to_view(f)).collect();
 
     Ok(mapped_folders)
+}
+
+
+#[tauri::command]
+pub async fn create_folder(
+    parent_folder_id: String,
+    user_id: String,
+    name: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<FolderView, String> {
+    let mut client = FolderServiceClient::new(state.nas_grpc_channel.clone());
+
+    let request = Request::new(CreateFolderRequest {
+        parent_folder_id: Some(EntityId {value: parent_folder_id}),
+        name,
+        owner_id: Some(EntityId {value: user_id}),
+    });
+
+    let response = client.create_folder(request).await.map_err(|e| {
+        eprintln!("🛑 gRPC Error Code when creating new folder: {:?}", e.code());
+        format!(
+            "gRPC error details when creating new folder: [{:?}] {}",
+            e.code(),
+            e.message()
+        )
+    });
+
+    let new_folder = response?.into_inner();
+
+    Ok(map_folder_proto_to_view(new_folder))
+}
+
+#[tauri::command]
+pub async fn delete_selected_folder(
+    selected_folder_id: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), String> {
+    let mut client = FolderServiceClient::new(state.nas_grpc_channel.clone());
+
+    let request = tonic::Request::new(DeleteFolderRequest {
+        id: Some(EntityId {
+            value: selected_folder_id.clone(),
+        }),
+    });
+
+    client
+        .delete_folder(request)
+        .await
+        .map_err(|e| {
+            eprintln!("🛑 gRPC Error: [{:?}] {}", e.code(), e.message());
+            format!("Failed to delete folder {}: {}", selected_folder_id, e.message())
+        })?;
+
+    Ok(())
 }

@@ -7,6 +7,7 @@
         folder: FolderView;
         activeFolderId: string | null;
         onSelect: (folderId: string) => void;
+        onContextMenu: (e: MouseEvent, folderId: string) => void;
         depth?: number;
     }
 
@@ -14,6 +15,7 @@
         folder,
         activeFolderId,
         onSelect,
+        onContextMenu,
         depth = 0
     }: Props = $props();
 
@@ -45,10 +47,13 @@
 <button
         class="tree-item"
         class:active={activeFolderId === folder.id}
-        style="padding-left: {0.5 + depth * 1.2}rem;"
         onclick={handleToggle}
-        role="button"
+        style="padding-left: {0.5 + depth * 1.2}rem;"
         tabindex="0"
+        oncontextmenu={(e) => {
+            e.preventDefault();
+            onContextMenu(e, folder.id)
+        }}
 >
     <span class="chevron" class:expanded={isExpanded}>
         {#if isLoading}
@@ -69,6 +74,7 @@
                     folder={child}
                     {activeFolderId}
                     {onSelect}
+                    {onContextMenu}
                     depth={depth + 1}
             />
         {/each}
@@ -125,8 +131,6 @@
     .chevron.placeholder {
         visibility: hidden;
     }
-
-    /* Keeps alignment correct */
 
     .icon {
         font-size: 1.1rem;

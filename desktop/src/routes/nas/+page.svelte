@@ -1,11 +1,49 @@
 <script lang="ts">
     import FolderStructure from "$lib/components/FolderStructure.svelte";
     import ContentSection from "$lib/components/ContentSection.svelte";
+    import FormModal, { type FormField } from "$lib/components/common/FormModal.svelte";
+
+    import { invoke } from "@tauri-apps/api/core";
+    import { userId } from "$lib/types/tempUserId";
+    import type { FolderView } from "$lib/types/models";
 
     let activeFolderId = $state<string | null>(null);
+    let isNewFolderModalOpen = $state(false);
+    let targetParentFolderId = $state<string | null>(null);
 
     const handleActiveFolderChange = (folderId: string) => {
-        activeFolderId = folderId
+        activeFolderId = folderId;
+    }
+
+    const openNewFolderModal = (targetId?: string) => {
+        const idToUse = targetId || activeFolderId;
+        if (!idToUse) {
+            alert("Please select a parent folder first.");
+            return;
+        }
+        targetParentFolderId = idToUse;
+        isNewFolderModalOpen = true;
+    }
+
+    const newFolderFields: FormField[] = [
+        {
+            name: "folderName",
+            label: "Folder Name",
+            type: "text",
+            placeholder: "e.g., Vacation Photos",
+            required: true
+        }
+    ];
+
+    const handleCreateFolder = async (data: Record<string, string | number>) => {
+        const newFolder = await invoke<FolderView>('create_folder', {
+            parentFolderId: activeFolderId,
+            userId: userId,
+            name: String(data.folderName).trim()
+        });
+
+        console.log("Successfully created folder:", newFolder);
+        isNewFolderModalOpen = false;
     }
 </script>
 
@@ -13,26 +51,37 @@
     <header class="toolbar">
         <h2>NAS Storage</h2>
         <div class="actions">
-            <button class="btn secondary">📁 New Folder</button>
+            <button onclick={() => openNewFolderModal()} class="btn secondary" disabled={!activeFolderId}>
+                📁 New Folder
+            </button>
             <button class="btn primary">⬆️ Upload File</button>
         </div>
     </header>
 
     <main class="split-view">
-
-
         <FolderStructure
-                activeFolderId={activeFolderId}
+                {activeFolderId}
                 onActiveFolderChange={handleActiveFolderChange}
+                onRequestNewFolder={openNewFolderModal}
         />
 
         {#if activeFolderId}
             <ContentSection
-                    activeFolderId={activeFolderId}
+                    {activeFolderId}
             />
         {/if}
     </main>
 </div>
+
+<FormModal
+        isOpen={isNewFolderModalOpen}
+        title="Create New Folder"
+        fields={newFolderFields}
+        submitText="Create Folder"
+        loadingText="Creating..."
+        onClose={() => isNewFolderModalOpen = false}
+        onSubmit={handleCreateFolder}
+/>
 
 <style>
     .app-layout {
@@ -52,15 +101,8 @@
         flex-shrink: 0;
     }
 
-    .toolbar h2 {
-        margin: 0;
-        font-size: 1.5rem;
-    }
-
-    .actions {
-        display: flex;
-        gap: 1rem;
-    }
+    .toolbar h2 { margin: 0; font-size: 1.5rem; }
+    .actions { display: flex; gap: 1rem; }
 
     .btn {
         padding: 0.5rem 1rem;
@@ -68,33 +110,17 @@
         font-weight: 500;
         cursor: pointer;
         border: none;
+        transition: opacity 0.2s;
     }
-
-    .btn.primary {
-        background: #007bff;
-        color: white;
-    }
-
-    .btn.secondary {
-        background: #f0f2f5;
-        border: 1px solid #d1d5db;
-    }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn.primary { background: #007bff; color: white; }
+    .btn.secondary { background: #f0f2f5; border: 1px solid #d1d5db; }
 
     .split-view {
         display: grid;
-        /* Left pane is 260px, right pane takes the rest */
         grid-template-columns: 260px 1fr;
         gap: 1.5rem;
         flex: 1;
-        min-height: 0; /* Crucial for scrolling inside CSS Grid children */
-    }
-
-    @keyframes spin {
-        0% {
-            transform: rotate(0deg);
-        }
-        100% {
-            transform: rotate(360deg);
-        }
+        min-height: 0;
     }
 </style>
