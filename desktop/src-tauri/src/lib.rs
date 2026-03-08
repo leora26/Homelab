@@ -41,6 +41,7 @@ pub async fn run() {
             commands::storage_profile::get_storage_profile,
             commands::folder::get_root_folder,
             commands::folder::get_files_for_folder,
+            commands::folder::get_subfolders,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

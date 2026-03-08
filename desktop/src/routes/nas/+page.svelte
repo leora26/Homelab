@@ -22,6 +22,7 @@
 
 
         <FolderStructure
+                activeFolderId={activeFolderId}
                 onActiveFolderChange={handleActiveFolderChange}
         />
 

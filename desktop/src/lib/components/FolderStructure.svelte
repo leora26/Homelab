@@ -1,17 +1,19 @@
 <script lang="ts">
-    import {onMount} from "svelte";
-    import {invoke} from "@tauri-apps/api/core";
-    import type {FolderView} from "$lib/types/models";
+    import { onMount } from "svelte";
+    import { invoke } from "@tauri-apps/api/core";
+    import type { FolderView } from "$lib/types/models";
+    import { userId } from "$lib/types/tempUserId";
+    import FolderTreeItem from "./FolderTreeItem.svelte";
 
     interface FolderStructureProps {
-        onActiveFolderChange: (folderId: string) => void
+        activeFolderId: string | null; // Add this!
+        onActiveFolderChange: (folderId: string) => void;
     }
 
-    const {
+    let {
+        activeFolderId,
         onActiveFolderChange
-    }: FolderStructureProps = $props()
-
-    let userId = "4a352510-842b-40dd-8810-7227b6b4c2c0";
+    }: FolderStructureProps = $props();
 
     let error = $state<string | null>(null);
     let isLoading = $state(true);
@@ -20,9 +22,9 @@
 
     onMount(async () => {
         try {
-            rootFolder = await invoke<FolderView>('get_root_folder', {userId});
+            rootFolder = await invoke<FolderView>('get_root_folder', { userId });
             if (rootFolder) {
-                onActiveFolderChange(rootFolder.id)
+                onActiveFolderChange(rootFolder.id);
             }
         } catch (err) {
             error = String(err);
@@ -44,16 +46,16 @@
     {:else if rootFolder}
         <div class="sidebar-header">Directories</div>
         <div class="tree-container">
-            <div class="tree-item active">
-                <span class="icon">🗂️</span>
-                {rootFolder.name} (Root)
-            </div>
+            <FolderTreeItem
+                    folder={rootFolder}
+                    {activeFolderId}
+                    onSelect={onActiveFolderChange}
+            />
         </div>
-    {/if}if
+    {/if}
 </aside>
 
 <style>
-
     .sidebar {
         background: white;
         border-radius: 8px;
@@ -79,24 +81,8 @@
         flex: 1;
     }
 
-    .tree-item {
-        padding: 0.5rem;
-        border-radius: 6px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-size: 0.95rem;
-        transition: background 0.1s;
-    }
-
-    .tree-item:hover {
-        background: #f0f2f5;
-    }
-
-    .tree-item.active {
-        background: #e6f2ff;
-        color: #0056b3;
-        font-weight: 500;
-    }
+    .full-center { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 2rem; text-align: center; color: #666; }
+    .error { color: #d32f2f; }
+    .spinner { width: 30px; height: 30px; border: 3px solid #f3f3f3; border-top: 3px solid #007bff; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 1rem; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 </style>

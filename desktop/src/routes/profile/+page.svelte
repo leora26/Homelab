@@ -4,8 +4,7 @@
     import UserCard from "$lib/components/UserCard.svelte";
     import StorageCard from "$lib/components/StorageCard.svelte";
     import type {StorageProfileView, UserProfileView} from "$lib/types/models";
-
-    let userId = "4a352510-842b-40dd-8810-7227b6b4c2c0";
+    import {userId} from "$lib/types/tempUserId";
 
     let error = $state<string | null>(null);
     let isLoading = $state(true);

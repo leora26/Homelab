@@ -1,5 +1,5 @@
-use crate::nas::{FileResponse, FileType, UploadStatus};
-use crate::types::model::FileView;
+use crate::nas::{FileResponse, FileType, FolderResponse, UploadStatus};
+use crate::types::model::{FileView, FolderView};
 use crate::utils::format_timestamp;
 
 pub fn map_file_proto_to_view(f: FileResponse) -> FileView {
@@ -37,5 +37,16 @@ pub fn map_file_proto_to_view(f: FileResponse) -> FileView {
 
         created_at: format_timestamp(f.created_at),
         updated_at: format_timestamp(f.updated_at),
+    }
+}
+
+
+pub fn map_folder_proto_to_view(f: FolderResponse) -> FolderView {
+    FolderView {
+        id: f.id.map(|i| i.value).unwrap_or_default(),
+        parent_folder_id: f.parent_folder_id.map(|id| id.value),
+        name: f.name,
+        owner_id: f.owner_id.map(|i| i.value).unwrap_or_default(),
+        created_at: format_timestamp(f.created_at),
     }
 }
