@@ -25,7 +25,6 @@ pub struct UserProfileView {
     pub created_at: String,
 }
 
-
 #[derive(Serialize)]
 pub struct FileView {
     pub id: String,

@@ -40,7 +40,6 @@ pub fn map_file_proto_to_view(f: FileResponse) -> FileView {
     }
 }
 
-
 pub fn map_folder_proto_to_view(f: FolderResponse) -> FolderView {
     FolderView {
         id: f.id.map(|i| i.value).unwrap_or_default(),

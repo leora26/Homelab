@@ -1,9 +1,9 @@
-use tonic::Request;
-use crate::AppState;
 use crate::common::EntityId;
-use crate::nas::GetStorageProfileByIdRequest;
 use crate::nas::storage_profile_service_client::StorageProfileServiceClient;
+use crate::nas::GetStorageProfileByIdRequest;
 use crate::types::model::StorageProfileView;
+use crate::AppState;
+use tonic::Request;
 
 #[tauri::command]
 pub async fn get_storage_profile(
@@ -13,16 +13,20 @@ pub async fn get_storage_profile(
     let mut client = StorageProfileServiceClient::new(state.nas_grpc_channel.clone());
 
     let request = Request::new(GetStorageProfileByIdRequest {
-        id: Some(EntityId {value: user_id}),
+        id: Some(EntityId { value: user_id }),
     });
 
-    let response = client
-        .get_by_id(request)
-        .await
-        .map_err(|e| {
-            eprintln!("🛑 gRPC Error Code when fetching storage profile: {:?}", e.code());
-            format!("gRPC error details when fetching storage profile: [{:?}] {}", e.code(), e.message())
-        })?;
+    let response = client.get_by_id(request).await.map_err(|e| {
+        eprintln!(
+            "🛑 gRPC Error Code when fetching storage profile: {:?}",
+            e.code()
+        );
+        format!(
+            "gRPC error details when fetching storage profile: [{:?}] {}",
+            e.code(),
+            e.message()
+        )
+    })?;
 
     let sp_data = response.into_inner();
 

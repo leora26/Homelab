@@ -10,10 +10,10 @@ pub mod user {
     tonic::include_proto!("user");
 }
 
-pub mod utils;
 pub mod commands;
-pub mod types;
 pub mod helpers;
+pub mod types;
+pub mod utils;
 use tonic::transport::{Channel, Endpoint};
 
 pub struct AppState {
@@ -30,8 +30,9 @@ pub async fn run() {
     let nas_channel = nas_endpoint.connect_lazy();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
-
         .manage(AppState {
             user_grpc_channel: user_channel,
             nas_grpc_channel: nas_channel,
@@ -45,6 +46,8 @@ pub async fn run() {
             commands::folder::create_folder,
             commands::folder::delete_selected_folder,
             commands::folder::rename_folder,
+            commands::file::init_file,
+            commands::file::upload_content,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

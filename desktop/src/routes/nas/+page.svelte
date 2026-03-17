@@ -1,11 +1,12 @@
 <script lang="ts">
     import FolderStructure from "$lib/components/FolderStructure.svelte";
     import ContentSection from "$lib/components/ContentSection.svelte";
-    import FormModal, { type FormField } from "$lib/components/common/FormModal.svelte";
+    import FormModal, {type FormField} from "$lib/components/common/FormModal.svelte";
 
-    import { invoke } from "@tauri-apps/api/core";
-    import { userId } from "$lib/types/tempUserId";
-    import type { FolderView } from "$lib/types/models";
+    import {invoke} from "@tauri-apps/api/core";
+    import {userId} from "$lib/types/tempUserId";
+    import type {FolderView} from "$lib/types/models";
+    import NasToolbar from "$lib/components/NasToolbar.svelte";
 
     let activeFolderId = $state<string | null>(null);
     let isNewFolderModalOpen = $state(false);
@@ -55,15 +56,10 @@
 </script>
 
 <div class="app-layout">
-    <header class="toolbar">
-        <h2>NAS Storage</h2>
-        <div class="actions">
-            <button onclick={() => openNewFolderModal()} class="btn secondary" disabled={!activeFolderId}>
-                📁 New Folder
-            </button>
-            <button class="btn primary">⬆️ Upload File</button>
-        </div>
-    </header>
+    <NasToolbar
+            openNewFolderModal={openNewFolderModal}
+            activeFolderId={activeFolderId}
+    />
 
     <main class="split-view">
         <FolderStructure
@@ -98,31 +94,6 @@
         height: calc(100vh - 4rem);
         color: #1e1e2f;
     }
-
-    .toolbar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding-bottom: 1rem;
-        margin-bottom: 1rem;
-        border-bottom: 1px solid #e1e4e8;
-        flex-shrink: 0;
-    }
-
-    .toolbar h2 { margin: 0; font-size: 1.5rem; }
-    .actions { display: flex; gap: 1rem; }
-
-    .btn {
-        padding: 0.5rem 1rem;
-        border-radius: 6px;
-        font-weight: 500;
-        cursor: pointer;
-        border: none;
-        transition: opacity 0.2s;
-    }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .btn.primary { background: #007bff; color: white; }
-    .btn.secondary { background: #f0f2f5; border: 1px solid #d1d5db; }
 
     .split-view {
         display: grid;

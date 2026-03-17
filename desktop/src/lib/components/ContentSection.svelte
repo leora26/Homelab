@@ -1,6 +1,8 @@
 <script lang="ts">
     import type { FileView } from "$lib/types/models";
     import { invoke } from "@tauri-apps/api/core";
+    import {getFileIcon} from "$lib/components/helpers/file/getFileIcon";
+    import {formatBytes} from "$lib/components/helpers/file/formatBytes";
 
     interface ContentSectionProps {
         activeFolderId: string
@@ -11,26 +13,6 @@
     let files = $state<FileView[]>([]);
     let isLoading = $state(false);
     let error = $state<string | null>(null);
-
-    // --- HELPERS ---
-    function formatBytes(bytes: number) {
-        if (bytes === 0) return '0 B';
-        const k = 1024;
-        const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    }
-
-    function getFileIcon(type: string) {
-        switch (type.toLowerCase()) {
-            case 'image': return '🖼️';
-            case 'video': return '🎞️';
-            case 'audio': return '🎵';
-            case 'text': return '📄';
-            case 'pdf': return '📕';
-            default: return '📎';
-        }
-    }
 
     $effect(() => {
         if (!activeFolderId) {
@@ -104,7 +86,6 @@
 </section>
 
 <style>
-    /* --- PANE LAYOUT --- */
     .content-pane {
         background: white;
         border-radius: 8px;
@@ -112,13 +93,13 @@
         display: flex;
         flex-direction: column;
         overflow: hidden;
-        height: 100%; /* Ensure it fills its parent in the grid */
+        height: 100%;
     }
 
     .content-header {
         padding: 1rem 1.5rem;
         border-bottom: 1px solid #f0f2f5;
-        background: #f8f9fa; /* Slight contrast from the table body */
+        background: #f8f9fa;
     }
 
     .content-header h3 {
@@ -128,10 +109,9 @@
         color: #1e1e2f;
     }
 
-    /* --- TABLE STYLES --- */
     .table-wrapper {
         flex: 1;
-        overflow-y: auto; /* Scroll ONLY the table body, not the whole pane */
+        overflow-y: auto;
     }
 
     .file-table {
@@ -150,7 +130,6 @@
         position: sticky;
         top: 0;
         z-index: 10;
-        /* Prevent text selection on headers */
         user-select: none;
     }
 
@@ -170,7 +149,6 @@
         background-color: #f4f6f8;
     }
 
-    /* --- COLUMNS --- */
     .col-name { width: 55%; }
     .col-date { width: 30%; color: #666; }
     .col-size { width: 15%; color: #666; text-align: right; }
@@ -190,14 +168,12 @@
     .file-name {
         font-weight: 500;
         color: #1e1e2f;
-        /* Truncate long file names cleanly */
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
         max-width: 400px;
     }
 
-    /* --- STATUS STATES (Loading, Empty, Error) --- */
     .status-message {
         display: flex;
         flex-direction: column;
