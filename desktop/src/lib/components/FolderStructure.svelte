@@ -11,12 +11,14 @@
         activeFolderId: string | null;
         onActiveFolderChange: (folderId: string) => void;
         onRequestNewFolder: (parentId: string) => void;
+        treeVersion: number
     }
 
     let {
         activeFolderId,
         onActiveFolderChange,
         onRequestNewFolder,
+        treeVersion = $bindable()
     }: FolderStructureProps = $props();
 
     let error = $state<string | null>(null);
@@ -83,7 +85,10 @@
             {
                 label: 'New Subfolder',
                 icon: '📁',
-                action: () => onRequestNewFolder(contextMenu.targetId)
+                action: () => {
+                    onRequestNewFolder(contextMenu.targetId);
+                    closeContextMenu();
+                }
             }
         ];
 
@@ -92,13 +97,19 @@
                 {
                     label: 'Rename',
                     icon: '✏️',
-                    action: triggerRename
+                    action: () => {
+                        triggerRename();
+                        closeContextMenu();
+                    }
                 },
                 {
                     label: 'Delete',
                     icon: '🗑️',
                     danger: true,
-                    action: () => triggerDelete(contextMenu.targetId)
+                    action: () => {
+                        triggerDelete(contextMenu.targetId);
+                        closeContextMenu();
+                    }
                 }
             );
         }
@@ -122,20 +133,26 @@
         console.log(`Successfully renamed folder to: ${newName}`);
         isRenameModalOpen = false;
 
+        treeVersion++;
+
     };
 
     const confirmDeleteFolder = async () => {
         if (!activeFolderId) return;
 
-        await invoke('delete_selected_folder', {selectedFolderId: activeFolderId});
+        await invoke('delete_selected_folder', {selectedFolderId: folderToDeleteId});
 
-        console.log(`Successfully deleted folder: ${activeFolderId}`);
+        console.log(`Successfully deleted folder: ${folderToDeleteId}`);
 
         isDeleteModalOpen = false;
 
-        if (rootFolder) {
+        if (activeFolderId === folderToDeleteId && rootFolder) {
             onActiveFolderChange(rootFolder.id);
         }
+
+        folderToDeleteId = null;
+
+        treeVersion++;
     };
 </script>
 
@@ -157,6 +174,7 @@
                     {activeFolderId}
                     onSelect={onActiveFolderChange}
                     onContextMenu={handleContextMenu}
+                    {treeVersion}
             />
         </div>
     {/if}

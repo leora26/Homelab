@@ -9,6 +9,7 @@
         onSelect: (folderId: string) => void;
         onContextMenu: (e: MouseEvent, folderId: string, folderName: string) => void;
         depth?: number;
+        treeVersion: number;
     }
 
     let {
@@ -16,7 +17,8 @@
         activeFolderId,
         onSelect,
         onContextMenu,
-        depth = 0
+        depth = 0,
+        treeVersion
     }: Props = $props();
 
     let isExpanded = $state(false);
@@ -24,22 +26,33 @@
     let isLoading = $state(false);
     let hasLoaded = $state(false);
 
+    async function loadSubfolders() {
+        isLoading = true;
+        try {
+            subfolders = await invoke<FolderView[]>('get_subfolders', {folderId: folder.id});
+            hasLoaded = true;
+        } catch (err) {
+            console.error("Failed to fetch subfolders:", err);
+        } finally {
+            isLoading = false;
+        }
+    }
+
+    $effect(() => {
+        let _ = treeVersion;
+
+        if (isExpanded) {
+            loadSubfolders();
+        }
+    });
+
     async function handleToggle(event: MouseEvent) {
         event.stopPropagation();
-
         onSelect(folder.id);
         isExpanded = !isExpanded;
 
         if (isExpanded && !hasLoaded) {
-            isLoading = true;
-            try {
-                subfolders = await invoke<FolderView[]>('get_subfolders', {folderId: folder.id});
-                hasLoaded = true;
-            } catch (err) {
-                console.error("Failed to fetch subfolders:", err);
-            } finally {
-                isLoading = false;
-            }
+            await loadSubfolders();
         }
     }
 </script>
@@ -76,6 +89,7 @@
                     {onSelect}
                     {onContextMenu}
                     depth={depth + 1}
+                    {treeVersion}
             />
         {/each}
 

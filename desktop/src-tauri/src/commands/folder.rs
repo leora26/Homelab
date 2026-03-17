@@ -64,7 +64,7 @@ pub async fn get_files_for_folder(
 
 
 #[tauri::command]
-pub async fn get_subfolders (
+pub async fn  get_subfolders (
     folder_id: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<Vec<FolderView>, String> {

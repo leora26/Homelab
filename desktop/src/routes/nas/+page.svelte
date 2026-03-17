@@ -11,6 +11,8 @@
     let isNewFolderModalOpen = $state(false);
     let targetParentFolderId = $state<string | null>(null);
 
+    let treeVersion = $state(0);
+
     const handleActiveFolderChange = (folderId: string) => {
         activeFolderId = folderId;
     }
@@ -36,14 +38,19 @@
     ];
 
     const handleCreateFolder = async (data: Record<string, string | number>) => {
+        if (!targetParentFolderId) return;
+
         const newFolder = await invoke<FolderView>('create_folder', {
-            parentFolderId: activeFolderId,
+            parentFolderId: targetParentFolderId,
             userId: userId,
             name: String(data.folderName).trim()
         });
 
         console.log("Successfully created folder:", newFolder);
         isNewFolderModalOpen = false;
+        targetParentFolderId = null;
+
+        treeVersion++;
     }
 </script>
 
@@ -60,6 +67,7 @@
 
     <main class="split-view">
         <FolderStructure
+                bind:treeVersion={treeVersion}
                 {activeFolderId}
                 onActiveFolderChange={handleActiveFolderChange}
                 onRequestNewFolder={openNewFolderModal}
