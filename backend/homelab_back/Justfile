@@ -1,26 +1,47 @@
 set shell := ["powershell.exe", "-c"]
 
+# Variables for easy maintenance
+nas_pkg := "nas-server"
+user_pkg := "user-management"
+
+# --- Database Management ---
+
+# Runs all pending migrations for the database [cite: 46]
 migrate:
     sqlx migrate run
 
+# Reverts the last migration applied [cite: 46]
 revert:
     sqlx migrate revert
 
+# DANGER: Drops and recreates the database from scratch [cite: 46]
 reset:
     sqlx database reset -y
 
+# Generates offline query metadata for SQLx for all services [cite: 46]
 prepare:
     cd apps/nas-server; cargo sqlx prepare
     cd apps/user-management; cargo sqlx prepare
     cd apps/admin-console; cargo sqlx prepare
 
-build:
-    cargo build
+# --- Development & Build ---
 
+# Standard check before pushing: migrates, prepares SQLx, formats, and tests [cite: 46]
 ready: migrate prepare
     cargo fmt
     cargo test
     @echo "✅ Ready to push!"
 
-populate:
-    cargo run -p nas-server --bin seed
+# --- Running Services ---
+
+# Populates the NAS database with initial seed data [cite: 1, 46]
+seed:
+    cargo run -p {{nas_pkg}} --bin seed
+
+# Runs the main NAS backend service [cite: 1, 46]
+run-nas:
+    cargo run -p {{nas_pkg}} --bin nas-server
+
+# Runs the user management service [cite: 47, 46]
+run-user:
+     cargo run -p {{user_pkg}}
