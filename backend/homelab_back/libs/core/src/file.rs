@@ -114,10 +114,20 @@ impl File {
     pub fn build_file_path(&self, storage_path: &Path) -> PathBuf {
         let id_string = self.id.to_string();
 
-        let bucket1 = &id_string[0..2];
-        let bucket2 = &id_string[2..4];
+        let bucket1 = &id_string.clone()[0..4];
+        let bucket2 = &id_string.clone()[4..8];
 
-        storage_path.join(bucket1).join(bucket2).join(id_string)
+        let extension = Path::new(&self.name)
+            .extension()
+            .and_then(|s| s.to_str())
+            .unwrap_or("");
+
+        let mut final_filename = id_string;
+        if !extension.is_empty() {
+            final_filename = format!("{}.{}", final_filename, extension);
+        }
+
+        storage_path.join(bucket1).join(bucket2).join(final_filename)
     }
 
     pub fn validate_size(&self, size: i64) -> bool {

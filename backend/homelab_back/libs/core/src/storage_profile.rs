@@ -25,4 +25,8 @@ impl StorageProfile {
     pub fn reduce_taken_storage_size(&mut self, size: i64) {
         self.taken_storage -= size;
     }
+
+    pub fn increase_storage_size(&mut self, size: i64) {
+        self.taken_storage += size;
+    }
 }

@@ -222,6 +222,16 @@ impl FileService for FileServiceImpl {
         f.update_status(UploadStatus::Completed);
         self.file_repo.update(f.clone()).await?;
 
+        let mut sp: StorageProfile = self
+            .storage_profile_repo
+            .get_by_id(f.owner_id)
+            .await?
+            .ok_or_else(|| DataError::EntityNotFoundException("User".to_string()))?;
+
+        sp.increase_storage_size(total_bytes);
+
+        self.storage_profile_repo.save(sp).await?;
+
         let event: FileUpdatedEvent = FileUpdatedEvent::new(
             f.id.clone(),
             f.is_deleted.clone(),
@@ -463,6 +473,16 @@ impl FileService for FileServiceImpl {
                 let _ = tokio::fs::remove_file(&temp_path).await;
                 return Err(DataError::NoFreeStorageError);
             }
+
+            let mut sp: StorageProfile = self
+                .storage_profile_repo
+                .get_by_id(f.owner_id)
+                .await?
+                .ok_or_else(|| DataError::EntityNotFoundException("User".to_string()))?;
+
+            sp.increase_storage_size(size_diff);
+
+            self.storage_profile_repo.save(sp).await?;
         }
 
         if let Err(e) = tokio::fs::rename(&temp_path, &target_path).await {
