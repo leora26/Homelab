@@ -1,7 +1,7 @@
 <script lang="ts">
-    import {invoke} from "@tauri-apps/api/core";
     import type {FolderView} from "$lib/types/models";
     import FolderTreeItem from "./FolderTreeItem.svelte";
+    import {safeInvoke} from "$lib/components/helpers/safeInvoke";
 
     interface Props {
         folder: FolderView;
@@ -29,10 +29,17 @@
     async function loadSubfolders() {
         isLoading = true;
         try {
-            subfolders = await invoke<FolderView[]>('get_subfolders', {folderId: folder.id});
+
+
+            const result = await safeInvoke<FolderView[]>('get_subfolders', {folderId: folder.id});
+
+            if (result.ok) {
+                subfolders = result.data;
+            } else {
+                console.error("Failed to fetch subfolders:", result.error);
+            }
+
             hasLoaded = true;
-        } catch (err) {
-            console.error("Failed to fetch subfolders:", err);
         } finally {
             isLoading = false;
         }

@@ -3,10 +3,10 @@
     import ContentSection from "$lib/components/ContentSection.svelte";
     import FormModal, {type FormField} from "$lib/components/common/FormModal.svelte";
 
-    import {invoke} from "@tauri-apps/api/core";
     import {userId} from "$lib/types/tempUserId";
     import type {FolderView} from "$lib/types/models";
     import NasToolbar from "$lib/components/NasToolbar.svelte";
+    import {safeInvoke} from "$lib/components/helpers/safeInvoke";
 
     let activeFolderId = $state<string | null>(null);
     let isNewFolderModalOpen = $state(false);
@@ -41,7 +41,7 @@
     const handleCreateFolder = async (data: Record<string, string | number>) => {
         if (!targetParentFolderId) return;
 
-        const newFolder = await invoke<FolderView>('create_folder', {
+        const newFolder = await safeInvoke<FolderView>('create_folder', {
             parentFolderId: targetParentFolderId,
             userId: userId,
             name: String(data.folderName).trim()

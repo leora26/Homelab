@@ -1,11 +1,11 @@
 <script lang="ts">
     import {onMount} from "svelte";
-    import {invoke} from "@tauri-apps/api/core";
     import type {FolderView} from "$lib/types/models";
     import {userId} from "$lib/types/tempUserId";
     import FolderTreeItem from "./FolderTreeItem.svelte";
     import FormModal, {type FormField} from "$lib/components/common/FormModal.svelte";
     import ContextMenu, {type ContextMenuOption} from "$lib/components/common/ContextMenu.svelte";
+    import {safeInvoke} from "$lib/components/helpers/safeInvoke";
 
     interface FolderStructureProps {
         activeFolderId: string | null;
@@ -33,13 +33,15 @@
 
     onMount(async () => {
         try {
-            rootFolder = await invoke<FolderView>('get_root_folder', {userId});
-            if (rootFolder) {
+            const result = await safeInvoke<FolderView>('get_root_folder', {userId});
+
+            if (result.ok) {
+                rootFolder = result.data;
                 onActiveFolderChange(rootFolder.id);
+            } else {
+                error = result.error;
+                console.error("Failed to fetch root folder", error);
             }
-        } catch (err) {
-            error = String(err);
-            console.error("Failed to fetch root folder", error);
         } finally {
             isLoading = false;
         }
@@ -125,7 +127,7 @@
             return;
         }
 
-        await invoke('rename_folder', {
+        await safeInvoke('rename_folder', {
             folderId: contextMenu.targetId,
             newName: newName
         });
@@ -140,7 +142,7 @@
     const confirmDeleteFolder = async () => {
         if (!activeFolderId) return;
 
-        await invoke('delete_selected_folder', {selectedFolderId: folderToDeleteId});
+        await safeInvoke('delete_selected_folder', {selectedFolderId: folderToDeleteId});
 
         console.log(`Successfully deleted folder: ${folderToDeleteId}`);
 
