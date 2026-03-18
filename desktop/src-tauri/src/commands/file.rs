@@ -2,7 +2,7 @@ use crate::common::EntityId;
 use crate::helpers::mappings::map_file_proto_to_view;
 use crate::nas::file_chunk::Data;
 use crate::nas::file_service_client::FileServiceClient;
-use crate::nas::{FileChunk, InitFileRequest};
+use crate::nas::{DeleteFileRequest, FileChunk, InitFileRequest, RenameFileRequest};
 use crate::types::model::FileView;
 use crate::AppState;
 use async_stream::stream;
@@ -89,4 +89,47 @@ pub async fn upload_content(
         .map_err(|e| format!("Upload stream failed: {}", e))?;
 
     Ok(())
+}
+
+#[tauri::command]
+pub async fn delete_file(state: tauri::State<'_, AppState>, file_id: String) -> Result<(), String> {
+    let mut client = FileServiceClient::new(state.nas_grpc_channel.clone());
+
+    let request = Request::new(DeleteFileRequest {
+        id: Some(EntityId {
+            value: file_id.clone(),
+        }),
+    });
+
+    let response = client
+        .delete_file(request)
+        .await
+        .map_err(|e| format!("Delete file failed: {}", e))?;
+
+    let _ = response.into_inner();
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn rename_file(
+    state: tauri::State<'_, AppState>,
+    file_id: String,
+    new_name: String,
+) -> Result<FileView, String> {
+    let mut client = FileServiceClient::new(state.nas_grpc_channel.clone());
+
+    let request = Request::new(RenameFileRequest {
+        id: Some(EntityId {value: file_id}),
+        new_name: new_name.clone(),
+    });
+
+    let response = client
+        .rename_file(request)
+        .await
+        .map_err(|e| format!("Rename file failed: {}", e))?;
+
+    let file_resp = response.into_inner();
+
+    Ok(map_file_proto_to_view(file_resp))
 }

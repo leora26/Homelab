@@ -1,18 +1,24 @@
 <script lang="ts">
-    import type { FileView } from "$lib/types/models";
-    import { invoke } from "@tauri-apps/api/core";
-    import {getFileIcon} from "$lib/components/helpers/file/getFileIcon";
-    import {formatBytes} from "$lib/components/helpers/file/formatBytes";
+    import type {FileView} from "$lib/types/models";
+    import {invoke} from "@tauri-apps/api/core";
+    import ContextMenu, {type ContextMenuOption} from "$lib/components/common/ContextMenu.svelte";
+    import ContentSectionItem from "$lib/components/ContentSectionItem.svelte";
+    import FormModal, {type FormField} from "$lib/components/common/FormModal.svelte";
+    import {safeInvoke} from "$lib/components/helpers/safeInvoke";
 
     interface ContentSectionProps {
         activeFolderId: string
     }
 
-    const { activeFolderId }: ContentSectionProps = $props();
+    const {activeFolderId}: ContentSectionProps = $props();
 
     let files = $state<FileView[]>([]);
     let isLoading = $state(false);
     let error = $state<string | null>(null);
+    let contextMenu = $state({isOpen: false, x: 0, y: 0, targetId: '', targetName: ''});
+    let isRenameModalOpen = $state(false);
+    let isDeleteModalOpen = $state(false);
+    let fileToDelete = $state<string | null>(null);
 
     $effect(() => {
         if (!activeFolderId) {
@@ -24,7 +30,7 @@
             error = null;
 
             try {
-                files = await invoke<FileView[]>('get_files_for_folder', { folderId: activeFolderId });
+                files = await invoke<FileView[]>('get_files_for_folder', {folderId: activeFolderId});
                 console.log(`Fetched files for folder ${activeFolderId}:`, files);
             } catch (err) {
                 error = String(err);
@@ -36,7 +42,97 @@
 
         fetchFiles();
     });
+
+    const closeContextMenu = () => {
+        contextMenu.isOpen = false;
+    };
+
+    const triggerRename = () => {
+        isRenameModalOpen = true;
+    };
+
+    const triggerDelete = (folderId: string) => {
+        fileToDelete = folderId;
+        isDeleteModalOpen = true;
+    };
+
+    const confirmRenameFile = async (data: Record<string, string | number>) => {
+        const newName = String(data.newFileName).trim();
+
+        if (newName === contextMenu.targetName) {
+            isRenameModalOpen = false;
+            return
+        }
+
+        await safeInvoke('rename_file', {
+            fileId: contextMenu.targetId,
+            newName: newName
+        });
+
+        console.log(`Successfully renamed file to ${newName}`);
+        isRenameModalOpen = false;
+    }
+
+    const confirmDeleteFile = async () => {
+        if (!fileToDelete) return;
+
+        await safeInvoke('delete_file', {
+            fileId: fileToDelete
+        });
+
+        console.log(`Successfully deleted file: ${contextMenu.targetId}`);
+
+        isDeleteModalOpen = false;
+
+        fileToDelete = null;
+    }
+
+    let menuOptions = $derived.by<ContextMenuOption[]>(() => {
+        const options: ContextMenuOption[] = [
+            {
+                label: 'Rename',
+                icon: '✏️',
+                action: () => {
+                    closeContextMenu();
+                    triggerRename()
+                }
+            },
+            {
+                label: 'Delete',
+                icon: '🗑️',
+                danger: true,
+                action: () => {
+                    closeContextMenu();
+                    triggerDelete(contextMenu.targetId);
+                }
+            }
+        ];
+
+        return options;
+    });
+
+    let renameFields = $derived<FormField[]>([
+        {
+            name: "newFileName",
+            label: "File Name",
+            type: "text",
+            required: true,
+            defaultValue: contextMenu.targetName
+        }
+    ]);
+
+    const handleContextMenu = (e: MouseEvent, fileId: string, fileName: string) => {
+        contextMenu = {
+            isOpen: true,
+            x: e.clientX,
+            y: e.clientY,
+            targetId: fileId,
+            targetName: fileName
+        };
+    };
 </script>
+
+<svelte:window onclick={closeContextMenu} onscroll={closeContextMenu}/>
 
 <section class="content-pane">
     <div class="content-header">
@@ -68,22 +164,45 @@
                 </thead>
                 <tbody>
                 {#each files as file (file.id)}
-                    <tr class="file-row">
-                        <td class="col-name">
-                            <div class="name-cell">
-                                <span class="icon" aria-hidden="true">{getFileIcon(file.file_type)}</span>
-                                <span class="file-name">{file.name}</span>
-                            </div>
-                        </td>
-                        <td class="col-date">{file.updated_at}</td>
-                        <td class="col-size">{formatBytes(file.size)}</td>
-                    </tr>
+                    <ContentSectionItem
+                            file={file}
+                            onContextMenu={handleContextMenu}
+                    />
                 {/each}
                 </tbody>
             </table>
         {/if}
     </div>
 </section>
+
+{#if contextMenu.isOpen}
+    <ContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            options={menuOptions}
+    />
+{/if}
+
+<FormModal
+        isOpen={isRenameModalOpen}
+        title="Rename File"
+        fields={renameFields}
+        submitText="Save Changes"
+        loadingText="Saving..."
+        onClose={() => isRenameModalOpen = false}
+        onSubmit={confirmRenameFile}
+/>
+
+<FormModal
+        isOpen={isDeleteModalOpen}
+        title="Delete File"
+        description="Are you sure you want to permanently delete this folder? This action cannot be undone."
+        fields={[]}
+        submitText="Yes, Delete"
+        loadingText="Deleting..."
+        onClose={() => isDeleteModalOpen = false}
+        onSubmit={confirmDeleteFile}
+/>
 
 <style>
     .content-pane {
@@ -133,45 +252,24 @@
         user-select: none;
     }
 
-    .file-table td {
-        padding: 0.75rem 1.5rem;
-        border-bottom: 1px solid #f0f2f5;
-        font-size: 0.95rem;
-        color: #333;
+
+    .col-name {
+        width: 55%;
     }
 
-    .file-row {
-        cursor: pointer;
-        transition: background-color 0.15s ease;
+    .col-date {
+        width: 30%;
+        color: #666;
     }
 
-    .file-row:hover {
-        background-color: #f4f6f8;
+    .col-size {
+        width: 15%;
+        color: #666;
+        text-align: right;
     }
 
-    .col-name { width: 55%; }
-    .col-date { width: 30%; color: #666; }
-    .col-size { width: 15%; color: #666; text-align: right; }
-
-    .file-table th.col-size { text-align: right; }
-
-    .name-cell {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-    }
-
-    .icon {
-        font-size: 1.25rem;
-    }
-
-    .file-name {
-        font-weight: 500;
-        color: #1e1e2f;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        max-width: 400px;
+    .file-table th.col-size {
+        text-align: right;
     }
 
     .status-message {
@@ -184,19 +282,30 @@
         height: 100%;
     }
 
-    .status-message.error { color: #d32f2f; }
-    .empty-state { font-style: italic; }
+    .status-message.error {
+        color: #d32f2f;
+    }
+
+    .empty-state {
+        font-style: italic;
+    }
 
     .spinner {
-        width: 30px; height: 30px;
-        border: 3px solid #f3f3f3; border-top: 3px solid #007bff;
+        width: 30px;
+        height: 30px;
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #007bff;
         border-radius: 50%;
         animation: spin 1s linear infinite;
         margin-bottom: 1rem;
     }
 
     @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+        0% {
+            transform: rotate(0deg);
+        }
+        100% {
+            transform: rotate(360deg);
+        }
     }
 </style>

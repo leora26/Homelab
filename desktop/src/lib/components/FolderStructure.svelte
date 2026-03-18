@@ -203,7 +203,7 @@
 <FormModal
         isOpen={isDeleteModalOpen}
         title="Delete Folder"
-        description="Are you sure you want to permanently delete this folder? This action cannot be undone."
+        description="Are you sure you want to permanently delete this folder? This action cannot be undone and subfolder and files withing this folder will be permanently deleted."
         fields={[]}
         submitText="Yes, Delete"
         loadingText="Deleting..."
@@ -232,44 +232,6 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-    }
-
-    .context-menu {
-        position: fixed;
-        background: white;
-        border-radius: 6px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        border: 1px solid #e1e4e8;
-        padding: 0.5rem 0;
-        min-width: 160px;
-        z-index: 9999;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .context-menu button {
-        background: none;
-        border: none;
-        padding: 0.5rem 1rem;
-        text-align: left;
-        font-size: 0.9rem;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        color: #1e1e2f;
-    }
-
-    .context-menu button:hover {
-        background: #f0f2f5;
-    }
-
-    .context-menu button.danger {
-        color: #d32f2f;
-    }
-
-    .context-menu button.danger:hover {
-        background: #ffebee;
     }
 
     .tree-container {

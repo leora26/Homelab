@@ -48,6 +48,8 @@ pub async fn run() {
             commands::folder::rename_folder,
             commands::file::init_file,
             commands::file::upload_content,
+            commands::file::rename_file,
+            commands::file::delete_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
