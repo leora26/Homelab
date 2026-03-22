@@ -2,7 +2,11 @@ use crate::common::EntityId;
 use crate::helpers::mappings::map_file_proto_to_view;
 use crate::nas::file_chunk::Data;
 use crate::nas::file_service_client::FileServiceClient;
-use crate::nas::{DeleteFileRequest, FileChunk, InitFileRequest, RenameFileRequest};
+use crate::nas::{
+    DeleteChosenFilesRequest, DeleteFileRequest, FileChunk, GetDeletedFilesRequest,
+    InitFileRequest, RemoveAllDeletedFilesRequest, RemoveDeletedFileRequest, RenameFileRequest,
+    UndeleteFileRequest,
+};
 use crate::types::model::FileView;
 use crate::AppState;
 use async_stream::stream;
@@ -120,7 +124,7 @@ pub async fn rename_file(
     let mut client = FileServiceClient::new(state.nas_grpc_channel.clone());
 
     let request = Request::new(RenameFileRequest {
-        id: Some(EntityId {value: file_id}),
+        id: Some(EntityId { value: file_id }),
         new_name: new_name.clone(),
     });
 
@@ -132,4 +136,112 @@ pub async fn rename_file(
     let file_resp = response.into_inner();
 
     Ok(map_file_proto_to_view(file_resp))
+}
+
+#[tauri::command]
+pub async fn get_deleted_files(
+    state: tauri::State<'_, AppState>,
+    user_id: String,
+) -> Result<Vec<FileView>, String> {
+    let mut client = FileServiceClient::new(state.nas_grpc_channel.clone());
+
+    let request = Request::new(GetDeletedFilesRequest {
+        user_id: Some(EntityId { value: user_id }),
+    });
+
+    let response = client
+        .get_deleted_files(request)
+        .await
+        .map_err(|e| format!("Get deleted files failed: {}", e))?;
+
+    let file_response = response.into_inner();
+
+    let files = file_response
+        .files
+        .into_iter()
+        .map(|f| map_file_proto_to_view(f))
+        .collect();
+
+    Ok(files)
+}
+
+#[tauri::command]
+pub async fn restore_file(
+    state: tauri::State<'_, AppState>,
+    file_id: String,
+) -> Result<FileView, String> {
+    let mut client = FileServiceClient::new(state.nas_grpc_channel.clone());
+
+    let request = Request::new(UndeleteFileRequest {
+        id: Some(EntityId { value: file_id }),
+    });
+
+    let response = client
+        .undelete_file(request)
+        .await
+        .map_err(|e| format!("Undelete file failed: {}", e))?;
+
+    let file_resp = response.into_inner();
+
+    Ok(map_file_proto_to_view(file_resp))
+}
+
+#[tauri::command]
+pub async fn delete_chosen_file(
+    state: tauri::State<'_, AppState>,
+    file_id: Vec<String>,
+) -> Result<(), String> {
+    let mut client = FileServiceClient::new(state.nas_grpc_channel.clone());
+
+    let request = Request::new(DeleteChosenFilesRequest {
+        file_ids: file_id.into_iter().map(|f| EntityId { value: f }).collect(),
+    });
+
+    let response = client
+        .delete_chosen_files(request)
+        .await
+        .map_err(|e| format!("Delete chosen files failed: {}", e))?;
+
+    let _ = response.into_inner();
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn empty_trash(state: tauri::State<'_, AppState>, user_id: String) -> Result<(), String> {
+    let mut client = FileServiceClient::new(state.nas_grpc_channel.clone());
+
+    let request = Request::new(RemoveAllDeletedFilesRequest {
+        user_id: Some(EntityId { value: user_id }),
+    });
+
+    let response = client
+        .remove_all_deleted_files(request)
+        .await
+        .map_err(|e| format!("Remove all deleted files failed: {}", e))?;
+
+    let _ = response.into_inner();
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn remove_deleted_file(
+    state: tauri::State<'_, AppState>,
+    file_id: String,
+) -> Result<(), String> {
+    let mut client = FileServiceClient::new(state.nas_grpc_channel.clone());
+
+    let request = Request::new(RemoveDeletedFileRequest {
+        file_id: Some(EntityId { value: file_id }),
+    });
+
+    let response = client
+        .remove_delete_file(request)
+        .await
+        .map_err(|e| format!("Remove delete file failed: {}", e))?;
+
+    let _ = response.into_inner();
+
+    Ok(())
 }

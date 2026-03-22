@@ -7,6 +7,7 @@
     import type {FolderView} from "$lib/types/models";
     import NasToolbar from "$lib/components/NasToolbar.svelte";
     import {safeInvoke} from "$lib/components/helpers/safeInvoke";
+    import TrashSection from "$lib/components/TrashSection.svelte";
 
     let activeFolderId = $state<string | null>(null);
     let isNewFolderModalOpen = $state(false);
@@ -69,10 +70,10 @@
                 onRequestNewFolder={openNewFolderModal}
         />
 
-        {#if activeFolderId}
-            <ContentSection
-                    {activeFolderId}
-            />
+        {#if activeFolderId === 'TRASH'}
+            <TrashSection />
+        {:else if activeFolderId}
+            <ContentSection {activeFolderId} />
         {/if}
     </main>
 </div>

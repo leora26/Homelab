@@ -179,6 +179,17 @@
                     {treeVersion}
             />
         </div>
+
+        <div class="sidebar-footer">
+            <button
+                    class="trash-button"
+                    class:active={activeFolderId === 'TRASH'}
+                    onclick={() => onActiveFolderChange('TRASH')}
+            >
+                <span class="icon">🗑️</span>
+                <span class="label">Trash</span>
+            </button>
+        </div>
     {/if}
 </aside>
 
@@ -263,6 +274,43 @@
         border-radius: 50%;
         animation: spin 1s linear infinite;
         margin-bottom: 1rem;
+    }
+
+    .sidebar-footer {
+        padding: 0.5rem;
+        border-top: 1px solid #e1e4e8;
+        background: #fdfdfd;
+    }
+
+    .trash-button {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        width: 100%;
+        padding: 0.6rem 0.8rem;
+        background: transparent;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.95rem;
+        color: #4a5568;
+        text-align: left;
+        transition: background-color 0.15s ease;
+    }
+
+    .trash-button:hover {
+        background: #f0f2f5;
+        color: #1e1e2f;
+    }
+
+    .trash-button.active {
+        background: #ffebee;
+        color: #d32f2f;
+        font-weight: 500;
+    }
+
+    .trash-button .icon {
+        font-size: 1.1rem;
     }
 
     @keyframes spin {

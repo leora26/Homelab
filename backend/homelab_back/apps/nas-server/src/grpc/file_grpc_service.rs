@@ -8,12 +8,7 @@ use async_trait::async_trait;
 use derive_new::new;
 use homelab_proto::nas::file_chunk::Data as FileChunkData;
 use homelab_proto::nas::file_service_server::FileService;
-use homelab_proto::nas::{
-    ArchiveFileCommand, CopyFileRequest, DeleteChosenFilesRequest, DeleteFileRequest, FileChunk,
-    FileListResponse, FileResponse, GetDeletedFilesCommand, GetFileRequest, InitFileRequest,
-    MoveFileRequest, RemoveAllDeletedFilesCommand, RenameFileRequest, SearchFilesRequest,
-    UnarchiveFileCommand, UndeleteFileRequest,
-};
+use homelab_proto::nas::{ArchiveFileRequest, CopyFileRequest, DeleteChosenFilesRequest, DeleteFileRequest, FileChunk, FileListResponse, FileResponse, GetDeletedFilesRequest, GetFileRequest, InitFileRequest, MoveFileRequest, RemoveAllDeletedFilesRequest, RemoveDeletedFileRequest, RenameFileRequest, SearchFilesRequest, UnarchiveFileRequest, UndeleteFileRequest};
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tonic::{Request, Response, Status, Streaming};
@@ -63,7 +58,7 @@ impl FileService for GrpcFileService {
 
     async fn get_deleted_files(
         &self,
-        request: Request<GetDeletedFilesCommand>,
+        request: Request<GetDeletedFilesRequest>,
     ) -> Result<Response<FileListResponse>, Status> {
         let req = request.into_inner();
 
@@ -329,7 +324,7 @@ impl FileService for GrpcFileService {
 
     async fn archive_file(
         &self,
-        request: Request<ArchiveFileCommand>,
+        request: Request<ArchiveFileRequest>,
     ) -> Result<Response<()>, Status> {
         let req = request.into_inner();
 
@@ -342,7 +337,7 @@ impl FileService for GrpcFileService {
 
     async fn unarchive_file(
         &self,
-        request: Request<UnarchiveFileCommand>,
+        request: Request<UnarchiveFileRequest>,
     ) -> Result<Response<()>, Status> {
         let req = request.into_inner();
 
@@ -355,7 +350,7 @@ impl FileService for GrpcFileService {
 
     async fn remove_all_deleted_files(
         &self,
-        request: Request<RemoveAllDeletedFilesCommand>,
+        request: Request<RemoveAllDeletedFilesRequest>,
     ) -> Result<Response<()>, Status> {
         let req = request.into_inner();
 
@@ -365,6 +360,16 @@ impl FileService for GrpcFileService {
             .file_service
             .cleanup_deleted_files(user_id)
             .await?;
+
+        Ok(Response::new(()))
+    }
+
+    async fn remove_delete_file(&self, request: Request<RemoveDeletedFileRequest>) -> Result<Response<()>, Status> {
+        let req = request.into_inner();
+
+        let file_id = map_entity_id(req.file_id)?;
+
+        self.app_state.file_service.remove_deleted_file(file_id).await?;
 
         Ok(Response::new(()))
     }

@@ -1,4 +1,3 @@
-use std::collections::{HashMap};
 use crate::data::copy_file_command::CopyFileCommand;
 use crate::data::init_file_command::InitFileCommand;
 use crate::data::move_file_command::MoveFileCommand;
@@ -21,6 +20,7 @@ use homelab_core::folder::Folder;
 use homelab_core::global_file::GlobalFile;
 use homelab_core::storage_profile::StorageProfile;
 use sqlx::types::time::OffsetDateTime;
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::fs;
@@ -59,6 +59,7 @@ pub trait FileService: Send + Sync {
     async fn unarchive_file(&self, file_id: Uuid) -> Result<(), DataError>;
     async fn cleanup_deleted_files(&self, user_id: Uuid) -> Result<(), DataError>;
     async fn cleanup_expired_files(&self) -> Result<(), DataError>;
+    async fn remove_deleted_file(&self, file_id: Uuid) -> Result<(), DataError>;
 }
 
 #[derive(new)]
@@ -261,15 +262,22 @@ impl FileService for FileServiceImpl {
             .await?
             .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
 
+        if file.is_deleted {
+            return Err(DataError::ValidationError(
+                "Cannot rename a deleted file".to_string(),
+            ));
+        }
+
         file.rename(command.new_name);
 
         self.file_repo.update(file).await
     }
 
     async fn update_deleted_file(&self, id: Uuid) -> Result<File, DataError> {
-        let mut file: File = self
+        println!("Trying to restore a file: {}", id.to_string());
+        let mut file = self
             .file_repo
-            .get_by_id(id)
+            .get_deleted_by_id(id)
             .await?
             .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
 
@@ -334,6 +342,12 @@ impl FileService for FileServiceImpl {
             .await?
             .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
 
+        if file.is_deleted {
+            return Err(DataError::ValidationError(
+                "Cannot rename a deleted file".to_string(),
+            ));
+        }
+
         file.update_parent_folder(command.folder_id);
 
         Ok(self.file_repo.update(file).await?)
@@ -384,7 +398,6 @@ impl FileService for FileServiceImpl {
             return Err(DataError::IOError(e.to_string()));
         }
 
-
         let sp_event: UserUpdatedEvent = UserUpdatedEvent::new(
             sp.user_id.clone(),
             None,
@@ -423,6 +436,12 @@ impl FileService for FileServiceImpl {
             .get_by_id(file_id)
             .await?
             .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
+
+        if f.is_deleted {
+            return Err(DataError::ValidationError(
+                "Cannot rename a deleted file".to_string(),
+            ));
+        }
 
         let target_path = f.build_file_path(&self.storage_path);
 
@@ -624,12 +643,18 @@ impl FileService for FileServiceImpl {
             return Ok(());
         }
 
-        let mut sp = self.storage_profile_repo.get_by_id(user_id).await
-            .map_err(|e| DataError::EntityNotFoundException(e.to_string()))?.unwrap();
+        let mut sp = self
+            .storage_profile_repo
+            .get_by_id(user_id)
+            .await
+            .map_err(|e| DataError::EntityNotFoundException(e.to_string()))?
+            .unwrap();
 
         let total_size_to_reduce: i64 = deleted_files.iter().map(|f| f.size).sum();
 
         sp.reduce_taken_storage_size(total_size_to_reduce);
+
+        self.storage_profile_repo.save(sp.clone()).await?;
 
         let sp_event: UserUpdatedEvent = UserUpdatedEvent::new(
             sp.user_id.clone(),
@@ -663,13 +688,19 @@ impl FileService for FileServiceImpl {
                 .push(file);
         }
 
-        for (owner_id, files)  in files_by_owner {
-            let mut sp = self.storage_profile_repo.get_by_id(owner_id).await
-                .map_err(|e| DataError::EntityNotFoundException(e.to_string()))?.unwrap();
+        for (owner_id, files) in files_by_owner {
+            let mut sp = self
+                .storage_profile_repo
+                .get_by_id(owner_id)
+                .await
+                .map_err(|e| DataError::EntityNotFoundException(e.to_string()))?
+                .unwrap();
 
             let total_size_to_reduce: i64 = files.iter().map(|f| f.size).sum();
 
             sp.reduce_taken_storage_size(total_size_to_reduce);
+
+            self.storage_profile_repo.save(sp.clone()).await?;
 
             let sp_event: UserUpdatedEvent = UserUpdatedEvent::new(
                 sp.user_id.clone(),
@@ -685,8 +716,38 @@ impl FileService for FileServiceImpl {
             }
         }
 
-
         self.remove_deleted_files(expired_files).await
+    }
+
+    async fn remove_deleted_file(&self, file_id: Uuid) -> Result<(), DataError> {
+        let file = self
+            .file_repo
+            .get_deleted_by_id(file_id)
+            .await?
+            .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
+
+        let mut sp = self.storage_profile_repo.get_by_id(file.owner_id)
+            .await?
+            .ok_or_else(|| DataError::EntityNotFoundException("Storage Profile".to_string()))?;
+
+        sp.reduce_taken_storage_size(file.size);
+
+        self.storage_profile_repo.save(sp.clone()).await?;
+
+        let sp_event: UserUpdatedEvent = UserUpdatedEvent::new(
+            sp.user_id.clone(),
+            None,
+            None,
+            Some(sp.allowed_storage.clone()),
+            Some(sp.taken_storage.clone()),
+            sp.is_blocked.clone(),
+        );
+
+        if let Err(e) = self.publisher.publish(&sp_event).await {
+            eprintln!("Failed to publish event: {:?}", e);
+        }
+
+        self.remove_deleted_files(vec![file]).await
     }
 }
 
@@ -711,6 +772,17 @@ impl FileServiceImpl {
                     }
                     Err(e) => Err((file.id, e)),
                 };
+
+                if remove_result.is_ok() {
+                    if let Some(bucket2) = path.parent() {
+                        if fs::remove_dir(bucket2).await.is_ok() {
+
+                            if let Some(bucket1) = bucket2.parent() {
+                                let _ = fs::remove_dir(bucket1).await;
+                            }
+                        }
+                    }
+                }
 
                 remove_result
             })

@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
 
-#[derive(Deserialize, Serialize, FromRow, new)]
+#[derive(Deserialize, Serialize, FromRow, new, Clone)]
 pub struct StorageProfile {
     pub user_id: Uuid,
     pub allowed_storage: i64,

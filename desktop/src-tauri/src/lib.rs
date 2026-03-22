@@ -50,6 +50,11 @@ pub async fn run() {
             commands::file::upload_content,
             commands::file::rename_file,
             commands::file::delete_file,
+            commands::file::get_deleted_files,
+            commands::file::restore_file,
+            commands::file::delete_chosen_file,
+            commands::file::empty_trash,
+            commands::file::remove_deleted_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

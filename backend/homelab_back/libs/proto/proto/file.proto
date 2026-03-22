@@ -6,21 +6,22 @@ import "google/protobuf/empty.proto";
 import "types.proto";
 
 service FileService {
-  rpc GetFile (GetFileRequest) returns (FileResponse);
+  rpc GetFile (GetFileRequest) returns (FileResponse); // Done
   rpc SearchFiles (SearchFilesRequest) returns (FileListResponse);
-  rpc GetDeletedFiles (GetDeletedFilesCommand) returns (FileListResponse);
-  rpc InitFile (InitFileRequest) returns (FileResponse);
-  rpc UploadContent (stream FileChunk) returns (google.protobuf.Empty);
-  rpc RenameFile (RenameFileRequest) returns (FileResponse);
-  rpc UndeleteFile (UndeleteFileRequest) returns (FileResponse);
+  rpc GetDeletedFiles (GetDeletedFilesRequest) returns (FileListResponse); // Done
+  rpc InitFile (InitFileRequest) returns (FileResponse); // Done
+  rpc UploadContent (stream FileChunk) returns (google.protobuf.Empty); // Done
+  rpc RenameFile (RenameFileRequest) returns (FileResponse); // Done
+  rpc UndeleteFile (UndeleteFileRequest) returns (FileResponse); // Done
   rpc DeleteChosenFiles (DeleteChosenFilesRequest) returns (google.protobuf.Empty);
-  rpc DeleteFile (DeleteFileRequest) returns (google.protobuf.Empty);
+  rpc DeleteFile (DeleteFileRequest) returns (google.protobuf.Empty); // Done
   rpc MoveFile (MoveFileRequest) returns (FileResponse);
   rpc CopyFile (CopyFileRequest) returns (FileResponse);
   rpc UpdateFileContent (stream FileChunk) returns (google.protobuf.Empty);
-  rpc ArchiveFile (ArchiveFileCommand) returns (google.protobuf.Empty);
-  rpc UnarchiveFile (UnarchiveFileCommand) returns (google.protobuf.Empty);
-  rpc RemoveAllDeletedFiles (RemoveAllDeletedFilesCommand) returns (google.protobuf.Empty);
+  rpc ArchiveFile (ArchiveFileRequest) returns (google.protobuf.Empty);
+  rpc UnarchiveFile (UnarchiveFileRequest) returns (google.protobuf.Empty);
+  rpc RemoveAllDeletedFiles (RemoveAllDeletedFilesRequest) returns (google.protobuf.Empty); // Done
+  rpc RemoveDeleteFile (RemoveDeletedFileRequest) returns (google.protobuf.Empty); // Done
 }
 
 enum FileType {
@@ -107,18 +108,22 @@ message CopyFileRequest {
   common.EntityId user_id = 3;
 }
 
-message ArchiveFileCommand {
+message ArchiveFileRequest {
   common.EntityId file_id = 1;
 }
 
-message UnarchiveFileCommand {
+message UnarchiveFileRequest {
   common.EntityId file_id = 1;
 }
 
-message RemoveAllDeletedFilesCommand {
+message RemoveAllDeletedFilesRequest {
   common.EntityId user_id = 1;
 }
 
-message GetDeletedFilesCommand {
+message GetDeletedFilesRequest {
   common.EntityId user_id = 1;
+}
+
+message RemoveDeletedFileRequest {
+  common.EntityId file_id = 1;
 }

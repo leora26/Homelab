@@ -9,6 +9,7 @@ use uuid::Uuid;
 pub trait FileRepository: Send + Sync {
     async fn get_by_id(&self, file_id: Uuid) -> Result<Option<File>, DataError>;
     async fn get_all_deleted(&self, user_id: Uuid) -> Result<Vec<File>, DataError>;
+    async fn get_deleted_by_id (&self, file_id: Uuid) -> Result<Option<File>, DataError>;
     async fn get_all_by_ids(&self, file_ids: &[Uuid]) -> Result<Vec<File>, DataError>;
     async fn search_by_name(&self, search_query: String) -> Result<Vec<File>, DataError>;
     async fn get_by_folder_and_file_name(
@@ -65,6 +66,23 @@ impl FileRepository for FileRepositoryImpl {
             .fetch_all(&self.pool)
             .await
             .map_err(|e| DataError::DatabaseError(e))?;
+
+        Ok(f)
+    }
+
+    async fn get_deleted_by_id(&self, file_id: Uuid) -> Result<Option<File>, DataError> {
+        let f = sqlx::query_as!(
+            File,
+            r#"
+            SELECT id, name, owner_id, parent_folder_id, file_type as "file_type: _", is_deleted, ttl, size, upload_status as "upload_status: _", created_at, updated_at
+            FROM files
+            WHERE id = $1
+            "#,
+        file_id
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(f)
     }
@@ -157,7 +175,7 @@ impl FileRepository for FileRepositoryImpl {
             r#"
             UPDATE files
             SET name = $1, owner_id = $2, file_type = $3, parent_folder_id = $4, is_deleted = $5, ttl = $6, size = $7, upload_status = $8, created_at = $10, updated_at = $11
-            WHERE id = $9 and is_deleted = FALSE
+            WHERE id = $9
             RETURNING id, name, owner_id, file_type as "file_type: _", parent_folder_id, is_deleted, ttl, size, upload_status as "upload_status: _", created_at, updated_at
             "#,
             file.name,
