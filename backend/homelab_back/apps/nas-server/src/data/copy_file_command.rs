@@ -6,5 +6,4 @@ use uuid::Uuid;
 pub struct CopyFileCommand {
     pub file_id: Uuid,
     pub target_folder_id: Uuid,
-    pub user_id: Uuid,
 }

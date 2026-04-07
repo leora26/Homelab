@@ -86,7 +86,7 @@ impl File {
             size,
             upload_status: UploadStatus::Pending,
             created_at,
-            updated_at
+            updated_at,
         }
     }
 

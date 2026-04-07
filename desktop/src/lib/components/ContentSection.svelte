@@ -18,6 +18,8 @@
     let error = $state<string | null>(null);
     let contextMenu = $state({isOpen: false, x: 0, y: 0, targetId: '', targetName: ''});
     let isMoveModalOpen = $state(false);
+    let isCopyModalOpen = $state(false);
+    let fileToCopy = $state<string | null>(null);
     let fileToMove = $state<string | null>(null);
     let treeVersion = $state(0);
     let isRenameModalOpen = $state(false);
@@ -53,6 +55,11 @@
         fileToMove = contextMenu.targetId;
     }
 
+    const triggerCopy = () => {
+        isCopyModalOpen = true;
+        fileToCopy = contextMenu.targetId;
+    }
+
     const confirmMoveFile = async (selectedFolderId: string) => {
         if (!fileToMove) {return;}
 
@@ -71,6 +78,22 @@
 
         isMoveModalOpen = false;
         fileToMove = null;
+
+        fetchFiles();
+    }
+
+    const confirmCopyFile = async (selectedFolderId: string) => {
+        if (!fileToCopy) {return;}
+
+        await safeInvoke('copy_file', {
+            fileId: fileToCopy,
+            targetFolderId: selectedFolderId
+        });
+
+        console.log(`Successfully moved file ${fileToCopy} to folder ${selectedFolderId}`)
+
+        isCopyModalOpen = false;
+        fileToCopy = null;
 
         fetchFiles();
     }
@@ -118,6 +141,8 @@
         isDeleteModalOpen = false;
 
         fileToDelete = null;
+
+        fetchFiles();
     }
 
     let menuOptions = $derived.by<ContextMenuOption[]>(() => {
@@ -128,6 +153,15 @@
                 action: () => {
                     closeContextMenu();
                     triggerRename()
+                }
+            },
+            {
+                label: 'Copy',
+                icon: '📋',
+                danger: false,
+                action: () => {
+                    triggerCopy();
+                    closeContextMenu();
                 }
             },
             {
@@ -257,6 +291,19 @@
             fileToMove = null;
         }}
         onSubmit={confirmMoveFile}
+/>
+
+<FolderSelectionModal
+        isOpen={isCopyModalOpen}
+        title="Copy File"
+        description="Select a destination folder to copy this file"
+        submitText="Copy Here"
+        treeVersion={treeVersion}
+        onClose={() => {
+            isCopyModalOpen = false;
+            fileToCopy = null;
+        }}
+        onSubmit={confirmCopyFile}
 />
 
 <style>

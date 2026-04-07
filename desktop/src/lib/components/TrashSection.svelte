@@ -39,6 +39,8 @@
             error = result.error;
             console.error("Failed to restore a file: ", error)
         }
+
+        fetchDeletedFiles();
     };
 
     const permanentlyDeleteFile = async (fileId: string) => {
@@ -50,6 +52,8 @@
             error = result.error;
             console.error("Failed to permanantry delete a file: ", error)
         }
+
+        fetchDeletedFiles();
     };
 
     const emptyTrash = async () => {
@@ -61,6 +65,8 @@
             error = result.error;
             console.error("Failed to empty trash: ", error)
         }
+
+        fetchDeletedFiles();
     }
 </script>
 

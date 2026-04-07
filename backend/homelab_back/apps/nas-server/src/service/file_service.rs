@@ -21,7 +21,7 @@ use homelab_core::global_file::GlobalFile;
 use homelab_core::storage_profile::StorageProfile;
 use sqlx::types::time::OffsetDateTime;
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs;
 use tokio::io::{AsyncWriteExt, BufReader, BufWriter};
@@ -360,9 +360,9 @@ impl FileService for FileServiceImpl {
             .await?
             .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
 
-        let sp = self
+        let mut sp = self
             .storage_profile_repo
-            .get_by_id(command.user_id)
+            .get_by_id(file.owner_id)
             .await?
             .ok_or_else(|| DataError::EntityNotFoundException("User".to_string()))?;
 
@@ -370,12 +370,28 @@ impl FileService for FileServiceImpl {
             return Err(DataError::NoFreeStorageError);
         }
 
+        let new_name = if file.parent_folder_id == command.target_folder_id {
+            let path = Path::new(&file.name);
+
+            let file_stem = path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or(&file.name);
+
+            match path.extension().and_then(|e| e.to_str()) {
+                Some(ext) => format!("{}.{}", file_stem, ext),
+                None => file_stem.to_string(),
+            }
+        } else {
+            file.name.clone()
+        };
+
         let new_file_id = Uuid::new_v4();
 
         let mut new_file = File::new(
             new_file_id,
-            format!("{}_copy", file.name.clone()),
-            sp.user_id,
+            new_name,
+            sp.user_id.clone(),
             command.target_folder_id,
             false,
             file.size,
@@ -411,8 +427,12 @@ impl FileService for FileServiceImpl {
             eprintln!("Failed to publish event: {:?}", e);
         }
 
-        match self.file_repo.save(new_file).await {
-            Ok(uploaded_file) => Ok(uploaded_file),
+        match self.file_repo.save(new_file.clone()).await {
+            Ok(uploaded_file) => {
+                sp.increase_storage_size(new_file.size);
+                self.storage_profile_repo.save(sp).await?;
+                Ok(uploaded_file)
+            }
             Err(err) => {
                 if let Err(del_err) = tokio::fs::remove_file(&dest_path).await {
                     return Err(DataError::IOError(format!(
@@ -726,7 +746,9 @@ impl FileService for FileServiceImpl {
             .await?
             .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
 
-        let mut sp = self.storage_profile_repo.get_by_id(file.owner_id)
+        let mut sp = self
+            .storage_profile_repo
+            .get_by_id(file.owner_id)
             .await?
             .ok_or_else(|| DataError::EntityNotFoundException("Storage Profile".to_string()))?;
 
@@ -776,7 +798,6 @@ impl FileServiceImpl {
                 if remove_result.is_ok() {
                     if let Some(bucket2) = path.parent() {
                         if fs::remove_dir(bucket2).await.is_ok() {
-
                             if let Some(bucket1) = bucket2.parent() {
                                 let _ = fs::remove_dir(bucket1).await;
                             }

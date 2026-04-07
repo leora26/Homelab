@@ -2,11 +2,7 @@ use crate::common::EntityId;
 use crate::helpers::mappings::map_file_proto_to_view;
 use crate::nas::file_chunk::Data;
 use crate::nas::file_service_client::FileServiceClient;
-use crate::nas::{
-    DeleteChosenFilesRequest, DeleteFileRequest, FileChunk, GetDeletedFilesRequest,
-    InitFileRequest, MoveFileRequest, RemoveAllDeletedFilesRequest, RemoveDeletedFileRequest,
-    RenameFileRequest, UndeleteFileRequest,
-};
+use crate::nas::{CopyFileRequest, DeleteChosenFilesRequest, DeleteFileRequest, FileChunk, GetDeletedFilesRequest, InitFileRequest, MoveFileRequest, RemoveAllDeletedFilesRequest, RemoveDeletedFileRequest, RenameFileRequest, UndeleteFileRequest};
 use crate::types::model::FileView;
 use crate::AppState;
 use async_stream::stream;
@@ -263,8 +259,32 @@ pub async fn move_file(
         .move_file(request)
         .await
         .map_err(|e| format!("Move file failed: {}", e))?;
-    
+
     let file_resp = response.into_inner();
-    
+
+    Ok(map_file_proto_to_view(file_resp))
+}
+
+
+#[tauri::command]
+pub async fn copy_file(
+    state: tauri::State<'_, AppState>,
+    file_id: String,
+    target_folder_id: String,
+) -> Result<FileView, String> {
+    let mut client = FileServiceClient::new(state.nas_grpc_channel.clone());
+
+    let request = Request::new(CopyFileRequest {
+        file_id: Some(EntityId { value: file_id }),
+        target_folder_id: Some(EntityId { value: target_folder_id }),
+    });
+
+    let response = client
+        .copy_file(request)
+        .await
+        .map_err(|e| format!("Copy file failed: {}", e))?;
+
+    let file_resp = response.into_inner();
+
     Ok(map_file_proto_to_view(file_resp))
 }

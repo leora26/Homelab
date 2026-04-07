@@ -253,9 +253,7 @@ impl FileService for GrpcFileService {
 
         let target_folder_id = map_entity_id(req.target_folder_id)?;
 
-        let user_id = map_entity_id(req.user_id)?;
-
-        let command = CopyFileCommand::new(file_id, target_folder_id, user_id);
+        let command = CopyFileCommand::new(file_id, target_folder_id);
 
         let file = self.app_state.file_service.copy_file(command).await?;
 
