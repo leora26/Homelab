@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT id, name, owner_id, parent_folder_id, file_type as \"file_type: _\", is_deleted, ttl, size, upload_status as \"upload_status: _\", created_at, updated_at\n            FROM files\n            WHERE parent_folder_id = $1 AND file_type = ANY($2::file_type[]) AND is_deleted = FALSE\n            ",
+  "query": "\n            UPDATE files\n            SET name = $1, owner_id = $2, file_type = $3, parent_folder_id = $4, is_deleted = $5, ttl = $6, size = $7, upload_status = $8, created_at = $10, updated_at = $11\n            WHERE id = $9\n            RETURNING id, name, owner_id, file_type as \"file_type: _\", parent_folder_id, is_deleted, ttl, size, upload_status as \"upload_status: _\", created_at, updated_at\n            ",
   "describe": {
     "columns": [
       {
@@ -20,11 +20,6 @@
       },
       {
         "ordinal": 3,
-        "name": "parent_folder_id",
-        "type_info": "Uuid"
-      },
-      {
-        "ordinal": 4,
         "name": "file_type: _",
         "type_info": {
           "Custom": {
@@ -42,6 +37,11 @@
             }
           }
         }
+      },
+      {
+        "ordinal": 4,
+        "name": "parent_folder_id",
+        "type_info": "Uuid"
       },
       {
         "ordinal": 5,
@@ -87,30 +87,43 @@
     ],
     "parameters": {
       "Left": [
+        "Text",
         "Uuid",
         {
           "Custom": {
-            "name": "file_type[]",
+            "name": "file_type",
             "kind": {
-              "Array": {
-                "Custom": {
-                  "name": "file_type",
-                  "kind": {
-                    "Enum": [
-                      "text",
-                      "image",
-                      "video",
-                      "audio",
-                      "pdf",
-                      "unknown",
-                      "zip"
-                    ]
-                  }
-                }
-              }
+              "Enum": [
+                "text",
+                "image",
+                "video",
+                "audio",
+                "pdf",
+                "unknown",
+                "zip"
+              ]
             }
           }
-        }
+        },
+        "Uuid",
+        "Bool",
+        "Timestamptz",
+        "Int8",
+        {
+          "Custom": {
+            "name": "upload_status",
+            "kind": {
+              "Enum": [
+                "pending",
+                "completed",
+                "failed"
+              ]
+            }
+          }
+        },
+        "Uuid",
+        "Timestamptz",
+        "Timestamptz"
       ]
     },
     "nullable": [
@@ -127,5 +140,5 @@
       false
     ]
   },
-  "hash": "f11560c411c49748e439d140232d6dcea7cd4391075ee1ef7ede061509080660"
+  "hash": "627db3281e5b0df4621aaabd12357fa57cfa6f27ffd05bc0205a60943bf70b2f"
 }

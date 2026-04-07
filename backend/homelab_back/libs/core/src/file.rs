@@ -13,6 +13,7 @@ pub enum FileType {
     Unknown,
     Audio,
     Pdf,
+    Zip
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, sqlx::Type)]
@@ -35,6 +36,9 @@ impl FileType {
                 "txt" | "md" | "json" | "xml" | "html" | "css" | "js" | "rs" => FileType::Text,
                 "png" | "jpg" | "jpeg" | "gif" | "bmp" | "svg" | "webp" => FileType::Image,
                 "mp4" | "mov" | "avi" | "mkv" | "webm" => FileType::Video,
+                "zip" | "gz" | "tar" | "rar" | "7z" | "bz2" | "xz" | "iso" => FileType::Zip,
+                "pdf" => FileType::Pdf,
+                "mp3" | "acc" | "ogg" | "wav" | "flac" | "aiff"  => FileType::Audio,
                 _ => FileType::Unknown,
             }
         } else {
@@ -140,6 +144,10 @@ impl File {
 
     pub fn update_status(&mut self, status: UploadStatus) {
         self.upload_status = status
+    }
+    
+    pub fn update_type(&mut self, file_type: FileType) {
+        self.file_type = file_type
     }
 
     pub fn update_parent_folder(&mut self, new_parent_folder: Uuid) {

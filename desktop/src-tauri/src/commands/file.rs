@@ -2,7 +2,7 @@ use crate::common::EntityId;
 use crate::helpers::mappings::map_file_proto_to_view;
 use crate::nas::file_chunk::Data;
 use crate::nas::file_service_client::FileServiceClient;
-use crate::nas::{CopyFileRequest, DeleteChosenFilesRequest, DeleteFileRequest, FileChunk, GetDeletedFilesRequest, InitFileRequest, MoveFileRequest, RemoveAllDeletedFilesRequest, RemoveDeletedFileRequest, RenameFileRequest, UndeleteFileRequest};
+use crate::nas::{ArchiveFileRequest, CopyFileRequest, DeleteChosenFilesRequest, DeleteFileRequest, FileChunk, GetDeletedFilesRequest, InitFileRequest, MoveFileRequest, RemoveAllDeletedFilesRequest, RemoveDeletedFileRequest, RenameFileRequest, UnarchiveFileRequest, UndeleteFileRequest};
 use crate::types::model::FileView;
 use crate::AppState;
 use async_stream::stream;
@@ -287,4 +287,47 @@ pub async fn copy_file(
     let file_resp = response.into_inner();
 
     Ok(map_file_proto_to_view(file_resp))
+}
+
+#[tauri::command]
+pub async fn archive_file (
+    state: tauri::State<'_, AppState>,
+    file_id: String,
+) -> Result<(), String> {
+    println!("arhciving file: {}", file_id);
+    let mut client = FileServiceClient::new(state.nas_grpc_channel.clone());
+
+    let request = Request::new(ArchiveFileRequest {
+        file_id: Some(EntityId { value: file_id }),
+    });
+
+    let response = client
+        .archive_file(request)
+        .await
+        .map_err(|e| format!("Archive file failed: {}", e))?;
+
+    let _ = response.into_inner();
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn unarchive_file(
+    state: tauri::State<'_, AppState>,
+    file_id: String,
+) -> Result<(), String> {
+    let mut client = FileServiceClient::new(state.nas_grpc_channel.clone());
+
+    let request = Request::new(UnarchiveFileRequest {
+        file_id: Some(EntityId { value: file_id }),
+    });
+
+    let response = client
+        .unarchive_file(request)
+        .await
+        .map_err(|e| format!("Unarchive file failed: {}", e))?;
+
+    let _ = response.into_inner();
+
+    Ok(())
 }

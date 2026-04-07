@@ -3,6 +3,7 @@
         label: string;
         icon?: string;
         danger?: boolean;
+        disabled?: boolean;
         action: () => void;
     }
 
@@ -26,6 +27,7 @@
     {#each options as option}
         <button
                 class:danger={option.danger}
+                class:disabled={option.disabled}
                 onclick={(e) => {
                 e.stopPropagation();
                 option.action();
@@ -73,6 +75,10 @@
 
     .context-menu button.danger {
         color: #d32f2f;
+    }
+
+    .context-menu button.disabled {
+        opacity: 0.5;
     }
 
     .context-menu button.danger:hover {

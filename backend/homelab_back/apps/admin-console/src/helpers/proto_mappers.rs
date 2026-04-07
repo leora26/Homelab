@@ -21,6 +21,7 @@ pub fn map_console_file(f: ConsoleFile) -> ConsoleFileResponse {
             DomainFileType::Video => ProtoFileType::Video,
             DomainFileType::Audio => ProtoFileType::Audio,
             DomainFileType::Pdf => ProtoFileType::Pdf,
+            DomainFileType::Zip => ProtoFileType::Zip,
             DomainFileType::Unknown => ProtoFileType::Unknown,
         } as i32,
         is_deleted: f.is_deleted,

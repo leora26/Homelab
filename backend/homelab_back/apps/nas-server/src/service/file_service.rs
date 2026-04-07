@@ -15,7 +15,7 @@ use derive_new::new;
 use futures::stream::{self, StreamExt};
 use homelab_core::constants::MB;
 use homelab_core::events::{FileUpdatedEvent, FileUploadedEvent, UserUpdatedEvent};
-use homelab_core::file::{File, UploadStatus};
+use homelab_core::file::{File, FileType, UploadStatus};
 use homelab_core::folder::Folder;
 use homelab_core::global_file::GlobalFile;
 use homelab_core::storage_profile::StorageProfile;
@@ -567,14 +567,14 @@ impl FileService for FileServiceImpl {
     }
 
     async fn archive_file(&self, file_id: Uuid) -> Result<(), DataError> {
-        let file = self
+        let mut file = self
             .file_repo
             .get_by_id(file_id)
             .await?
             .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
 
         if file.is_archived(&self.storage_path) {
-            return Err(DataError::FileIsNotArchivedError);
+            return Err(DataError::FileIsAlreadyArchivedError);
         }
 
         let original_path = file.build_file_path(&self.storage_path);
@@ -603,22 +603,57 @@ impl FileService for FileServiceImpl {
             return Err(DataError::IOError(e.to_string()));
         }
 
+        let metadata = fs::metadata(&compressed_path)
+            .await
+            .map_err(|e| DataError::IOError(e.to_string()))?;
+
+        let archived_size = metadata.len() as i64;
+        let original_size = file.size;
+
+        let mut sp = self
+            .storage_profile_repo
+            .get_by_id(file.owner_id)
+            .await?
+            .ok_or_else(|| DataError::EntityNotFoundException("User".to_string()))?;
+
+        sp.reduce_taken_storage_size(original_size - archived_size);
+
+        let sp_event = UserUpdatedEvent::new(
+            sp.user_id.clone(),
+            None,
+            None,
+            Some(sp.allowed_storage.clone()),
+            Some(sp.taken_storage.clone()),
+            sp.is_blocked.clone(),
+        );
+
+        if let Err(e) = self.publisher.publish(&sp_event).await {
+            eprintln!("Failed to publish event: {:?}", e);
+        }
+
+        self.storage_profile_repo.save(sp).await?;
+
         fs::remove_file(&original_path)
             .await
             .map_err(|e| DataError::IOError(e.to_string()))?;
+
+        file.rename(format!("{}.gz", file.name));
+        file.size = archived_size;
+        file.update_type(FileType::Zip);
+        self.file_repo.update(file).await?;
 
         Ok(())
     }
 
     async fn unarchive_file(&self, file_id: Uuid) -> Result<(), DataError> {
-        let file = self
+        let mut file = self
             .file_repo
             .get_by_id(file_id)
             .await?
             .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
 
         if !file.is_archived(&self.storage_path) {
-            return Err(DataError::FileIsAlreadyArchivedError);
+            return Err(DataError::FileIsNotArchivedError);
         }
 
         let compressed_path = file.build_file_path(&self.storage_path);
@@ -649,9 +684,56 @@ impl FileService for FileServiceImpl {
             return Err(DataError::IOError(e.to_string()));
         }
 
+        let metadata = fs::metadata(&output_path)
+            .await
+            .map_err(|e| DataError::IOError(e.to_string()))?;
+
+        let unarchived_size = metadata.len() as i64;
+        let original_compressed_size = file.size;
+
+        let mut sp = self
+            .storage_profile_repo
+            .get_by_id(file.owner_id)
+            .await?
+            .ok_or_else(|| DataError::EntityNotFoundException("User".to_string()))?;
+
+        let size_difference = unarchived_size - original_compressed_size;
+
+        if !sp.validate_storage_size(size_difference) {
+            let _ = fs::remove_file(&output_path).await;
+            return Err(DataError::NoFreeStorageError);
+        }
+
+        if size_difference > 0 {
+            sp.increase_storage_size(size_difference);
+        }
+
+        let sp_event = UserUpdatedEvent::new(
+            sp.user_id.clone(),
+            None,
+            None,
+            Some(sp.allowed_storage.clone()),
+            Some(sp.taken_storage.clone()),
+            sp.is_blocked.clone(),
+        );
+
+        if let Err(e) = self.publisher.publish(&sp_event).await {
+            eprintln!("Failed to publish event: {:?}", e);
+        }
+
+        self.storage_profile_repo.save(sp).await?;
+
         fs::remove_file(&compressed_path)
             .await
             .map_err(|e| DataError::IOError(e.to_string()))?;
+
+        let new_name = file.name.strip_suffix(".gz").unwrap_or(&file.name).to_string();
+        file.rename(new_name);
+        file.size = unarchived_size;
+        let file_type = FileType::from_filename(&file.name);
+        file.update_type(file_type);
+
+        self.file_repo.update(file).await?;
 
         Ok(())
     }

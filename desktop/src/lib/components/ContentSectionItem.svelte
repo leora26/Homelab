@@ -12,6 +12,8 @@
         onContextMenu,
         file
     }: Props = $props()
+
+    console.log("File: ", file)
 </script>
 
 <tr
@@ -41,9 +43,20 @@
         background-color: #f4f6f8;
     }
 
-    .col-name { width: 55%; }
-    .col-date { width: 30%; color: #666; }
-    .col-size { width: 15%; color: #666; text-align: right; }
+    .col-name {
+        width: 55%;
+    }
+
+    .col-date {
+        width: 30%;
+        color: #666;
+    }
+
+    .col-size {
+        width: 15%;
+        color: #666;
+        text-align: right;
+    }
 
 
     .name-cell {

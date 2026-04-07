@@ -9,6 +9,7 @@ pub fn map_file_proto_to_view(f: FileResponse) -> FileView {
         Ok(FileType::Video) => "Video",
         Ok(FileType::Audio) => "Audio",
         Ok(FileType::Pdf) => "PDF",
+        Ok(FileType::Zip) => "Zip",
         _ => "Unknown",
     }
     .to_string();

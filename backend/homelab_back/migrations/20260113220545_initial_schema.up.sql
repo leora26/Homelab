@@ -1,5 +1,5 @@
 CREATE TYPE file_type AS ENUM (
-    'text', 'image', 'video', 'audio', 'pdf', 'unknown'
+    'text', 'image', 'video', 'audio', 'pdf', 'unknown', 'zip'
 );
 
 CREATE TYPE user_role AS ENUM (

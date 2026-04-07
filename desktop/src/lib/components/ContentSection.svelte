@@ -6,6 +6,7 @@
     import FormModal, {type FormField} from "$lib/components/common/FormModal.svelte";
     import {safeInvoke} from "$lib/components/helpers/safeInvoke";
     import FolderSelectionModal from "$lib/components/common/FolderSelectionModal.svelte";
+    import isFileArchived from "$lib/components/helpers/file/isFileArchived";
 
     interface ContentSectionProps {
         activeFolderId: string
@@ -60,8 +61,39 @@
         fileToCopy = contextMenu.targetId;
     }
 
+    const triggerArchive = async () => {
+        console.log("Trying to archive context: ", contextMenu)
+
+        await safeInvoke('archive_file', {
+            fileId: contextMenu.targetId
+        });
+
+        console.log(`Successfully archived file ${fileToMove}`)
+        fetchFiles();
+    }
+
+    const triggerUnarchive = async () => {
+        await safeInvoke('unarchive_file', {
+            fileId: contextMenu.targetId
+        });
+
+        console.log(`Successfully archived file ${fileToMove}`)
+        fetchFiles();
+    }
+
+    const triggerRename = () => {
+        isRenameModalOpen = true;
+    };
+
+    const triggerDelete = (fileId: string) => {
+        fileToDelete = fileId;
+        isDeleteModalOpen = true;
+    };
+
     const confirmMoveFile = async (selectedFolderId: string) => {
-        if (!fileToMove) {return;}
+        if (!fileToMove) {
+            return;
+        }
 
         if (selectedFolderId === activeFolderId) {
             console.warn("File is already in the current folder");
@@ -83,7 +115,9 @@
     }
 
     const confirmCopyFile = async (selectedFolderId: string) => {
-        if (!fileToCopy) {return;}
+        if (!fileToCopy) {
+            return;
+        }
 
         await safeInvoke('copy_file', {
             fileId: fileToCopy,
@@ -102,14 +136,6 @@
         contextMenu.isOpen = false;
     };
 
-    const triggerRename = () => {
-        isRenameModalOpen = true;
-    };
-
-    const triggerDelete = (folderId: string) => {
-        fileToDelete = folderId;
-        isDeleteModalOpen = true;
-    };
 
     const confirmRenameFile = async (data: Record<string, string | number>) => {
         const newName = String(data.newFileName).trim();
@@ -146,6 +172,10 @@
     }
 
     let menuOptions = $derived.by<ContextMenuOption[]>(() => {
+
+        let targetIsArchived = isFileArchived(contextMenu.targetName);
+        console.log("File archived: ", targetIsArchived)
+
         const options: ContextMenuOption[] = [
             {
                 label: 'Rename',
@@ -181,7 +211,27 @@
                     triggerMove();
                     closeContextMenu();
                 }
-            }
+            },
+            {
+                label: 'Archive',
+                icon: '📦',
+                disabled: targetIsArchived,
+                action: () => {
+                    if (targetIsArchived) return;
+                    closeContextMenu();
+                    triggerArchive();
+                }
+            },
+            {
+                label: 'Extract',
+                icon: '🗜️',
+                disabled: !targetIsArchived,
+                action: () => {
+                    if (!targetIsArchived) return;
+                    closeContextMenu();
+                    triggerUnarchive();
+                }
+            },
         ];
 
         return options;

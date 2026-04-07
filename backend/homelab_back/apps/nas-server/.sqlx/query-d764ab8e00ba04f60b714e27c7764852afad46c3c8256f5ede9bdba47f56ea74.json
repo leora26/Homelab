@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            UPDATE files\n            SET name = $1, owner_id = $2, file_type = $3, parent_folder_id = $4, is_deleted = $5, ttl = $6, size = $7, upload_status = $8, created_at = $10, updated_at = $11\n            WHERE id = $9 and is_deleted = FALSE\n            RETURNING id, name, owner_id, file_type as \"file_type: _\", parent_folder_id, is_deleted, ttl, size, upload_status as \"upload_status: _\", created_at, updated_at\n            ",
+  "query": "\n            SELECT id, name, owner_id, parent_folder_id, file_type as \"file_type: _\", is_deleted, ttl, size, upload_status as \"upload_status: _\", created_at, updated_at\n            FROM files\n            WHERE id = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -20,6 +20,11 @@
       },
       {
         "ordinal": 3,
+        "name": "parent_folder_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
         "name": "file_type: _",
         "type_info": {
           "Custom": {
@@ -31,16 +36,12 @@
                 "video",
                 "audio",
                 "pdf",
-                "unknown"
+                "unknown",
+                "zip"
               ]
             }
           }
         }
-      },
-      {
-        "ordinal": 4,
-        "name": "parent_folder_id",
-        "type_info": "Uuid"
       },
       {
         "ordinal": 5,
@@ -86,42 +87,7 @@
     ],
     "parameters": {
       "Left": [
-        "Text",
-        "Uuid",
-        {
-          "Custom": {
-            "name": "file_type",
-            "kind": {
-              "Enum": [
-                "text",
-                "image",
-                "video",
-                "audio",
-                "pdf",
-                "unknown"
-              ]
-            }
-          }
-        },
-        "Uuid",
-        "Bool",
-        "Timestamptz",
-        "Int8",
-        {
-          "Custom": {
-            "name": "upload_status",
-            "kind": {
-              "Enum": [
-                "pending",
-                "completed",
-                "failed"
-              ]
-            }
-          }
-        },
-        "Uuid",
-        "Timestamptz",
-        "Timestamptz"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -138,5 +104,5 @@
       false
     ]
   },
-  "hash": "9ddff378e0c47f43f5f18a5fe5316d61af9c9f002bc5e3059170741bca62203c"
+  "hash": "d764ab8e00ba04f60b714e27c7764852afad46c3c8256f5ede9bdba47f56ea74"
 }

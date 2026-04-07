@@ -65,6 +65,8 @@ pub async fn get_files_for_folder(
         .map(|f| map_file_proto_to_view(f))
         .collect();
 
+        println!("{:#?}", mapped_files);
+
     Ok(mapped_files)
 }
 

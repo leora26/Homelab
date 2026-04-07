@@ -16,10 +16,10 @@ service FileService {
   rpc DeleteChosenFiles (DeleteChosenFilesRequest) returns (google.protobuf.Empty);
   rpc DeleteFile (DeleteFileRequest) returns (google.protobuf.Empty); // Done
   rpc MoveFile (MoveFileRequest) returns (FileResponse); // Done
-  rpc CopyFile (CopyFileRequest) returns (FileResponse);
-  rpc UpdateFileContent (stream FileChunk) returns (google.protobuf.Empty);
-  rpc ArchiveFile (ArchiveFileRequest) returns (google.protobuf.Empty);
-  rpc UnarchiveFile (UnarchiveFileRequest) returns (google.protobuf.Empty);
+  rpc CopyFile (CopyFileRequest) returns (FileResponse); // Done
+  rpc UpdateFileContent (stream FileChunk) returns (google.protobuf.Empty); // TODO: For later. Maybe not needed
+  rpc ArchiveFile (ArchiveFileRequest) returns (google.protobuf.Empty); // Done
+  rpc UnarchiveFile (UnarchiveFileRequest) returns (google.protobuf.Empty); // Done
   rpc RemoveAllDeletedFiles (RemoveAllDeletedFilesRequest) returns (google.protobuf.Empty); // Done
   rpc RemoveDeleteFile (RemoveDeletedFileRequest) returns (google.protobuf.Empty); // Done
 }
@@ -31,6 +31,7 @@ enum FileType {
   VIDEO = 3;
   AUDIO = 4;
   PDF = 5;
+  ZIP = 6;
 }
 
 enum UploadStatus {

@@ -57,6 +57,8 @@ pub async fn run() {
             commands::file::remove_deleted_file,
             commands::file::move_file,
             commands::file::copy_file,
+            commands::file::archive_file,
+            commands::file::unarchive_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

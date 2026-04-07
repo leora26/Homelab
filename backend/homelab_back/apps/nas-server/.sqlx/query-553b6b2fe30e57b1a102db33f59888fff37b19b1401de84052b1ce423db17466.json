@@ -36,7 +36,8 @@
                 "video",
                 "audio",
                 "pdf",
-                "unknown"
+                "unknown",
+                "zip"
               ]
             }
           }
