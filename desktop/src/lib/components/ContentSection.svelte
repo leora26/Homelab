@@ -5,6 +5,7 @@
     import ContentSectionItem from "$lib/components/ContentSectionItem.svelte";
     import FormModal, {type FormField} from "$lib/components/common/FormModal.svelte";
     import {safeInvoke} from "$lib/components/helpers/safeInvoke";
+    import FolderSelectionModal from "$lib/components/common/FolderSelectionModal.svelte";
 
     interface ContentSectionProps {
         activeFolderId: string
@@ -16,32 +17,63 @@
     let isLoading = $state(false);
     let error = $state<string | null>(null);
     let contextMenu = $state({isOpen: false, x: 0, y: 0, targetId: '', targetName: ''});
+    let isMoveModalOpen = $state(false);
+    let fileToMove = $state<string | null>(null);
+    let treeVersion = $state(0);
     let isRenameModalOpen = $state(false);
     let isDeleteModalOpen = $state(false);
     let fileToDelete = $state<string | null>(null);
 
-    $effect(() => {
+
+    const fetchFiles = async () => {
         if (!activeFolderId) {
             return;
         }
 
-        const fetchFiles = async () => {
-            isLoading = true;
-            error = null;
+        isLoading = true;
+        error = null;
 
-            try {
-                files = await invoke<FileView[]>('get_files_for_folder', {folderId: activeFolderId});
-                console.log(`Fetched files for folder ${activeFolderId}:`, files);
-            } catch (err) {
-                error = String(err);
-                console.error("Failed to fetch files:", err);
-            } finally {
-                isLoading = false;
-            }
+        try {
+            files = await invoke<FileView[]>('get_files_for_folder', {folderId: activeFolderId});
+            console.log(`Fetched files for folder ${activeFolderId}:`, files);
+        } catch (err) {
+            error = String(err);
+            console.error("Failed to fetch files:", err);
+        } finally {
+            isLoading = false;
         }
+    }
 
+    $effect(() => {
         fetchFiles();
     });
+
+    const triggerMove = () => {
+        isMoveModalOpen = true;
+        fileToMove = contextMenu.targetId;
+    }
+
+    const confirmMoveFile = async (selectedFolderId: string) => {
+        if (!fileToMove) {return;}
+
+        if (selectedFolderId === activeFolderId) {
+            console.warn("File is already in the current folder");
+            isMoveModalOpen = false;
+            return;
+        }
+
+        await safeInvoke('move_file', {
+            fileId: fileToMove,
+            folderId: selectedFolderId
+        });
+
+        console.log(`Successfully moved file ${fileToMove} to folder ${selectedFolderId}`);
+
+        isMoveModalOpen = false;
+        fileToMove = null;
+
+        fetchFiles();
+    }
 
     const closeContextMenu = () => {
         contextMenu.isOpen = false;
@@ -82,6 +114,7 @@
 
         console.log(`Successfully deleted file: ${contextMenu.targetId}`);
 
+
         isDeleteModalOpen = false;
 
         fileToDelete = null;
@@ -104,6 +137,15 @@
                 action: () => {
                     closeContextMenu();
                     triggerDelete(contextMenu.targetId);
+                }
+            },
+            {
+                label: 'Move',
+                icon: '➡️',
+                danger: false,
+                action: () => {
+                    triggerMove();
+                    closeContextMenu();
                 }
             }
         ];
@@ -202,6 +244,19 @@
         loadingText="Deleting..."
         onClose={() => isDeleteModalOpen = false}
         onSubmit={confirmDeleteFile}
+/>
+
+<FolderSelectionModal
+        isOpen={isMoveModalOpen}
+        title="Move File"
+        description="Select a destination folder for this file"
+        submitText="Move Here"
+        treeVersion={treeVersion}
+        onClose={() => {
+            isMoveModalOpen = false;
+            fileToMove = null;
+        }}
+        onSubmit={confirmMoveFile}
 />
 
 <style>

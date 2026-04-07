@@ -4,8 +4,8 @@ use crate::nas::file_chunk::Data;
 use crate::nas::file_service_client::FileServiceClient;
 use crate::nas::{
     DeleteChosenFilesRequest, DeleteFileRequest, FileChunk, GetDeletedFilesRequest,
-    InitFileRequest, RemoveAllDeletedFilesRequest, RemoveDeletedFileRequest, RenameFileRequest,
-    UndeleteFileRequest,
+    InitFileRequest, MoveFileRequest, RemoveAllDeletedFilesRequest, RemoveDeletedFileRequest,
+    RenameFileRequest, UndeleteFileRequest,
 };
 use crate::types::model::FileView;
 use crate::AppState;
@@ -244,4 +244,27 @@ pub async fn remove_deleted_file(
     let _ = response.into_inner();
 
     Ok(())
+}
+
+#[tauri::command]
+pub async fn move_file(
+    state: tauri::State<'_, AppState>,
+    folder_id: String,
+    file_id: String,
+) -> Result<FileView, String> {
+    let mut client = FileServiceClient::new(state.nas_grpc_channel.clone());
+
+    let request = Request::new(MoveFileRequest {
+        folder_id: Some(EntityId { value: folder_id }),
+        file_id: Some(EntityId { value: file_id }),
+    });
+
+    let response = client
+        .move_file(request)
+        .await
+        .map_err(|e| format!("Move file failed: {}", e))?;
+    
+    let file_resp = response.into_inner();
+    
+    Ok(map_file_proto_to_view(file_resp))
 }

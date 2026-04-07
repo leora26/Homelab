@@ -234,7 +234,9 @@ impl FileService for GrpcFileService {
 
         let folder_id = map_entity_id(req.folder_id)?;
 
-        let command = MoveFileCommand::new(file_id, folder_id);
+        println!("Received file_id and folder_id to move: {}, {}", file_id, folder_id);
+
+        let command = MoveFileCommand::new(folder_id, file_id);
 
         let file = self.app_state.file_service.move_file(command).await?;
 
