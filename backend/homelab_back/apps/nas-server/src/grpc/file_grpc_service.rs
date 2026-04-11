@@ -347,22 +347,7 @@ impl FileService for GrpcFileService {
 
         Ok(Response::new(()))
     }
-
-    async fn remove_all_deleted_files(
-        &self,
-        request: Request<RemoveAllDeletedFilesRequest>,
-    ) -> Result<Response<()>, Status> {
-        let req = request.into_inner();
-
-        let user_id = map_entity_id(req.user_id)?;
-
-        self.app_state
-            .file_service
-            .cleanup_deleted_files(user_id)
-            .await?;
-
-        Ok(Response::new(()))
-    }
+    
 
     async fn remove_delete_file(&self, request: Request<RemoveDeletedFileRequest>) -> Result<Response<()>, Status> {
         let req = request.into_inner();

@@ -27,6 +27,8 @@ pub trait FileRepository: Send + Sync {
         owner_id: Uuid,
     ) -> Result<Vec<File>, DataError>;
     async fn get_expired_files(&self) -> Result<Vec<File>, DataError>;
+    async fn get_batch_for_hard_delete_for_folder(&self, folder_id: Uuid, limit: i64) -> Result<Vec<File>, DataError>;
+    async fn get_batch_for_hard_delete(&self, limit: i64) -> Result<Vec<File>, DataError>;
 }
 
 #[derive(new)]
@@ -285,5 +287,59 @@ impl FileRepository for FileRepositoryImpl {
         .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(f)
+    }
+
+    async fn get_batch_for_hard_delete_for_folder(&self, folder_id: Uuid, limit: i64) -> Result<Vec<File>, DataError> {
+        let batch = sqlx::query_as!(
+        File,
+        r#"
+        WITH RECURSIVE folder_tree AS (
+            SELECT id FROM folders WHERE id = $1
+            UNION ALL
+            SELECT f.id FROM folders f
+            INNER JOIN folder_tree ft ON f.parent_folder_id = ft.id
+        )
+        SELECT
+            f.id, f.name, f.owner_id,
+            f.file_type as "file_type: _",
+            f.parent_folder_id, f.is_deleted, f.ttl, f.size,
+            f.upload_status as "upload_status: _",
+            f.created_at, f.updated_at
+        FROM files f
+        WHERE f.parent_folder_id IN (SELECT id FROM folder_tree)
+          AND f.is_deleted = true
+        LIMIT $2
+        "#,
+        folder_id,
+        limit
+    )
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| DataError::DatabaseError(e))?;
+
+        Ok(batch)
+    }
+
+    async fn get_batch_for_hard_delete(&self, limit: i64) -> Result<Vec<File>, DataError> {
+        let batch = sqlx::query_as!(
+        File,
+        r#"
+        SELECT
+            id, name, owner_id,
+            file_type as "file_type: _",
+            parent_folder_id, is_deleted, ttl, size,
+            upload_status as "upload_status: _",
+            created_at, updated_at
+        FROM files
+        WHERE is_deleted = true
+        LIMIT $1
+        "#,
+        limit
+    )
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| DataError::DatabaseError(e))?;
+
+        Ok(batch)
     }
 }

@@ -8,6 +8,7 @@ use async_trait::async_trait;
 use homelab_core::file::{File, FileType};
 use homelab_core::folder::Folder;
 use std::sync::Arc;
+use derive_new::new;
 use uuid::Uuid;
 
 #[async_trait]
@@ -34,17 +35,15 @@ pub trait FolderService: Send + Sync {
     async fn move_folder(&self, command: MoveFolderCommand) -> Result<Folder, DataError>;
     async fn get_trash_files(&self, folder_id: Uuid) -> Result<Vec<File>, DataError>;
     async fn get_deleted_folders(&self, user_id: Uuid) -> Result<Vec<Folder>, DataError>;
+    async fn clean_up_trash(&self, user_id: Uuid) -> Result<(), DataError>;
 }
 
+#[derive(new)]
 pub struct FolderServiceImpl {
     folder_repo: Arc<dyn FolderRepository>,
 }
 
 impl FolderServiceImpl {
-    pub fn new(folder_repo: Arc<dyn FolderRepository>) -> Self {
-        Self { folder_repo }
-    }
-
     #[async_recursion]
     async fn get_parent_folder_name(&self, f_id: Uuid) -> Result<String, DataError> {
         let f = self
@@ -154,5 +153,9 @@ impl FolderService for FolderServiceImpl {
 
     async fn get_deleted_folders(&self, user_id: Uuid) -> Result<Vec<Folder>, DataError> {
         self.folder_repo.get_deleted_folders(user_id).await
+    }
+
+    async fn clean_up_trash(&self, user_id: Uuid) -> Result<(), DataError> {
+        todo!()
     }
 }

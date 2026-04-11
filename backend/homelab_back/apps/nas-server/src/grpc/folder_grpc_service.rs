@@ -6,12 +6,7 @@ use crate::AppState;
 use async_trait::async_trait;
 use derive_new::new;
 use homelab_proto::nas::folder_service_server::FolderService;
-use homelab_proto::nas::{
-    CreateFolderRequest, DeleteAllFolderRequest, DeleteFolderRequest, FileListResponse,
-    FolderResponse, FolderResponseList, GetAllSubfoldersRequest, GetDeletedFoldersRequest,
-    GetFilesForFolderRequest, GetFolderRequest, GetRootFolderRequest,
-    GetTrashFilesForFolderRequest, MoveFolderRequest, RenameFolderRequest, SearchFolderRequest,
-};
+use homelab_proto::nas::{CleanUpDeletedFoldersRequest, CreateFolderRequest, DeleteAllFolderRequest, DeleteFolderRequest, FileListResponse, FolderResponse, FolderResponseList, GetAllSubfoldersRequest, GetDeletedFoldersRequest, GetFilesForFolderRequest, GetFolderRequest, GetRootFolderRequest, GetTrashFilesForFolderRequest, MoveFolderRequest, RenameFolderRequest, SearchFolderRequest};
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
 use uuid::Uuid;
@@ -251,5 +246,9 @@ impl FolderService for GrpcFolderService {
         let folder = self.app_state.folder_service.create(command).await?;
 
         Ok(Response::new(map_folder_to_proto(folder)))
+    }
+
+    async fn clean_up_deleted_folder(&self, request: Request<CleanUpDeletedFoldersRequest>) -> Result<Response<()>, Status> {
+        todo!()
     }
 }

@@ -6,3 +6,4 @@ pub mod label_service;
 pub mod preview_service;
 pub mod shared_file_service;
 pub mod storage_profile_service;
+pub mod clean_up_service;

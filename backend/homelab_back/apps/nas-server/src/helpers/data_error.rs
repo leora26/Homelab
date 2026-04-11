@@ -28,4 +28,6 @@ pub enum DataError {
     FileIsAlreadyArchivedError,
     #[error("This file is not archived, so you cannot not unarchive it")]
     FileIsNotArchivedError,
+    #[error("{0}")]
+    InvalidDataError(String),
 }

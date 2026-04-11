@@ -20,8 +20,8 @@ service FileService {
   rpc UpdateFileContent (stream FileChunk) returns (google.protobuf.Empty); // TODO: For later. Maybe not needed
   rpc ArchiveFile (ArchiveFileRequest) returns (google.protobuf.Empty); // Done
   rpc UnarchiveFile (UnarchiveFileRequest) returns (google.protobuf.Empty); // Done
-  rpc RemoveAllDeletedFiles (RemoveAllDeletedFilesRequest) returns (google.protobuf.Empty); // Done
   rpc RemoveDeleteFile (RemoveDeletedFileRequest) returns (google.protobuf.Empty); // Done
+  // search file
 }
 
 enum FileType {
