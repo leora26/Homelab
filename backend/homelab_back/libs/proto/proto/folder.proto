@@ -18,6 +18,7 @@ service FolderService {
   rpc DeleteChosenFolders (DeleteAllFolderRequest) returns (google.protobuf.Empty);
   rpc MoveFolder (MoveFolderRequest) returns (FolderResponse);
   rpc CreateFolder (CreateFolderRequest) returns (FolderResponse); // Done
+//  Filter folder
 }
 
 message FolderResponse {

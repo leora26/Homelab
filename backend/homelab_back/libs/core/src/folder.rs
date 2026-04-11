@@ -10,6 +10,7 @@ pub struct Folder {
     pub name: String,
     pub owner_id: Uuid,
     pub created_at: OffsetDateTime,
+    pub is_deleted: bool,
 }
 
 impl Folder {
@@ -20,6 +21,7 @@ impl Folder {
             name: owner_email,
             owner_id,
             created_at: OffsetDateTime::now_utc(),
+            is_deleted: false,
         }
     }
 
@@ -30,11 +32,16 @@ impl Folder {
             name,
             owner_id,
             created_at: OffsetDateTime::now_utc(),
+            is_deleted: false,
         }
     }
 
     pub fn rename(&mut self, new_name: String) {
         self.name = new_name;
+    }
+    
+    pub fn set_is_deleted(&mut self, is_deleted: bool) {
+        self.is_deleted = is_deleted;
     }
 
     pub fn update_parent_folder(&mut self, new_parent_folder_id: Uuid) {
