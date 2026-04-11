@@ -9,7 +9,7 @@ use uuid::Uuid;
 pub trait FileRepository: Send + Sync {
     async fn get_by_id(&self, file_id: Uuid) -> Result<Option<File>, DataError>;
     async fn get_all_deleted(&self, user_id: Uuid) -> Result<Vec<File>, DataError>;
-    async fn get_deleted_by_id (&self, file_id: Uuid) -> Result<Option<File>, DataError>;
+    async fn get_deleted_by_id(&self, file_id: Uuid) -> Result<Option<File>, DataError>;
     async fn get_all_by_ids(&self, file_ids: &[Uuid]) -> Result<Vec<File>, DataError>;
     async fn search_by_name(&self, search_query: String) -> Result<Vec<File>, DataError>;
     async fn get_by_folder_and_file_name(
@@ -57,15 +57,23 @@ impl FileRepository for FileRepositoryImpl {
         let f: Vec<File> = sqlx::query_as!(
             File,
             r#"
-            SELECT id, name, owner_id, file_type as "file_type: _", parent_folder_id, is_deleted, ttl, size, upload_status as "upload_status: _", created_at, updated_at
-            FROM files
-            WHERE is_deleted = TRUE AND owner_id = $1
-            "#,
+        SELECT 
+            f.id, f.name, f.owner_id, 
+            f.file_type as "file_type: _", 
+            f.parent_folder_id, f.is_deleted, f.ttl, f.size, 
+            f.upload_status as "upload_status: _", 
+            f.created_at, f.updated_at
+        FROM files f
+        LEFT JOIN folders p ON f.parent_folder_id = p.id
+        WHERE f.is_deleted = TRUE 
+          AND f.owner_id = $1
+          AND (p.id IS NULL OR p.is_deleted = FALSE)
+        "#,
             user_id
         )
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| DataError::DatabaseError(e))?;
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(f)
     }

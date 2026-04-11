@@ -11,8 +11,10 @@ service FolderService {
   rpc GetRootFolder (GetRootFolderRequest) returns (FolderResponse); // Done
   rpc GetFolder (GetFolderRequest) returns (FolderResponse); // TODO: Maybe not needed
   rpc GetSubfolders (GetAllSubfoldersRequest) returns (FolderResponseList); // Done
-  rpc DeleteFolder (DeleteFolderRequest) returns (google.protobuf.Empty); // Done
   rpc GetFilesForFolder (GetFilesForFolderRequest) returns (FileListResponse); // Done
+  rpc GetTrashFilesForFolder (GetTrashFilesForFolderRequest) returns (FileListResponse);
+  rpc GetDeletedFolders (GetDeletedFoldersRequest) returns (FolderResponseList);
+  rpc DeleteFolder (DeleteFolderRequest) returns (google.protobuf.Empty); // Done
   rpc RenameFolder (RenameFolderRequest) returns (FolderResponse); // Done
   rpc SearchFolder (SearchFolderRequest) returns (FolderResponseList);
   rpc DeleteChosenFolders (DeleteAllFolderRequest) returns (google.protobuf.Empty);
@@ -51,6 +53,14 @@ message DeleteFolderRequest {
 
 message DeleteAllFolderRequest {
   repeated common.EntityId id = 1;
+}
+
+message GetDeletedFoldersRequest {
+  common.EntityId owner_id = 1;
+}
+
+message GetTrashFilesForFolderRequest {
+  common.EntityId id = 1;
 }
 
 message GetFilesForFolderRequest {

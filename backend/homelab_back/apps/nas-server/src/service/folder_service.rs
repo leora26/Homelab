@@ -32,6 +32,8 @@ pub trait FolderService: Send + Sync {
     async fn delete(&self, folder_id: Uuid) -> Result<(), DataError>;
     async fn create(&self, command: CreateFolderCommand) -> Result<Folder, DataError>;
     async fn move_folder(&self, command: MoveFolderCommand) -> Result<Folder, DataError>;
+    async fn get_trash_files(&self, folder_id: Uuid) -> Result<Vec<File>, DataError>;
+    async fn get_deleted_folders(&self, user_id: Uuid) -> Result<Vec<Folder>, DataError>;
 }
 
 pub struct FolderServiceImpl {
@@ -144,5 +146,13 @@ impl FolderService for FolderServiceImpl {
         folder.update_parent_folder(command.target_folder);
 
         Ok(self.folder_repo.update_folder(folder).await?)
+    }
+
+    async fn get_trash_files(&self, folder_id: Uuid) -> Result<Vec<File>, DataError> {
+        self.folder_repo.get_trash_file_for_folder(folder_id).await
+    }
+
+    async fn get_deleted_folders(&self, user_id: Uuid) -> Result<Vec<Folder>, DataError> {
+        self.folder_repo.get_deleted_folders(user_id).await
     }
 }

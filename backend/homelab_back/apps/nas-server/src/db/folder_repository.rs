@@ -22,6 +22,8 @@ pub trait FolderRepository: Send + Sync {
     async fn delete_all(&self, folder_ids: &[Uuid]) -> Result<(), DataError>;
     async fn delete_by_id(&self, folder_id: Uuid) -> Result<(), DataError>;
     async fn mark_folder_deleted(&self, folder_id: Uuid) -> Result<(), DataError>;
+    async fn get_trash_file_for_folder(&self, folder_id: Uuid) -> Result<Vec<File>, DataError>;
+    async fn get_deleted_folders(&self, user_id: Uuid) -> Result<Vec<Folder>, DataError>;
 }
 
 pub struct FolderRepositoryImpl {
@@ -40,8 +42,8 @@ impl FolderRepository for FolderRepositoryImpl {
         let folder = sqlx::query_as!(
             Folder,
             r#"
-        SELECT id, parent_folder_id, name, owner_id, created_at, is_deleted
-        FROM folders
+        SELECT f.*
+        FROM folders f
         WHERE parent_folder_id IS NULL AND owner_id = $1"#,
             user_id
         )
@@ -56,8 +58,8 @@ impl FolderRepository for FolderRepositoryImpl {
         let folder = sqlx::query_as!(
             Folder,
             r#"
-        SELECT id, parent_folder_id, name, owner_id, created_at, is_deleted
-        FROM folders
+        SELECT f.*
+        FROM folders f
         WHERE id = $1"#,
             folder_id
         )
@@ -72,8 +74,8 @@ impl FolderRepository for FolderRepositoryImpl {
         let folders = sqlx::query_as!(
             Folder,
             r#"
-        SELECT id, parent_folder_id, name, owner_id, created_at, is_deleted
-        FROM folders
+        SELECT f.*
+        FROM folders f
         WHERE parent_folder_id = $1 AND is_deleted = false"#,
             folder_id
         )
@@ -88,8 +90,8 @@ impl FolderRepository for FolderRepositoryImpl {
         let f: Vec<Folder> = sqlx::query_as!(
             Folder,
             r#"
-            SELECT id, name, owner_id, created_at, parent_folder_id, is_deleted
-            FROM folders
+            SELECT f.*
+            FROM folders f
             WHERE LOWER(name) LIKE LOWER($1) AND is_deleted = false
             "#,
             search_query
@@ -261,5 +263,48 @@ impl FolderRepository for FolderRepositoryImpl {
         tx.commit().await.map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(())
+    }
+
+    async fn get_trash_file_for_folder(&self, folder_id: Uuid) -> Result<Vec<File>, DataError> {
+        let f: Vec<File> = sqlx::query_as!(
+            File,
+            r#"
+        SELECT
+            f.id, f.name, f.owner_id,
+            f.file_type as "file_type: _",
+            f.parent_folder_id, f.is_deleted, f.ttl, f.size,
+            f.upload_status as "upload_status: _",
+            f.created_at, f.updated_at
+        FROM files f
+        LEFT JOIN folders p ON f.parent_folder_id = p.id
+        WHERE f.is_deleted = TRUE
+          AND f.parent_folder_id = $1
+        "#,
+            folder_id
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| DataError::DatabaseError(e))?;
+
+        Ok(f)
+    }
+
+    async fn get_deleted_folders(&self, user_id: Uuid) -> Result<Vec<Folder>, DataError> {
+        let deleted_folders: Vec<Folder> = sqlx::query_as!(
+            Folder,
+            r#"
+        SELECT f.* FROM folders f
+        LEFT JOIN folders p ON f.parent_folder_id = p.id
+        WHERE f.is_deleted = true 
+          AND f.owner_id = $1
+          AND (p.id IS NULL OR p.is_deleted = false)
+        "#,
+            user_id
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| DataError::DatabaseError(e))?;
+
+        Ok(deleted_folders)
     }
 }
