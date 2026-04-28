@@ -6,7 +6,7 @@ use crate::AppState;
 use async_trait::async_trait;
 use derive_new::new;
 use homelab_proto::nas::folder_service_server::FolderService;
-use homelab_proto::nas::{CleanUpDeletedFoldersRequest, CreateFolderRequest, DeleteAllFolderRequest, DeleteFolderRequest, FileListResponse, FolderResponse, FolderResponseList, GetAllSubfoldersRequest, GetDeletedFoldersRequest, GetFilesForFolderRequest, GetFolderRequest, GetRootFolderRequest, GetTrashFilesForFolderRequest, MoveFolderRequest, RenameFolderRequest, SearchFolderRequest};
+use homelab_proto::nas::{CleanUpDeletedFoldersRequest, CleanUpTrashRequest, CreateFolderRequest, DeleteAllFolderRequest, DeleteFolderRequest, FileListResponse, FolderResponse, FolderResponseList, GetAllSubfoldersRequest, GetDeletedFoldersRequest, GetFilesForFolderRequest, GetFolderRequest, GetRootFolderRequest, GetTrashFilesForFolderRequest, MoveFolderRequest, RenameFolderRequest, SearchFolderRequest};
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
 use uuid::Uuid;
@@ -148,7 +148,7 @@ impl FolderService for GrpcFolderService {
 
         let folder_id = map_entity_id(req.id)?;
 
-        self.app_state.folder_service.delete(folder_id).await?;
+        self.app_state.folder_service.trash(folder_id).await?;
 
         Ok(Response::new(()))
     }
@@ -208,7 +208,7 @@ impl FolderService for GrpcFolderService {
 
         self.app_state
             .folder_service
-            .delete_chosen_folders(&folder_ids)
+            .trash_chosen_folders(&folder_ids)
             .await?;
 
         Ok(Response::new(()))
@@ -249,6 +249,22 @@ impl FolderService for GrpcFolderService {
     }
 
     async fn clean_up_deleted_folder(&self, request: Request<CleanUpDeletedFoldersRequest>) -> Result<Response<()>, Status> {
-        todo!()
+        let req = request.into_inner();
+
+        let folder_id = map_entity_id(req.folder_id)?;
+        let user_id = map_entity_id(req.user_id)?;
+
+        self.app_state.folder_service.permanently_delete_folder(user_id, folder_id).await?;
+
+        Ok(Response::new(()))
+    }
+
+    async fn clean_up_trash(&self, request: Request<CleanUpTrashRequest>) -> Result<Response<()>, Status> {
+        let req = request.into_inner();
+
+        let user_id = map_entity_id(req.user_id)?;
+        self.app_state.folder_service.clean_up_trash(user_id).await?;
+
+        Ok(Response::new(()))
     }
 }

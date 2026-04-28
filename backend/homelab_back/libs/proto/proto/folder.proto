@@ -21,6 +21,7 @@ service FolderService {
   rpc MoveFolder (MoveFolderRequest) returns (FolderResponse);
   rpc CreateFolder (CreateFolderRequest) returns (FolderResponse); // Done
   rpc CleanUpDeletedFolder (CleanUpDeletedFoldersRequest) returns (google.protobuf.Empty);
+  rpc CleanUpTrash (CleanUpTrashRequest) returns (google.protobuf.Empty);
 //  Filter folder
 }
 
@@ -90,5 +91,10 @@ message MoveFolderRequest {
 }
 
 message CleanUpDeletedFoldersRequest {
+  common.EntityId user_id = 1;
+  common.EntityId folder_id = 2;
+}
+
+message CleanUpTrashRequest {
   common.EntityId user_id = 1;
 }

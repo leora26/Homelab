@@ -30,4 +30,6 @@ pub enum DataError {
     FileIsNotArchivedError,
     #[error("{0}")]
     InvalidDataError(String),
+    #[error("Failed to publish message: {0}")]
+    MessageQueueError(String),
 }
