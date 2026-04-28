@@ -1,6 +1,9 @@
 use crate::db::file_repository::FileRepository;
 use crate::db::folder_repository::FolderRepository;
+use crate::db::storage_profile_repository::StorageProfileRepository;
+use crate::events::rabbitmq::RabbitMqPublisher;
 use crate::helpers::data_error::DataError;
+use crate::service::storage_profile_service::StorageProfileService;
 use async_trait::async_trait;
 use derive_new::new;
 use futures::stream::{self, StreamExt};
@@ -11,9 +14,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::fs;
 use uuid::Uuid;
-use crate::db::storage_profile_repository::StorageProfileRepository;
-use crate::events::rabbitmq::RabbitMqPublisher;
-use crate::service::storage_profile_service::StorageProfileService;
 
 #[async_trait]
 pub trait CleanUpService: Send + Sync {
@@ -56,28 +56,32 @@ impl CleanUpService for CleanUpServiceImpl {
     }
 
     async fn hard_delete_all_trash(&self) -> Result<(), DataError> {
-        let expired_files = self.file_repo.get_expired_files().await?;
+        loop {
+            let batch = self.file_repo.get_batch_for_hard_delete(50).await?;
 
-        if expired_files.is_empty() {
-            return Ok(());
+            if batch.is_empty() {
+                break;
+            }
+
+            let freed_by_user = self.remove_deleted_files(batch).await?;
+
+            if freed_by_user.is_empty() {
+                eprintln!("Warning: Stuck on a batch of undeletable files. Aborting cron job");
+                break;
+            }
+
+            for (owner, freed_size) in freed_by_user {
+                if freed_size > 0 {
+                    self.sp_service.reduce_taken_storage(owner, freed_size).await?;
+                }
+            }
+
+            tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
         }
 
-        let mut files_by_owner = HashMap::new();
+        self.folder_repo.hard_delete_global_trashed_folders().await?;
 
-        for file in expired_files.clone() {
-            files_by_owner
-                .entry(file.owner_id.clone())
-                .or_insert_with(Vec::new)
-                .push(file);
-        }
-
-        for (owner_id, files) in files_by_owner {
-            let total_size_to_reduce: i64 = files.iter().map(|f| f.size).sum();
-
-            self.sp_service.reduce_taken_storage(owner_id, total_size_to_reduce).await?;
-        }
-
-        self.remove_deleted_files(expired_files).await
+        Ok(())
     }
 }
 
@@ -89,30 +93,76 @@ impl CleanUpServiceImpl {
             .await?
             .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
 
-        self.sp_service.reduce_taken_storage(file.owner_id, file.size).await?;
-        self.remove_deleted_files(vec![file]).await
-    }
+        let freed_size_for_user = self.remove_deleted_files(vec![file.clone()]).await?;
+        let freed_size = freed_size_for_user
+            .get(&file.owner_id)
+            .copied()
+            .unwrap_or(0);
 
-    async fn hard_delete_folder(&self, folder_id: Uuid, user_id: Uuid) -> Result<(), DataError> {
-        loop {
-            let batch = self.file_repo.get_batch_for_hard_delete_for_folder(folder_id, 10).await?;
-
-            if batch.is_empty() { break;}
-
-            let total_size_to_reduce: i64 = batch.iter().map(|f| f.size).sum();
-
-            self.sp_service.reduce_taken_storage(user_id, total_size_to_reduce).await?;
-            self.remove_deleted_files(batch).await?;
-
-            tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+        if freed_size > 0 {
+            self.sp_service
+                .reduce_taken_storage(file.owner_id, freed_size)
+                .await?;
         }
 
         Ok(())
     }
 
-    async fn hard_delete_all_users_trash(&self, user_id: Uuid) -> Result<(), DataError> {}
+    async fn hard_delete_folder(&self, folder_id: Uuid, user_id: Uuid) -> Result<(), DataError> {
+        loop {
+            let batch = self
+                .file_repo
+                .get_batch_for_hard_delete_for_folder(folder_id, 10)
+                .await?;
 
-    async fn remove_deleted_files(&self, deleted_files: Vec<File>) -> Result<(), DataError> {
+            if batch.is_empty() {
+                break;
+            }
+
+            let freed_size_for_user = self.remove_deleted_files(batch).await?;
+            let freed_size = freed_size_for_user.get(&user_id).copied().unwrap_or(0);
+
+            if freed_size > 0 {
+                self.sp_service
+                    .reduce_taken_storage(user_id, freed_size)
+                    .await?;
+            }
+
+            tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+        }
+
+        self.folder_repo.hard_delete_folder_tree(folder_id).await?;
+
+        Ok(())
+    }
+
+    async fn hard_delete_all_users_trash(&self, user_id: Uuid) -> Result<(), DataError> {
+        loop {
+            let batch = self.file_repo.get_batch_for_user_trash(user_id, 10).await?;
+
+            if batch.is_empty() {
+                break;
+            }
+
+            let freed_by_user = self.remove_deleted_files(batch).await?;
+            let freed_size = freed_by_user.get(&user_id).copied().unwrap_or(0);
+
+            if freed_size > 0 {
+                self.sp_service.reduce_taken_storage(user_id, freed_size).await?;
+            }
+
+            tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+        }
+
+        self.folder_repo.hard_delete_all_trashed_folders(user_id).await?;
+
+        Ok(())
+    }
+
+    async fn remove_deleted_files(
+        &self,
+        deleted_files: Vec<File>,
+    ) -> Result<HashMap<Uuid, i64>, DataError> {
         const CONCURRENCY_LIMIT: usize = 10;
 
         let results = stream::iter(deleted_files)
@@ -120,13 +170,14 @@ impl CleanUpServiceImpl {
                 let path = file.build_file_path(&self.storage_path);
 
                 let remove_result = match fs::remove_file(&path).await {
-                    Ok(_) => Ok(file.id),
+                    Ok(_) => Ok((file.id, file.owner_id, file.size)),
                     Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-                        let mut gz_path = path.clone();
-                        gz_path.set_extension("gz");
+                        let mut gz_path = path.clone().into_os_string();
+                        gz_path.push(".gz");
+                        let gz_path = PathBuf::from(gz_path);
 
                         match fs::remove_file(gz_path).await {
-                            Ok(_) => Ok(file.id),
+                            Ok(_) => Ok((file.id, file.owner_id, file.size)),
                             Err(e2) => Err((file.id, e2)),
                         }
                     }
@@ -151,10 +202,14 @@ impl CleanUpServiceImpl {
 
         let mut success_results = Vec::new();
         let mut error_results = Vec::new();
+        let mut freed_by_user: HashMap<Uuid, i64> = HashMap::new();
 
         for res in results {
             match res {
-                Ok(id) => success_results.push(id),
+                Ok((id, owner_id, size)) => {
+                    success_results.push(id);
+                    *freed_by_user.entry(owner_id).or_insert(0) += size;
+                }
                 Err(e) => error_results.push(e),
             }
         }
@@ -170,6 +225,6 @@ impl CleanUpServiceImpl {
             )));
         }
 
-        Ok(())
+        Ok(freed_by_user)
     }
 }

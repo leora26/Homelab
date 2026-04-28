@@ -29,6 +29,7 @@ pub trait FileRepository: Send + Sync {
     async fn get_expired_files(&self) -> Result<Vec<File>, DataError>;
     async fn get_batch_for_hard_delete_for_folder(&self, folder_id: Uuid, limit: i64) -> Result<Vec<File>, DataError>;
     async fn get_batch_for_hard_delete(&self, limit: i64) -> Result<Vec<File>, DataError>;
+    async fn get_batch_for_user_trash(&self, user_id: Uuid, limit: i64) -> Result<Vec<File>, DataError>;
 }
 
 #[derive(new)]
@@ -336,6 +337,31 @@ impl FileRepository for FileRepositoryImpl {
         "#,
         limit
     )
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| DataError::DatabaseError(e))?;
+
+        Ok(batch)
+    }
+
+    async fn get_batch_for_user_trash(&self, user_id: Uuid, limit: i64) -> Result<Vec<File>, DataError> {
+        let batch = sqlx::query_as!(
+            File,
+            r#"
+            SELECT
+                id, name, owner_id,
+                file_type as "file_type: _",
+                parent_folder_id, is_deleted, ttl, size,
+                upload_status as "upload_status: _",
+                created_at, updated_at
+            FROM files
+            WHERE is_deleted = true
+            AND owner_id = $1
+            LIMIT $2
+            "#,
+            user_id,
+            limit
+        )
             .fetch_all(&self.pool)
             .await
             .map_err(|e| DataError::DatabaseError(e))?;
