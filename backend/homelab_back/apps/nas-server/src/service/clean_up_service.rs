@@ -1,13 +1,11 @@
 use crate::db::file_repository::FileRepository;
 use crate::db::folder_repository::FolderRepository;
-use crate::db::storage_profile_repository::StorageProfileRepository;
-use crate::events::rabbitmq::RabbitMqPublisher;
 use crate::helpers::data_error::DataError;
 use crate::service::storage_profile_service::StorageProfileService;
 use async_trait::async_trait;
 use derive_new::new;
 use futures::stream::{self, StreamExt};
-use homelab_core::events::{DeletionType, TrashCleanUpTriggeredEvent, UserUpdatedEvent};
+use homelab_core::events::{DeletionType, TrashCleanUpTriggeredEvent};
 use homelab_core::file::File;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -26,10 +24,8 @@ pub trait CleanUpService: Send + Sync {
 pub struct CleanUpServiceImpl {
     folder_repo: Arc<dyn FolderRepository>,
     file_repo: Arc<dyn FileRepository>,
-    sp_repo: Arc<dyn StorageProfileRepository>,
     sp_service: Arc<dyn StorageProfileService>,
     storage_path: PathBuf,
-    publisher: Arc<RabbitMqPublisher>,
 }
 
 #[async_trait]

@@ -8,7 +8,7 @@ use async_trait::async_trait;
 use derive_new::new;
 use homelab_proto::nas::file_chunk::Data as FileChunkData;
 use homelab_proto::nas::file_service_server::FileService;
-use homelab_proto::nas::{ArchiveFileRequest, CopyFileRequest, DeleteChosenFilesRequest, DeleteFileRequest, FileChunk, FileListResponse, FileResponse, GetDeletedFilesRequest, GetFileRequest, InitFileRequest, MoveFileRequest, RemoveAllDeletedFilesRequest, RemoveDeletedFileRequest, RenameFileRequest, SearchFilesRequest, UnarchiveFileRequest, UndeleteFileRequest};
+use homelab_proto::nas::{ArchiveFileRequest, CopyFileRequest, DeleteChosenFilesRequest, DeleteFileRequest, FileChunk, FileListResponse, FileResponse, GetDeletedFilesRequest, GetFileRequest, InitFileRequest, MoveFileRequest, RemoveDeletedFileRequest, RenameFileRequest, SearchFilesRequest, UnarchiveFileRequest, UndeleteFileRequest};
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tonic::{Request, Response, Status, Streaming};

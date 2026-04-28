@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id, parent_folder_id, name, owner_id, created_at\n        FROM folders\n        WHERE id = $1",
+  "query": "\n        SELECT f.*\n        FROM folders f\n        WHERE parent_folder_id = $1 AND is_deleted = false",
   "describe": {
     "columns": [
       {
@@ -10,23 +10,28 @@
       },
       {
         "ordinal": 1,
-        "name": "parent_folder_id",
-        "type_info": "Uuid"
-      },
-      {
-        "ordinal": 2,
         "name": "name",
         "type_info": "Text"
       },
       {
-        "ordinal": 3,
+        "ordinal": 2,
         "name": "owner_id",
         "type_info": "Uuid"
       },
       {
-        "ordinal": 4,
+        "ordinal": 3,
         "name": "created_at",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "parent_folder_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "is_deleted",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
@@ -36,11 +41,12 @@
     },
     "nullable": [
       false,
+      false,
+      false,
+      false,
       true,
-      false,
-      false,
       false
     ]
   },
-  "hash": "fb53de3b6ba38a2aa8d385645bb19acdcd89c5866b1f5e37bd91580f1488b202"
+  "hash": "ff3060c2b1930fc1ac97b101daa09102f04f835b6f772f8d724868564f8db9bf"
 }

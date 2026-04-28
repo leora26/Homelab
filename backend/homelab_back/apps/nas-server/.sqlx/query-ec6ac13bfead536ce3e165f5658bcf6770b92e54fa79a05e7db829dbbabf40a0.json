@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM folders WHERE is_deleted = true",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "ec6ac13bfead536ce3e165f5658bcf6770b92e54fa79a05e7db829dbbabf40a0"
+}

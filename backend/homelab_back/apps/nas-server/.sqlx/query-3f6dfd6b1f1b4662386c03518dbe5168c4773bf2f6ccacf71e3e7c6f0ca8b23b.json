@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT id, name, owner_id, file_type as \"file_type: _\", parent_folder_id, is_deleted, ttl, size, upload_status as \"upload_status: _\", created_at, updated_at\n            FROM files\n            WHERE is_deleted = TRUE AND owner_id = $1\n            ",
+  "query": "\n            SELECT\n                id, name, owner_id,\n                file_type as \"file_type: _\",\n                parent_folder_id, is_deleted, ttl, size,\n                upload_status as \"upload_status: _\",\n                created_at, updated_at\n            FROM files\n            WHERE is_deleted = true\n            AND owner_id = $1\n            LIMIT $2\n            ",
   "describe": {
     "columns": [
       {
@@ -87,7 +87,8 @@
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "Uuid",
+        "Int8"
       ]
     },
     "nullable": [
@@ -104,5 +105,5 @@
       false
     ]
   },
-  "hash": "a89dce338afe7038880429206a644c5ebb02d8c373edc9906a366277ae104b29"
+  "hash": "3f6dfd6b1f1b4662386c03518dbe5168c4773bf2f6ccacf71e3e7c6f0ca8b23b"
 }
