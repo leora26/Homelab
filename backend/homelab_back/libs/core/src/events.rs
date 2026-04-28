@@ -105,9 +105,26 @@ pub struct UserBlockedEvent {
     pub is_deleted: bool,
 }
 
-
 impl DomainEvent for UserBlockedEvent {
     fn routing_key(&self) -> &'static str {
         "blocked.blocked"
     }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub enum DeletionType {
+    File,
+    Folder,
+    All
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, new)]
+pub struct TrashCleanUpTriggeredEvent {
+    pub user_id: Uuid,
+    pub deletion_type: DeletionType,
+    pub id: Option<Uuid>
+}
+
+impl DomainEvent for TrashCleanUpTriggeredEvent {
+    fn routing_key(&self) -> &'static str {"cleanup.triggered"}
 }

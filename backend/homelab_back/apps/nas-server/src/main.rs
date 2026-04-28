@@ -1,11 +1,11 @@
 pub mod data;
 pub mod db;
+mod events;
 pub mod grpc;
 pub mod handler;
 pub mod helpers;
 pub mod jobs;
 pub mod service;
-mod events;
 
 use crate::db::file_label_repository::FileLabelRepositoryImpl;
 use crate::db::file_repository::{FileRepository, FileRepositoryImpl};
@@ -25,10 +25,24 @@ use crate::service::global_file_service::{GlobalFileService, GlobalFileServiceIm
 use crate::service::label_service::{LabelService, LabelServiceImpl};
 use crate::service::shared_file_service::{SharedFileService, SharedFileServiceImpl};
 
+use crate::events::nas_event_handler::NasEventHandler;
+use crate::events::rabbitmq::RabbitMqPublisher;
 use crate::grpc::file_grpc_service::GrpcFileService;
+use crate::grpc::file_label_grpc_service::GrpcFileLabelService;
+use crate::grpc::folder_grpc_service::GrpcFolderService;
+use crate::grpc::global_file_grpc_service::GrpcGlobalFileService;
+use crate::grpc::grpc_label_service::GrpcLabelService;
+use crate::grpc::storage_profile_grpc_service::GrpcStorageProfileService;
 use crate::jobs::delete_cron_job::init_delete_job;
+use crate::service::storage_profile_service::{StorageProfileService, StorageProfileServiceImpl};
 use actix_web::{web, App, HttpServer};
 use dotenvy::dotenv;
+use homelab_core::helpers::rabbitmq_consumer::RabbitMqConsumer;
+use homelab_proto::nas::file_label_service_server::FileLabelServiceServer;
+use homelab_proto::nas::folder_service_server::FolderServiceServer;
+use homelab_proto::nas::global_file_service_server::GlobalFileServiceServer;
+use homelab_proto::nas::label_service_server::LabelServiceServer;
+use homelab_proto::nas::storage_profile_service_server::StorageProfileServiceServer;
 use sqlx::postgres::PgPoolOptions;
 use std::env;
 use std::error::Error;
@@ -36,20 +50,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tonic::transport::Server;
 use tracing_subscriber::EnvFilter;
-use crate::events::nas_event_handler::NasEventHandler;
-use homelab_core::helpers::rabbitmq_consumer::RabbitMqConsumer;
-use homelab_proto::nas::file_label_service_server::FileLabelServiceServer;
-use homelab_proto::nas::folder_service_server::FolderServiceServer;
-use homelab_proto::nas::global_file_service_server::GlobalFileServiceServer;
-use homelab_proto::nas::label_service_server::LabelServiceServer;
-use homelab_proto::nas::storage_profile_service_server::StorageProfileServiceServer;
-use crate::events::rabbitmq::RabbitMqPublisher;
-use crate::grpc::file_label_grpc_service::GrpcFileLabelService;
-use crate::grpc::folder_grpc_service::GrpcFolderService;
-use crate::grpc::global_file_grpc_service::GrpcGlobalFileService;
-use crate::grpc::grpc_label_service::GrpcLabelService;
-use crate::grpc::storage_profile_grpc_service::GrpcStorageProfileService;
-use crate::service::storage_profile_service::{StorageProfileService, StorageProfileServiceImpl};
+use crate::service::clean_up_service::CleanUpServiceImpl;
 
 pub struct AppState {
     pub file_service: Arc<dyn FileService>,
@@ -116,14 +117,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let label_repo = Arc::new(LabelRepositoryImpl::new(pool.clone()));
     let file_label_repo = Arc::new(FileLabelRepositoryImpl::new(pool.clone()));
 
-    let folder_service = Arc::new(FolderServiceImpl::new(folder_repo.clone()));
+    let folder_service = Arc::new(FolderServiceImpl::new(folder_repo.clone(), publisher.clone()));
     let file_service = Arc::new(FileServiceImpl::new(
         file_repo.clone(),
         folder_repo.clone(),
         storage_profile_repo.clone(),
         root_path.to_path_buf(),
         global_file_repo.clone(),
-        publisher
+        publisher.clone(),
     ));
     let shared_file_service = Arc::new(SharedFileServiceImpl::new(
         share_file_repo.clone(),
@@ -141,14 +142,21 @@ async fn main() -> Result<(), Box<dyn Error>> {
         file_label_repo.clone(),
         storage_profile_repo.clone(),
     ));
-    let storage_profile_service = Arc::new(StorageProfileServiceImpl::new(storage_profile_repo.clone()));
+    let storage_profile_service =
+        Arc::new(StorageProfileServiceImpl::new(storage_profile_repo.clone(), publisher.clone()));
+    let clean_up_service = Arc::new(CleanUpServiceImpl::new(
+        folder_repo.clone(),
+        file_repo.clone(),
+        storage_profile_service.clone(),
+        root_path.to_path_buf(),
+    ));
 
-    let _cleanup_scheduler = init_delete_job(file_service.clone()).await;
+    let _cleanup_scheduler = init_delete_job(clean_up_service.clone()).await;
 
     let rabbit_url = std::env::var("RABBITMQ_URL")
         .unwrap_or_else(|_| "amqp://admin:password@localhost:5672".to_string());
 
-    let event_handler = Arc::new(NasEventHandler::new(storage_profile_service.clone()));
+    let event_handler = Arc::new(NasEventHandler::new(storage_profile_service.clone(), clean_up_service.clone()));
 
     tokio::spawn(async move {
         let patterns = vec!["user.#", "file.#"];
@@ -166,7 +174,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         global_file_service,
         label_service,
         file_label_service,
-        storage_profile_service
+        storage_profile_service,
     });
 
     let rest_addr = ("0.0.0.0", 8080);

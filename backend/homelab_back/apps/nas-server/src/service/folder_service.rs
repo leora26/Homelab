@@ -8,7 +8,10 @@ use async_trait::async_trait;
 use homelab_core::file::{File, FileType};
 use homelab_core::folder::Folder;
 use std::sync::Arc;
+use derive_new::new;
 use uuid::Uuid;
+use homelab_core::events::{DeletionType, TrashCleanUpTriggeredEvent};
+use crate::events::rabbitmq::RabbitMqPublisher;
 
 #[async_trait]
 pub trait FolderService: Send + Sync {
@@ -28,21 +31,23 @@ pub trait FolderService: Send + Sync {
         command: UpdateFolderNameCommand,
         folder_id: Uuid,
     ) -> Result<Folder, DataError>;
-    async fn delete_chosen_folders(&self, folder_ids: &[Uuid]) -> Result<(), DataError>;
-    async fn delete(&self, folder_id: Uuid) -> Result<(), DataError>;
+    async fn trash_chosen_folders(&self, folder_ids: &[Uuid]) -> Result<(), DataError>;
+    async fn trash(&self, folder_id: Uuid) -> Result<(), DataError>;
     async fn create(&self, command: CreateFolderCommand) -> Result<Folder, DataError>;
     async fn move_folder(&self, command: MoveFolderCommand) -> Result<Folder, DataError>;
+    async fn get_trash_files(&self, folder_id: Uuid) -> Result<Vec<File>, DataError>;
+    async fn get_deleted_folders(&self, user_id: Uuid) -> Result<Vec<Folder>, DataError>;
+    async fn clean_up_trash(&self, user_id: Uuid) -> Result<(), DataError>;
+    async fn permanently_delete_folder(&self, folder_id: Uuid, user_id: Uuid) -> Result<(), DataError>;
 }
 
+#[derive(new)]
 pub struct FolderServiceImpl {
     folder_repo: Arc<dyn FolderRepository>,
+    publisher: Arc<RabbitMqPublisher>,
 }
 
 impl FolderServiceImpl {
-    pub fn new(folder_repo: Arc<dyn FolderRepository>) -> Self {
-        Self { folder_repo }
-    }
-
     #[async_recursion]
     async fn get_parent_folder_name(&self, f_id: Uuid) -> Result<String, DataError> {
         let f = self
@@ -115,12 +120,12 @@ impl FolderService for FolderServiceImpl {
         self.folder_repo.update_folder(folder).await
     }
 
-    async fn delete_chosen_folders(&self, folder_ids: &[Uuid]) -> Result<(), DataError> {
-        self.folder_repo.delete_all(folder_ids).await
+    async fn trash_chosen_folders(&self, folder_ids: &[Uuid]) -> Result<(), DataError> {
+        self.folder_repo.mark_folders_deleted(folder_ids).await
     }
 
-    async fn delete(&self, folder_id: Uuid) -> Result<(), DataError> {
-        self.folder_repo.delete_by_id(folder_id).await
+    async fn trash(&self, folder_id: Uuid) -> Result<(), DataError> {
+        self.folder_repo.mark_folder_deleted(folder_id).await
     }
 
     async fn create(&self, command: CreateFolderCommand) -> Result<Folder, DataError> {
@@ -144,5 +149,53 @@ impl FolderService for FolderServiceImpl {
         folder.update_parent_folder(command.target_folder);
 
         Ok(self.folder_repo.update_folder(folder).await?)
+    }
+
+    async fn get_trash_files(&self, folder_id: Uuid) -> Result<Vec<File>, DataError> {
+        self.folder_repo.get_trash_file_for_folder(folder_id).await
+    }
+
+    async fn get_deleted_folders(&self, user_id: Uuid) -> Result<Vec<Folder>, DataError> {
+        self.folder_repo.get_deleted_folders(user_id).await
+    }
+
+    async fn clean_up_trash(&self, user_id: Uuid) -> Result<(), DataError> {
+        let event = TrashCleanUpTriggeredEvent::new(
+            user_id,
+            DeletionType::File,
+            None
+        );
+        
+        self
+            .publisher
+            .publish(&event)
+            .await
+            .map_err(|e| DataError::MessageQueueError(format!("TrashCleanUpTriggeredEvent to clean up user's trash {:?}", e)))?;
+        
+        Ok(())
+    }
+
+    async fn permanently_delete_folder(&self, folder_id: Uuid, user_id: Uuid) -> Result<(), DataError> {
+        
+        let folder = self.folder_repo.get_by_id(folder_id).await?
+            .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
+        
+        if folder.owner_id != user_id {
+            return Err(DataError::InvalidDataError("Cannot delete folder that does not belong to this user".to_string()));
+        }
+        
+        let event = TrashCleanUpTriggeredEvent::new(
+            user_id,
+            DeletionType::Folder,
+            Some(folder_id)
+        );
+
+        self
+            .publisher
+            .publish(&event)
+            .await
+            .map_err(|e| DataError::MessageQueueError(format!("TrashCleanUpTriggeredEvent to delete a folder {:?}", e)))?;
+
+        Ok(())
     }
 }

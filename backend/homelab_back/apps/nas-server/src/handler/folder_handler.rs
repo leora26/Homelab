@@ -70,7 +70,7 @@ pub async fn get_all_subfolders(
 pub async fn delete_folder(app_state: Data<AppState>, folder_id: Path<Uuid>) -> impl Responder {
     match app_state
         .folder_service
-        .delete(folder_id.into_inner())
+        .trash(folder_id.into_inner())
         .await
     {
         Ok(_) => HttpResponse::NoContent().finish(),
@@ -152,7 +152,7 @@ pub async fn delete_chosen_folders(
 
     match app_state
         .folder_service
-        .delete_chosen_folders(&command.folder_ids)
+        .trash_chosen_folders(&command.folder_ids)
         .await
     {
         Ok(_) => HttpResponse::NoContent().finish(),

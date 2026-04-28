@@ -12,15 +12,13 @@ use crate::service::preview_service::{PreviewService, PreviewServiceImpl};
 use async_compression::tokio::write::{GzipDecoder, GzipEncoder};
 use async_trait::async_trait;
 use derive_new::new;
-use futures::stream::{self, StreamExt};
 use homelab_core::constants::MB;
-use homelab_core::events::{FileUpdatedEvent, FileUploadedEvent, UserUpdatedEvent};
+use homelab_core::events::{DeletionType, FileUpdatedEvent, FileUploadedEvent, TrashCleanUpTriggeredEvent, UserUpdatedEvent};
 use homelab_core::file::{File, FileType, UploadStatus};
 use homelab_core::folder::Folder;
 use homelab_core::global_file::GlobalFile;
 use homelab_core::storage_profile::StorageProfile;
 use sqlx::types::time::OffsetDateTime;
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs;
@@ -57,8 +55,6 @@ pub trait FileService: Send + Sync {
     async fn get_file_for_streaming(&self, file_id: Uuid) -> Result<PathBuf, DataError>;
     async fn archive_file(&self, file_id: Uuid) -> Result<(), DataError>;
     async fn unarchive_file(&self, file_id: Uuid) -> Result<(), DataError>;
-    async fn cleanup_deleted_files(&self, user_id: Uuid) -> Result<(), DataError>;
-    async fn cleanup_expired_files(&self) -> Result<(), DataError>;
     async fn remove_deleted_file(&self, file_id: Uuid) -> Result<(), DataError>;
 }
 
@@ -66,7 +62,7 @@ pub trait FileService: Send + Sync {
 pub struct FileServiceImpl {
     file_repo: Arc<dyn FileRepository>,
     folder_repo: Arc<dyn FolderRepository>,
-    storage_profile_repo: Arc<dyn StorageProfileRepository>,
+    sp_repo: Arc<dyn StorageProfileRepository>,
     storage_path: PathBuf,
     global_file_repo: Arc<dyn GlobalFileRepository>,
     publisher: Arc<RabbitMqPublisher>,
@@ -104,7 +100,7 @@ impl FileService for FileServiceImpl {
         }
 
         let sp: StorageProfile = self
-            .storage_profile_repo
+            .sp_repo
             .get_by_id(command.owner_id)
             .await?
             .ok_or_else(|| DataError::EntityNotFoundException("User".to_string()))?;
@@ -224,14 +220,14 @@ impl FileService for FileServiceImpl {
         self.file_repo.update(f.clone()).await?;
 
         let mut sp: StorageProfile = self
-            .storage_profile_repo
+            .sp_repo
             .get_by_id(f.owner_id)
             .await?
             .ok_or_else(|| DataError::EntityNotFoundException("User".to_string()))?;
 
         sp.increase_storage_size(total_bytes);
 
-        self.storage_profile_repo.save(sp).await?;
+        self.sp_repo.save(sp).await?;
 
         let event: FileUpdatedEvent = FileUpdatedEvent::new(
             f.id.clone(),
@@ -361,7 +357,7 @@ impl FileService for FileServiceImpl {
             .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
 
         let mut sp = self
-            .storage_profile_repo
+            .sp_repo
             .get_by_id(file.owner_id)
             .await?
             .ok_or_else(|| DataError::EntityNotFoundException("User".to_string()))?;
@@ -430,7 +426,7 @@ impl FileService for FileServiceImpl {
         match self.file_repo.save(new_file.clone()).await {
             Ok(uploaded_file) => {
                 sp.increase_storage_size(new_file.size);
-                self.storage_profile_repo.save(sp).await?;
+                self.sp_repo.save(sp).await?;
                 Ok(uploaded_file)
             }
             Err(err) => {
@@ -503,7 +499,7 @@ impl FileService for FileServiceImpl {
 
         if size_diff > 0 {
             let sp = self
-                .storage_profile_repo
+                .sp_repo
                 .get_by_id(f.owner_id)
                 .await?
                 .ok_or_else(|| DataError::EntityNotFoundException("User".to_string()))?;
@@ -514,14 +510,14 @@ impl FileService for FileServiceImpl {
             }
 
             let mut sp: StorageProfile = self
-                .storage_profile_repo
+                .sp_repo
                 .get_by_id(f.owner_id)
                 .await?
                 .ok_or_else(|| DataError::EntityNotFoundException("User".to_string()))?;
 
             sp.increase_storage_size(size_diff);
 
-            self.storage_profile_repo.save(sp).await?;
+            self.sp_repo.save(sp).await?;
         }
 
         if let Err(e) = tokio::fs::rename(&temp_path, &target_path).await {
@@ -611,7 +607,7 @@ impl FileService for FileServiceImpl {
         let original_size = file.size;
 
         let mut sp = self
-            .storage_profile_repo
+            .sp_repo
             .get_by_id(file.owner_id)
             .await?
             .ok_or_else(|| DataError::EntityNotFoundException("User".to_string()))?;
@@ -631,7 +627,7 @@ impl FileService for FileServiceImpl {
             eprintln!("Failed to publish event: {:?}", e);
         }
 
-        self.storage_profile_repo.save(sp).await?;
+        self.sp_repo.save(sp).await?;
 
         fs::remove_file(&original_path)
             .await
@@ -692,7 +688,7 @@ impl FileService for FileServiceImpl {
         let original_compressed_size = file.size;
 
         let mut sp = self
-            .storage_profile_repo
+            .sp_repo
             .get_by_id(file.owner_id)
             .await?
             .ok_or_else(|| DataError::EntityNotFoundException("User".to_string()))?;
@@ -721,13 +717,17 @@ impl FileService for FileServiceImpl {
             eprintln!("Failed to publish event: {:?}", e);
         }
 
-        self.storage_profile_repo.save(sp).await?;
+        self.sp_repo.save(sp).await?;
 
         fs::remove_file(&compressed_path)
             .await
             .map_err(|e| DataError::IOError(e.to_string()))?;
 
-        let new_name = file.name.strip_suffix(".gz").unwrap_or(&file.name).to_string();
+        let new_name = file
+            .name
+            .strip_suffix(".gz")
+            .unwrap_or(&file.name)
+            .to_string();
         file.rename(new_name);
         file.size = unarchived_size;
         let file_type = FileType::from_filename(&file.name);
@@ -738,89 +738,6 @@ impl FileService for FileServiceImpl {
         Ok(())
     }
 
-    async fn cleanup_deleted_files(&self, user_id: Uuid) -> Result<(), DataError> {
-        let deleted_files = self.file_repo.get_all_deleted(user_id).await?;
-
-        if deleted_files.is_empty() {
-            return Ok(());
-        }
-
-        let mut sp = self
-            .storage_profile_repo
-            .get_by_id(user_id)
-            .await
-            .map_err(|e| DataError::EntityNotFoundException(e.to_string()))?
-            .unwrap();
-
-        let total_size_to_reduce: i64 = deleted_files.iter().map(|f| f.size).sum();
-
-        sp.reduce_taken_storage_size(total_size_to_reduce);
-
-        self.storage_profile_repo.save(sp.clone()).await?;
-
-        let sp_event: UserUpdatedEvent = UserUpdatedEvent::new(
-            sp.user_id.clone(),
-            None,
-            None,
-            Some(sp.allowed_storage.clone()),
-            Some(sp.taken_storage.clone()),
-            sp.is_blocked.clone(),
-        );
-
-        if let Err(e) = self.publisher.publish(&sp_event).await {
-            eprintln!("Failed to publish event: {:?}", e);
-        }
-
-        self.remove_deleted_files(deleted_files).await
-    }
-
-    async fn cleanup_expired_files(&self) -> Result<(), DataError> {
-        let expired_files = self.file_repo.get_expired_files().await?;
-
-        if expired_files.is_empty() {
-            return Ok(());
-        }
-
-        let mut files_by_owner = HashMap::new();
-
-        for file in expired_files.clone() {
-            files_by_owner
-                .entry(file.owner_id.clone())
-                .or_insert_with(Vec::new)
-                .push(file);
-        }
-
-        for (owner_id, files) in files_by_owner {
-            let mut sp = self
-                .storage_profile_repo
-                .get_by_id(owner_id)
-                .await
-                .map_err(|e| DataError::EntityNotFoundException(e.to_string()))?
-                .unwrap();
-
-            let total_size_to_reduce: i64 = files.iter().map(|f| f.size).sum();
-
-            sp.reduce_taken_storage_size(total_size_to_reduce);
-
-            self.storage_profile_repo.save(sp.clone()).await?;
-
-            let sp_event: UserUpdatedEvent = UserUpdatedEvent::new(
-                sp.user_id.clone(),
-                None,
-                None,
-                Some(sp.allowed_storage.clone()),
-                Some(sp.taken_storage.clone()),
-                sp.is_blocked.clone(),
-            );
-
-            if let Err(e) = self.publisher.publish(&sp_event).await {
-                eprintln!("Failed to publish event: {:?}", e);
-            }
-        }
-
-        self.remove_deleted_files(expired_files).await
-    }
-
     async fn remove_deleted_file(&self, file_id: Uuid) -> Result<(), DataError> {
         let file = self
             .file_repo
@@ -828,90 +745,14 @@ impl FileService for FileServiceImpl {
             .await?
             .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
 
-        let mut sp = self
-            .storage_profile_repo
-            .get_by_id(file.owner_id)
-            .await?
-            .ok_or_else(|| DataError::EntityNotFoundException("Storage Profile".to_string()))?;
-
-        sp.reduce_taken_storage_size(file.size);
-
-        self.storage_profile_repo.save(sp.clone()).await?;
-
-        let sp_event: UserUpdatedEvent = UserUpdatedEvent::new(
-            sp.user_id.clone(),
-            None,
-            None,
-            Some(sp.allowed_storage.clone()),
-            Some(sp.taken_storage.clone()),
-            sp.is_blocked.clone(),
+        let clean_up_event: TrashCleanUpTriggeredEvent = TrashCleanUpTriggeredEvent::new(
+            file.owner_id.clone(),
+            DeletionType::File,
+            Some(file.id)
         );
 
-        if let Err(e) = self.publisher.publish(&sp_event).await {
+        if let Err(e) = self.publisher.publish(&clean_up_event).await {
             eprintln!("Failed to publish event: {:?}", e);
-        }
-
-        self.remove_deleted_files(vec![file]).await
-    }
-}
-
-impl FileServiceImpl {
-    async fn remove_deleted_files(&self, deleted_files: Vec<File>) -> Result<(), DataError> {
-        const CONCURRENCY_LIMIT: usize = 10;
-
-        let results = stream::iter(deleted_files)
-            .map(|file| async move {
-                let path = file.build_file_path(&self.storage_path);
-
-                let remove_result = match fs::remove_file(&path).await {
-                    Ok(_) => Ok(file.id),
-                    Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-                        let mut gz_path = path.clone();
-                        gz_path.set_extension("gz");
-
-                        match fs::remove_file(gz_path).await {
-                            Ok(_) => Ok(file.id),
-                            Err(e2) => Err((file.id, e2)),
-                        }
-                    }
-                    Err(e) => Err((file.id, e)),
-                };
-
-                if remove_result.is_ok() {
-                    if let Some(bucket2) = path.parent() {
-                        if fs::remove_dir(bucket2).await.is_ok() {
-                            if let Some(bucket1) = bucket2.parent() {
-                                let _ = fs::remove_dir(bucket1).await;
-                            }
-                        }
-                    }
-                }
-
-                remove_result
-            })
-            .buffer_unordered(CONCURRENCY_LIMIT)
-            .collect::<Vec<_>>()
-            .await;
-
-        let mut success_results = Vec::new();
-        let mut error_results = Vec::new();
-
-        for res in results {
-            match res {
-                Ok(id) => success_results.push(id),
-                Err(e) => error_results.push(e),
-            }
-        }
-
-        if !success_results.is_empty() {
-            self.file_repo.delete_by_ids(&success_results).await?;
-        }
-
-        if !error_results.is_empty() {
-            return Err(DataError::IOError(format!(
-                "Failed to delete {} files from disk. Check logs.",
-                error_results.len()
-            )));
         }
 
         Ok(())
