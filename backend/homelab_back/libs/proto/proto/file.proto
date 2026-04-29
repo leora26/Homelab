@@ -52,6 +52,7 @@ message FileResponse {
   UploadStatus upload_status = 9;
   google.protobuf.Timestamp created_at = 10;
   google.protobuf.Timestamp updated_at = 11;
+  string hash = 12;
 }
 
 message FileListResponse {

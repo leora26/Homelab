@@ -44,6 +44,7 @@ time = { version = "0.3.36", features = ["serde-well-known", "macros"] }
 derive-new = "0.7.0"
 tokio-cron-scheduler = "0.15.1"
 async-compression = { version = "0.4", features = ["tokio", "gzip"] }
+blake3 = "1.8.5"
 
 # --- Image Processing ---
 image = "0.25.1"

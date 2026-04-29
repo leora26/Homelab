@@ -51,7 +51,8 @@ pub fn map_file_to_proto(f: File) -> FileResponse {
         updated_at: Some(prost_types::Timestamp {
             seconds: f.updated_at.unix_timestamp(),
             nanos: f.updated_at.nanosecond() as i32,
-        })
+        }),
+        hash: f.hash.unwrap()
     }
 }
 

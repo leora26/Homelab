@@ -29,3 +29,4 @@ fast_image_resize = {workspace = true}
 image = {workspace = true}
 serde_json = {workspace = true}
 lapin = {workspace = true}
+blake3 = {workspace = true}

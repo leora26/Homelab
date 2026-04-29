@@ -67,7 +67,8 @@ CREATE TABLE files
     size             BIGINT        NOT NULL,
     upload_status    upload_status NOT NULL,
     created_at       TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
-    updated_at       TIMESTAMPTZ   NOT NULL DEFAULT NOW()
+    updated_at       TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    hash             VARCHAR(64)
 );
 
 CREATE TABLE action_logs
