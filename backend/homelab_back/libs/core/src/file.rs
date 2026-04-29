@@ -59,7 +59,8 @@ pub struct File {
     pub size: i64,
     pub upload_status: UploadStatus,
     pub created_at: OffsetDateTime,
-    pub updated_at: OffsetDateTime
+    pub updated_at: OffsetDateTime,
+    pub hash: Option<String>
 }
 
 impl File {
@@ -91,6 +92,7 @@ impl File {
             upload_status: UploadStatus::Pending,
             created_at,
             updated_at,
+            hash: None
         }
     }
 
@@ -108,6 +110,10 @@ impl File {
     pub fn set_as_undeleted(&mut self) {
         self.is_deleted = false;
         self.ttl = None;
+    }
+
+    pub fn set_file_hash(&mut self, hash: String) {
+        self.hash = Some(hash);
     }
 
     // TODO: For when i implement overwriting file

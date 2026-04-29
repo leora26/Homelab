@@ -162,6 +162,7 @@ impl FileService for FileServiceImpl {
         file_id: Uuid,
         mut rx: Receiver<Result<Vec<u8>, DataError>>,
     ) -> Result<(), DataError> {
+        let mut hasher = blake3::Hasher::new();
         let mut f = self
             .file_repo
             .get_by_id(file_id)
@@ -195,6 +196,7 @@ impl FileService for FileServiceImpl {
             let data = chunk_result?;
 
             total_bytes += data.len() as i64;
+            hasher.update(&data);
 
             if let Err(e) = writer.write_all(&data).await {
                 let _ = tokio::fs::remove_file(&file_path).await;
@@ -215,8 +217,11 @@ impl FileService for FileServiceImpl {
             let _ = tokio::fs::remove_file(&file_path).await;
             return Err(DataError::NotMatchingByteSizeError);
         }
+        
+        let final_hash = hasher.finalize().to_hex().to_string();
 
         f.update_status(UploadStatus::Completed);
+        f.set_file_hash(final_hash);
         self.file_repo.update(f.clone()).await?;
 
         let mut sp: StorageProfile = self

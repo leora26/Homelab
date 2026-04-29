@@ -115,7 +115,13 @@ impl FolderRepository for FolderRepositoryImpl {
         let files = sqlx::query_as!(
             File,
             r#"
-            SELECT id, name, owner_id, parent_folder_id, file_type as "file_type: _", is_deleted, ttl, size, upload_status as "upload_status: _", created_at, updated_at
+            SELECT
+                id, name, owner_id,
+                parent_folder_id,
+                file_type as "file_type: _",
+                is_deleted, ttl, size,
+                upload_status as "upload_status: _",
+                created_at, updated_at, hash
             FROM files
             WHERE parent_folder_id = $1 AND file_type = ANY($2::file_type[]) AND is_deleted = FALSE
             "#,
@@ -133,7 +139,12 @@ impl FolderRepository for FolderRepositoryImpl {
         let files = sqlx::query_as!(
         File,
         r#"
-        SELECT id, name, owner_id, parent_folder_id, file_type as "file_type: _", is_deleted, ttl, size, upload_status as "upload_status: _", created_at, updated_at
+        SELECT
+            id, name, owner_id, parent_folder_id,
+            file_type as "file_type: _",
+            is_deleted, ttl, size,
+            upload_status as "upload_status: _",
+            created_at, updated_at, hash
         FROM files
         WHERE parent_folder_id = $1 AND is_deleted = FALSE
         "#,
@@ -327,7 +338,7 @@ impl FolderRepository for FolderRepositoryImpl {
             f.file_type as "file_type: _",
             f.parent_folder_id, f.is_deleted, f.ttl, f.size,
             f.upload_status as "upload_status: _",
-            f.created_at, f.updated_at
+            f.created_at, f.updated_at, f.hash
         FROM files f
         LEFT JOIN folders p ON f.parent_folder_id = p.id
         WHERE f.is_deleted = TRUE
