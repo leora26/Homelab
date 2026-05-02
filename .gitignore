@@ -3,6 +3,12 @@
 /backend/.idea
 /backend/homelab_back/.env
 /postgres_data
+/rabbitmq_data
 /backend/homelab_back/.idea
 /Nas
-.env
+/infrastructure/.env
+/infrastructure/*/terraform.tfvars
+/infrastructure/*/terraform.tfstate
+/infrastructure/*/terraform.tfstate.backup
+/infrastructure/*/.terraform
+/infrastructure/*/.terraform.lock.hcl
