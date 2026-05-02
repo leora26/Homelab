@@ -5,3 +5,4 @@
 /postgres_data
 /backend/homelab_back/.idea
 /Nas
+.env
