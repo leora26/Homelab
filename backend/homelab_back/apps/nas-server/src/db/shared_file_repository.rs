@@ -1,6 +1,6 @@
 use crate::helpers::data_error::DataError;
 use async_trait::async_trait;
-use homelab_core::shared_file::SharedFile;
+use homelab_core::nas_domain::shared_file::SharedFile;
 use sqlx::PgPool;
 use uuid::Uuid;
 

@@ -1,4 +1,4 @@
-use homelab_core::file::FileType;
+use homelab_core::nas_domain::file::FileType;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]

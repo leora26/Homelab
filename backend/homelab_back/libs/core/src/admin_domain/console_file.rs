@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use time::OffsetDateTime;
 use uuid::Uuid;
-use crate::file::{FileType, UploadStatus};
+use crate::nas_domain::file::{FileType, UploadStatus};
 
 #[derive(Debug, Serialize, Deserialize, FromRow, Clone, new)]
 pub struct ConsoleFile {

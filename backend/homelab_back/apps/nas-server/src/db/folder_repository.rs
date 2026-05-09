@@ -1,7 +1,7 @@
 use crate::helpers::data_error::DataError;
 use async_trait::async_trait;
-use homelab_core::file::{File, FileType};
-use homelab_core::folder::Folder;
+use homelab_core::nas_domain::file::{File, FileType};
+use homelab_core::nas_domain::folder::Folder;
 use sqlx::PgPool;
 use uuid::Uuid;
 

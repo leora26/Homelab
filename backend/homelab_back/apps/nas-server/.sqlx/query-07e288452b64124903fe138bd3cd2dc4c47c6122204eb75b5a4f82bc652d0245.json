@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM files WHERE id = $1 and is_deleted = TRUE\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "07e288452b64124903fe138bd3cd2dc4c47c6122204eb75b5a4f82bc652d0245"
+}

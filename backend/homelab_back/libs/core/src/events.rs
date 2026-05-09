@@ -2,7 +2,7 @@ use derive_new::new;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
-use crate::file::{FileType, UploadStatus};
+use crate::nas_domain::file::{FileType, UploadStatus};
 
 pub trait DomainEvent {
     fn routing_key (&self) -> &'static str;

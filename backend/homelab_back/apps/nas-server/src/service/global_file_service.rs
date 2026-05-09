@@ -2,7 +2,7 @@ use crate::db::global_file_repository::GlobalFileRepository;
 use crate::helpers::data_error::DataError;
 use async_trait::async_trait;
 use derive_new::new;
-use homelab_core::global_file::GlobalFile;
+use homelab_core::nas_domain::global_file::GlobalFile;
 use std::sync::Arc;
 
 #[async_trait]

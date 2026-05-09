@@ -8,8 +8,8 @@ use actix_web::cookie::time::OffsetDateTime;
 use async_trait::async_trait;
 use derive_new::new;
 use homelab_core::events::{WhiteListedUserCreatedEvent, WhiteListedUserUpdatedEvent};
-use homelab_core::user::User;
-use homelab_core::white_listed_user::WhiteListedUser;
+use homelab_core::user_domain::user::User;
+use homelab_core::user_domain::white_listed_user::WhiteListedUser;
 use std::sync::Arc;
 use uuid::Uuid;
 

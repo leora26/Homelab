@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use derive_new::new;
 use futures::stream::{self, StreamExt};
 use homelab_core::events::{DeletionType, TrashCleanUpTriggeredEvent};
-use homelab_core::file::File;
+use homelab_core::nas_domain::file::File;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;

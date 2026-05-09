@@ -1,7 +1,7 @@
 use crate::helpers::data_error::DataError;
 use async_trait::async_trait;
 use derive_new::new;
-use homelab_core::white_listed_user::WhiteListedUser;
+use homelab_core::user_domain::white_listed_user::WhiteListedUser;
 use sqlx::PgPool;
 use uuid::Uuid;
 

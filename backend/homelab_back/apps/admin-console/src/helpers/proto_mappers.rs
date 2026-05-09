@@ -5,7 +5,7 @@ use tonic::Status;
 use uuid::Uuid;
 use homelab_core::admin_domain::console_file::ConsoleFile;
 use homelab_core::admin_domain::console_wlu::ConsoleWhiteListedUser;
-use homelab_core::file::{FileType as DomainFileType, UploadStatus as DomainUploadStatus};
+use homelab_core::nas_domain::file::{FileType as DomainFileType, UploadStatus as DomainUploadStatus};
 use homelab_proto::nas::{
     FileType as ProtoFileType, UploadStatus as ProtoUploadStatus,
 };

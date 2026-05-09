@@ -5,7 +5,7 @@ use crate::db::storage_profile_repository::StorageProfileRepository;
 use crate::helpers::data_error::DataError;
 use async_trait::async_trait;
 use derive_new::new;
-use homelab_core::label::Label;
+use homelab_core::nas_domain::label::Label;
 use std::sync::Arc;
 use uuid::Uuid;
 

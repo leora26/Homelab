@@ -6,7 +6,7 @@ use crate::helpers::user_email::UserEmail;
 use async_trait::async_trait;
 use derive_new::new;
 use homelab_core::events::{UserBlockedEvent, UserCreatedEvent, UserUpdatedEvent};
-use homelab_core::user::User;
+use homelab_core::user_domain::user::User;
 use std::sync::Arc;
 use uuid::Uuid;
 
