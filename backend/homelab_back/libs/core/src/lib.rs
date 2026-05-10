@@ -6,3 +6,4 @@ pub mod nas_domain;
 pub mod helpers;
 pub mod user_domain;
 pub mod auth;
+pub mod diplomat;
