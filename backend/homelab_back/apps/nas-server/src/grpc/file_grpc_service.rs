@@ -13,6 +13,7 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 use tonic::{Request, Response, Status, Streaming};
 use uuid::Uuid;
+use homelab_core::auth::extractor::RequestIdentityExt;
 
 #[derive(new)]
 pub struct GrpcFileService {
@@ -60,14 +61,12 @@ impl FileService for GrpcFileService {
         &self,
         request: Request<GetDeletedFilesRequest>,
     ) -> Result<Response<FileListResponse>, Status> {
-        let req = request.into_inner();
-
-        let user_id = map_entity_id(req.user_id)?;
+        let internal_user_id = request.get_internal_id(&self.app_state.cached_identity_resolver).await?;
 
         let files = self
             .app_state
             .file_service
-            .get_all_deleted_files(user_id)
+            .get_all_deleted_files(internal_user_id)
             .await?;
 
         let proto_files = files.into_iter().map(|f| map_file_to_proto(f)).collect();
@@ -79,14 +78,14 @@ impl FileService for GrpcFileService {
         &self,
         request: Request<InitFileRequest>,
     ) -> Result<Response<FileResponse>, Status> {
+        let internal_user_id = request.get_internal_id(&self.app_state.cached_identity_resolver).await?;
+
         let req = request.into_inner();
 
         let destination = map_entity_id(req.destination)?;
 
-        let owner_id = map_entity_id(req.owner_id)?;
-
         let command =
-            InitFileCommand::new(destination, owner_id, req.name, req.size, req.is_global);
+            InitFileCommand::new(destination, internal_user_id, req.name, req.size, req.is_global);
 
         let file = self.app_state.file_service.upload(command).await?;
 

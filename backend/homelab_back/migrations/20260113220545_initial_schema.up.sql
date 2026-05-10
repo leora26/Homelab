@@ -20,29 +20,31 @@ CREATE TYPE upload_status AS ENUM (
 
 CREATE TABLE users
 (
-    id            UUID PRIMARY KEY,
-    email         TEXT UNIQUE NOT NULL,
-    full_name     TEXT UNIQUE NOT NULL,
-    password_hash TEXT        NOT NULL,
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    role          user_role   NOT NULL,
-    is_blocked    BOOL        NOT NULL DEFAULT FALSE
+    id          UUID PRIMARY KEY,
+    email       TEXT UNIQUE  NOT NULL,
+    full_name   TEXT UNIQUE  NOT NULL,
+    created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    role        user_role    NOT NULL,
+    is_blocked  BOOL         NOT NULL DEFAULT FALSE,
+    external_id VARCHAR(255) NOT NULL UNIQUE
 );
 
 CREATE TABLE storage_profiles
 (
     user_id         UUID PRIMARY KEY REFERENCES users (id) ON DELETE CASCADE,
-    allowed_storage BIGINT NOT NULL DEFAULT 10737418240, -- Default 10GB
-    taken_storage   BIGINT NOT NULL DEFAULT 0,
-    is_blocked      BOOL   NOT NULL DEFAULT FALSE
+    allowed_storage BIGINT       NOT NULL DEFAULT 10737418240, -- Default 10GB
+    taken_storage   BIGINT       NOT NULL DEFAULT 0,
+    is_blocked      BOOL         NOT NULL DEFAULT FALSE,
+    external_id     VARCHAR(255) NOT NULL UNIQUE
 );
 
 CREATE TABLE white_listed_users
 (
-    id         UUID PRIMARY KEY,
-    full_name  TEXT        NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    email      TEXT UNIQUE NOT NULL
+    id          UUID PRIMARY KEY,
+    full_name   TEXT         NOT NULL,
+    created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    email       TEXT UNIQUE  NOT NULL,
+    external_id VARCHAR(255) NOT NULL UNIQUE
 );
 
 CREATE TABLE folders

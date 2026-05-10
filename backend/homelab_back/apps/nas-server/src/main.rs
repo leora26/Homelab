@@ -36,7 +36,7 @@ use crate::service::storage_profile_service::{StorageProfileService, StorageProf
 use actix_web::web::Data;
 use actix_web::{web, App, HttpServer};
 use dotenvy::dotenv;
-use homelab_core::auth::AuthState;
+use homelab_core::auth::auth::AuthState;
 use homelab_core::helpers::rabbitmq_consumer::RabbitMqConsumer;
 use homelab_proto::nas::file_service_server::FileServiceServer;
 use homelab_proto::nas::file_label_service_server::FileLabelServiceServer;
@@ -53,6 +53,7 @@ use std::sync::Arc;
 use tonic::service::Interceptor;
 use tonic::transport::Server;
 use tracing_subscriber::EnvFilter;
+use homelab_core::auth::identity_cache::CacheIdentityResolver;
 
 pub struct AppState {
     pub file_service: Arc<dyn FileService>,
@@ -64,6 +65,7 @@ pub struct AppState {
     pub label_service: Arc<dyn LabelService>,
     pub file_label_service: Arc<dyn FileLabelService>,
     pub storage_profile_service: Arc<dyn StorageProfileService>,
+    pub cached_identity_resolver: Arc<CacheIdentityResolver<StorageProfileRepositoryImpl>>
 }
 
 #[actix_web::main]
@@ -317,6 +319,10 @@ async fn init_app_state(
         storage_profile_repo.clone(),
         publisher.clone(),
     ));
+    
+    let cached_identity_resolver = Arc::new(
+        CacheIdentityResolver::new((*storage_profile_repo).clone())
+    );
 
     Data::new(AppState {
         file_service,
@@ -328,5 +334,6 @@ async fn init_app_state(
         label_service,
         file_label_service,
         storage_profile_service,
+        cached_identity_resolver
     })
 }

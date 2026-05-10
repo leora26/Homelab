@@ -9,6 +9,7 @@ use homelab_proto::nas::{
 };
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
+use homelab_core::auth::extractor::RequestIdentityExt;
 
 #[derive(new)]
 pub struct GrpcLabelService {
@@ -31,11 +32,11 @@ impl LabelService for GrpcLabelService {
         &self,
         request: Request<CreateLabelRequest>,
     ) -> Result<Response<LabelResponse>, Status> {
+        let internal_user_id = request.get_internal_id(&self.app_state.cached_identity_resolver).await?;
+
         let req = request.into_inner();
 
-        let owner_id = map_entity_id(req.owner_id)?;
-
-        let command = CreateLabelCommand::new(req.name, req.color, owner_id);
+        let command = CreateLabelCommand::new(req.name, req.color, internal_user_id);
 
         let label = self.app_state.label_service.create_label(command).await?;
 

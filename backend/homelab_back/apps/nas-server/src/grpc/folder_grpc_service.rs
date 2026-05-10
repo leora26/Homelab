@@ -10,6 +10,7 @@ use homelab_proto::nas::{CleanUpDeletedFoldersRequest, CleanUpTrashRequest, Crea
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
 use uuid::Uuid;
+use homelab_core::auth::extractor::RequestIdentityExt;
 
 #[derive(new)]
 pub struct GrpcFolderService {
@@ -22,16 +23,15 @@ impl FolderService for GrpcFolderService {
         &self,
         request: Request<GetRootFolderRequest>,
     ) -> Result<Response<FolderResponse>, Status> {
-        let req = request.into_inner();
 
-        let user_id = map_entity_id(req.user_id)?;
+        let internal_user_id = request.get_internal_id(&self.app_state.cached_identity_resolver).await?;
 
         let folder = self
             .app_state
             .folder_service
-            .get_root(user_id)
+            .get_root(internal_user_id)
             .await?
-            .ok_or_else(|| Status::not_found(format!("Failed to find root {}", user_id)))?;
+            .ok_or_else(|| Status::not_found(format!("Failed to find root {}", internal_user_id)))?;
 
         Ok(Response::new(map_folder_to_proto(folder)))
     }
@@ -120,14 +120,13 @@ impl FolderService for GrpcFolderService {
         &self,
         request: Request<GetDeletedFoldersRequest>,
     ) -> Result<Response<FolderResponseList>, Status> {
-        let req = request.into_inner();
 
-        let user_id = map_entity_id(req.owner_id)?;
+        let internal_user_id = request.get_internal_id(&self.app_state.cached_identity_resolver).await?;
 
         let folders = self
             .app_state
             .folder_service
-            .get_deleted_folders(user_id)
+            .get_deleted_folders(internal_user_id)
             .await?;
 
         let proto_folders = folders
@@ -235,13 +234,13 @@ impl FolderService for GrpcFolderService {
         &self,
         request: Request<CreateFolderRequest>,
     ) -> Result<Response<FolderResponse>, Status> {
+        let internal_user_id = request.get_internal_id(&self.app_state.cached_identity_resolver).await?;
+
         let req = request.into_inner();
 
         let parent_folder_id = map_entity_id(req.parent_folder_id)?;
 
-        let owner_id = map_entity_id(req.owner_id)?;
-
-        let command = CreateFolderCommand::new(parent_folder_id, req.name, owner_id);
+        let command = CreateFolderCommand::new(parent_folder_id, req.name, internal_user_id);
 
         let folder = self.app_state.folder_service.create(command).await?;
 
@@ -249,21 +248,19 @@ impl FolderService for GrpcFolderService {
     }
 
     async fn clean_up_deleted_folder(&self, request: Request<CleanUpDeletedFoldersRequest>) -> Result<Response<()>, Status> {
+        let internal_user_id = request.get_internal_id(&self.app_state.cached_identity_resolver).await?;
+
         let req = request.into_inner();
-
         let folder_id = map_entity_id(req.folder_id)?;
-        let user_id = map_entity_id(req.user_id)?;
 
-        self.app_state.folder_service.permanently_delete_folder(user_id, folder_id).await?;
+        self.app_state.folder_service.permanently_delete_folder(internal_user_id, folder_id).await?;
 
         Ok(Response::new(()))
     }
 
     async fn clean_up_trash(&self, request: Request<CleanUpTrashRequest>) -> Result<Response<()>, Status> {
-        let req = request.into_inner();
-
-        let user_id = map_entity_id(req.user_id)?;
-        self.app_state.folder_service.clean_up_trash(user_id).await?;
+        let internal_user_id = request.get_internal_id(&self.app_state.cached_identity_resolver).await?;
+        self.app_state.folder_service.clean_up_trash(internal_user_id).await?;
 
         Ok(Response::new(()))
     }

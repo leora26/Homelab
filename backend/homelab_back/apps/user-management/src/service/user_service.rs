@@ -14,9 +14,8 @@ use uuid::Uuid;
 pub trait UserService: Send + Sync {
     async fn get_by_email(&self, email: &String) -> Result<Option<User>, DataError>;
     async fn get_all(&self) -> Result<Vec<User>, DataError>;
-    async fn create(&self, command: CreateUserCommand) -> Result<User, DataError>;
+    async fn finalize(&self, command: CreateUserCommand) -> Result<(), DataError>;
     async fn get_by_id(&self, id: Uuid) -> Result<Option<User>, DataError>;
-    async fn update_password(&self, id: Uuid, pass: &str) -> Result<(), DataError>;
     async fn toggle_blocked(&self, id: Uuid, blocked: bool) -> Result<(), DataError>;
 }
 
@@ -36,17 +35,22 @@ impl UserService for UserServiceImpl {
         self.user_repo.get_all().await
     }
 
-    async fn create(&self, command: CreateUserCommand) -> Result<User, DataError> {
+    async fn finalize(&self, command: CreateUserCommand) -> Result<(), DataError> {
+
+        let user = self.user_repo.get_by_id(command.user_id)
+            .await?
+            .ok_or_else(|| DataError::EntityNotFoundException("User".to_string()))?;
+
         let valid_email =
             UserEmail::parse(command.email).map_err(|e| DataError::ValidationError(e))?;
 
         let cleaned_name = command.full_name.trim().to_string();
 
         let u = User::new_complete(
-            Uuid::new_v4(),
+            user.id,
             valid_email.into_inner(),
-            command.password,
             cleaned_name,
+            user.external_id
         );
 
         let event: UserCreatedEvent = UserCreatedEvent::new(
@@ -61,24 +65,11 @@ impl UserService for UserServiceImpl {
             eprintln!("Failed to publish event: {:?}", e);
         }
 
-        self.user_repo.create(u).await
+        self.user_repo.save(u).await
     }
 
     async fn get_by_id(&self, id: Uuid) -> Result<Option<User>, DataError> {
         self.user_repo.get_by_id(id).await
-    }
-
-    async fn update_password(&self, id: Uuid, pass: &str) -> Result<(), DataError> {
-        let mut user =
-            self.user_repo.get_by_id(id).await?.ok_or_else(|| {
-                DataError::EntityNotFoundException(format!("User not found: {}", id))
-            })?;
-
-        user.set_password(pass);
-
-        self.user_repo.save(user).await?;
-
-        Ok(())
     }
 
     async fn toggle_blocked(&self, id: Uuid, blocked: bool) -> Result<(), DataError> {

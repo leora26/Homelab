@@ -43,7 +43,7 @@ impl WhiteListedUserService for WhiteListedServiceImpl {
             .await?
             .ok_or_else(|| DataError::EntityNotFoundException("WhiteListedUser".to_string()))?;
 
-        let new_user_entity = User::new_pending(Uuid::new_v4(), wlu.email.clone(), wlu.full_name.clone());
+        let new_user_entity = User::new_pending(Uuid::new_v4(), wlu.email.clone(), wlu.full_name.clone(), wlu.external_id.clone());
 
         let saved_user = self.user_repo.create(new_user_entity).await.map_err(|e| {
             DataError::EntityCreationError(format!("White listed user failed creation: {}", e))
@@ -79,6 +79,7 @@ impl WhiteListedUserService for WhiteListedServiceImpl {
             valid_email.into_inner(),
             clean_name,
             OffsetDateTime::now_utc(),
+            command.external_id
         );
 
         let event: WhiteListedUserCreatedEvent = WhiteListedUserCreatedEvent::new(
@@ -86,6 +87,7 @@ impl WhiteListedUserService for WhiteListedServiceImpl {
             u.email.clone(),
             u.full_name.clone(),
             u.created_at.clone(),
+            u.external_id.clone(),
         );
 
         if let Err(e) = self.publisher.publish(&event).await {

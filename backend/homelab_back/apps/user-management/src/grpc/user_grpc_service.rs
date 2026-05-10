@@ -3,9 +3,10 @@ use crate::helpers::proto_mappers::{map_entity_id, map_user_to_proto};
 use crate::AppState;
 use derive_new::new;
 use homelab_proto::user::user_service_server::UserService;
-use homelab_proto::user::{CreateUserRequest, GetUserByEmailRequest, GetUserByIdRequest, ToggleBlockStatusRequest, UpdatePasswordRequest, UserList, UserResponse};
+use homelab_proto::user::{FinalizeUserRequest, GetUserByEmailRequest, GetUserByIdRequest, ToggleBlockStatusRequest, UserList, UserResponse};
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
+use homelab_core::auth::extractor::RequestIdentityExt;
 
 #[derive(new)]
 pub struct GrpcUserService {
@@ -53,34 +54,21 @@ impl UserService for GrpcUserService {
         Ok(Response::new(UserList { users: proto_users }))
     }
 
-    async fn create(
+    async fn finalize(
         &self,
-        request: Request<CreateUserRequest>,
-    ) -> Result<Response<UserResponse>, Status> {
-        let req = request.into_inner();
-
-        let command = CreateUserCommand::new(req.email, req.password, req.full_name);
-
-        let user = self.app_state.user_service.create(command).await?;
-
-        Ok(Response::new(map_user_to_proto(user)))
-    }
-
-    async fn update_password(
-        &self,
-        request: Request<UpdatePasswordRequest>,
+        request: Request<FinalizeUserRequest>,
     ) -> Result<Response<()>, Status> {
+        let internal_user_id = request.get_internal_id(&self.app_state.cached_identity_resolver).await?;
+
         let req = request.into_inner();
 
-        let user_id = map_entity_id(req.id)?;
+        let command = CreateUserCommand::new(internal_user_id, req.email, req.full_name);
 
-        self.app_state
-            .user_service
-            .update_password(user_id, &req.password)
-            .await?;
+        self.app_state.user_service.finalize(command).await?;
 
         Ok(Response::new(()))
     }
+
 
     async fn toggle_block_state(
         &self,

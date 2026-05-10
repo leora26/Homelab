@@ -5,4 +5,5 @@ use serde::Deserialize;
 pub struct CreateWhiteListedUserCommand {
     pub email: String,
     pub full_name: String,
+    pub external_id: String,
 }

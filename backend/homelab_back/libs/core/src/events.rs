@@ -44,7 +44,8 @@ pub struct WhiteListedUserCreatedEvent {
     pub user_id: Uuid,
     pub email: String,
     pub full_name: String,
-    pub created_at: OffsetDateTime
+    pub created_at: OffsetDateTime,
+    pub external_id: String,
 }
 
 impl DomainEvent for WhiteListedUserCreatedEvent {

@@ -1,9 +1,11 @@
+use std::error::Error;
 use crate::helpers::data_error::DataError;
 use crate::helpers::data_error::DataError::DatabaseError;
 use async_trait::async_trait;
 use homelab_core::user_domain::user::{Role, User};
 use sqlx::PgPool;
 use uuid::Uuid;
+use homelab_core::auth::resolver::ExternalIdResolver;
 
 #[async_trait]
 pub trait UserRepository: Send + Sync {
@@ -15,6 +17,7 @@ pub trait UserRepository: Send + Sync {
     async fn toggle_blocked(&self, user: User) -> Result<(), DataError>;
 }
 
+#[derive(Clone)]
 pub struct UserRepositoryImpl {
     pool: PgPool,
 }
@@ -26,12 +29,26 @@ impl UserRepositoryImpl {
 }
 
 #[async_trait]
+impl ExternalIdResolver for UserRepositoryImpl {
+    async fn resolve_external_id(&self, external_id: &str) -> Result<String, Box<dyn Error>> {
+        let record = sqlx::query!(
+            "SELECT id FROM users WHERE external_id = $1",
+            external_id
+        )
+            .fetch_one(&self.pool)
+            .await?;
+
+        Ok(record.id.to_string())
+    }
+}
+
+#[async_trait]
 impl UserRepository for UserRepositoryImpl {
     async fn get_by_email(&self, email: String) -> Result<Option<User>, DataError> {
         let user = sqlx::query_as!(
             User,
             r#"
-        SELECT id, email, full_name, password_hash, created_at,  role as "role: _", is_blocked
+        SELECT id, email, full_name, created_at,  role as "role: _", is_blocked, external_id
         FROM users
         WHERE email = $1
         "#,
@@ -48,7 +65,7 @@ impl UserRepository for UserRepositoryImpl {
         let users = sqlx::query_as!(
             User,
             r#"
-        SELECT id, email, full_name, password_hash, created_at,  role as "role: _", is_blocked
+        SELECT id, email, full_name, external_id, created_at,  role as "role: _", is_blocked
         FROM users
         "#
         )
@@ -63,14 +80,14 @@ impl UserRepository for UserRepositoryImpl {
         let user = sqlx::query_as!(
             User,
             r#"
-        INSERT INTO users (id, email, full_name, password_hash, role, is_blocked)
+        INSERT INTO users (id, email, full_name, external_id, role, is_blocked)
         VALUES ($1, $2, $3, $4, $5, $6)
-        RETURNING id, email, full_name, password_hash, created_at, role as "role: _", is_blocked
+        RETURNING id, email, full_name, external_id, created_at, role as "role: _", is_blocked
         "#,
             user.id,
             user.email,
             user.full_name,
-            user.password_hash,
+            user.external_id,
             user.role as Role,
             user.is_blocked,
         )
@@ -84,7 +101,7 @@ impl UserRepository for UserRepositoryImpl {
         let user = sqlx::query_as!(
             User,
             r#"
-        SELECT id, email, full_name, password_hash, created_at,  role as "role: _", is_blocked
+        SELECT id, email, full_name, external_id, created_at,  role as "role: _", is_blocked
         FROM users
         WHERE id = $1
         "#,
@@ -101,13 +118,13 @@ impl UserRepository for UserRepositoryImpl {
         sqlx::query!(
             r#"
             UPDATE users
-            SET email = $1, full_name = $2, role = $3, password_hash = $4
+            SET email = $1, full_name = $2, role = $3, external_id = $4
             WHERE id = $5
             "#,
             user.email,
             user.full_name,
             user.role as Role,
-            user.password_hash,
+            user.external_id,
             user.id
         )
         .execute(&self.pool)

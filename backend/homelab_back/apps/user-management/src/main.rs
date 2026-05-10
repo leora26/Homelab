@@ -3,27 +3,31 @@ use crate::db::white_listed_user_repository::WhiteListedUserRepositoryImpl;
 use crate::grpc::user_grpc_service::GrpcUserService;
 use crate::service::user_service::{UserService, UserServiceImpl};
 use crate::service::white_listed_user_service::{WhiteListedServiceImpl, WhiteListedUserService};
-use actix_web::{web, App, HttpServer};
 use dotenvy::dotenv;
 use homelab_proto::user::user_service_server::UserServiceServer;
 use sqlx::postgres::PgPoolOptions;
 use std::env;
 use std::sync::Arc;
+use actix_web::web::Data;
+use sqlx::{Pool, Postgres};
+use tonic::service::Interceptor;
 use tonic::transport::Server;
 use tracing_subscriber::EnvFilter;
+use homelab_core::auth::auth::AuthState;
+use homelab_core::auth::identity_cache::CacheIdentityResolver;
 use crate::events::rabbitmq::RabbitMqPublisher;
 
 pub mod data;
 pub mod events;
 pub mod db;
 pub mod grpc;
-pub mod handler;
 pub mod helpers;
 pub mod service;
 
 pub struct AppState {
     pub user_service: Arc<dyn UserService>,
     pub white_listed_user_service: Arc<dyn WhiteListedUserService>,
+    pub cached_identity_resolver: Arc<CacheIdentityResolver<UserRepositoryImpl>>,
 }
 
 #[tokio::main]
@@ -33,6 +37,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .init();
 
     dotenv().ok();
+
+    let zitadel_domain = env::var("ZITADEL_DOMAIN").expect("ZITADEL_DOMAIN must be set");
+    let target_client_id = env::var("ZITADEL_API_CLIENT_ID").expect("ZITADEL_API_CLIENT_ID must be set");
 
     let server_mode = env::var("SERVER_MODE")
         .unwrap_or_else(|_| "hybrid".to_string())
@@ -58,22 +65,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let publisher = Arc::new(RabbitMqPublisher::new(&rabbit_url).await?);
 
-    let user_repo = Arc::new(UserRepositoryImpl::new(pool.clone()));
-    let wlu_repo = Arc::new(WhiteListedUserRepositoryImpl::new(pool.clone()));
+    let app_state = init_app_state(pool, publisher).await;
+    let auth_state = AuthState::init(&zitadel_domain, &target_client_id).await?;
+    let auth_interceptor = init_auth_interceptor(auth_state);
 
-    let user_service = Arc::new(UserServiceImpl::new(user_repo.clone(), publisher.clone()));
-    let white_listed_user_service = Arc::new(WhiteListedServiceImpl::new(
-        wlu_repo.clone(),
-        user_repo.clone(),
-        publisher.clone()
-    ));
-
-    let app_state = web::Data::new(AppState {
-        user_service,
-        white_listed_user_service,
-    });
-
-    let rest_addr = ("0.0.0.0", 8081);
     let grpc_addr: std::net::SocketAddr = "[::1]:50052".parse().unwrap();
 
     println!(
@@ -82,20 +77,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     match server_mode.as_str() {
-        "rest" => {
-            println!(
-                "🚀 Starting REST Server only at http://{}:{}",
-                rest_addr.0, rest_addr.1
-            );
-            HttpServer::new(move || {
-                App::new()
-                    .app_data(app_state.clone())
-                    .configure(handler_config)
-            })
-            .bind(rest_addr)?
-            .run()
-            .await?;
-        }
         "grpc" => {
             println!("🚀 Starting gRPC Server only at {}", grpc_addr);
             let app_state_arc = app_state.clone().into_inner();
@@ -103,35 +84,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let user_impl = GrpcUserService::new(app_state_arc.clone());
 
             Server::builder()
-                .add_service(UserServiceServer::new(user_impl))
+                .add_service(UserServiceServer::with_interceptor(user_impl, auth_interceptor))
                 .serve(grpc_addr)
                 .await?;
-        }
-        "hybrid" => {
-            println!("🚀 Starting Hybrid Mode (REST + gRPC)");
-
-            let app_state_arc = app_state.clone().into_inner();
-
-            let user_impl = GrpcUserService::new(app_state_arc.clone());
-
-            let grpc_handle = Server::builder()
-                .add_service(UserServiceServer::new(user_impl))
-                .serve(grpc_addr);
-
-            println!(
-                "   - REST listening at http://{}:{}",
-                rest_addr.0, rest_addr.1
-            );
-            HttpServer::new(move || {
-                App::new()
-                    .app_data(app_state.clone())
-                    .configure(handler_config)
-            })
-            .bind(rest_addr)?
-            .run()
-            .await?;
-
-            let _ = grpc_handle.await;
         }
         _ => panic!(
             "Invalid SERVER_MODE: {}. Use 'rest', 'grpc', or 'hybrid'",
@@ -142,10 +97,40 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn handler_config(cfg: &mut web::ServiceConfig) {
-    cfg.service(
-        web::scope("/api")
-            .configure(handler::user_handler::config)
-            .configure(handler::white_listed_user_handler::config),
+
+async fn init_app_state(
+    pool: Pool<Postgres>,
+    publisher: Arc<RabbitMqPublisher>
+) -> Data<AppState> {
+    let user_repo = Arc::new(UserRepositoryImpl::new(pool.clone()));
+    let wlu_repo = Arc::new(WhiteListedUserRepositoryImpl::new(pool.clone()));
+
+    let user_service = Arc::new(UserServiceImpl::new(user_repo.clone(), publisher.clone()));
+    let white_listed_user_service = Arc::new(WhiteListedServiceImpl::new(
+        wlu_repo.clone(),
+        user_repo.clone(),
+        publisher.clone()
+    ));
+
+    let cached_identity_resolver = Arc::new(
+        CacheIdentityResolver::new((*user_repo).clone())
     );
+
+    Data::new(AppState {
+        user_service,
+        white_listed_user_service,
+        cached_identity_resolver
+    })
+}
+
+fn init_auth_interceptor(auth_state: AuthState) -> impl Interceptor + Clone {
+    move |mut req: tonic::Request<()>| match req.metadata().get("authorization") {
+        Some(token_header) => {
+            let token_str = token_header.to_str().unwrap_or("").replace("Bearer ", "");
+            let claims = auth_state.verify_token(&token_str)?;
+            req.extensions_mut().insert(claims.sub);
+            Ok(req)
+        }
+        None => Err(tonic::Status::unauthenticated("Missing authorization header")),
+    }
 }

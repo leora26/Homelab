@@ -1,8 +1,10 @@
+use std::error::Error;
 use crate::helpers::data_error::DataError;
 use async_trait::async_trait;
 use homelab_core::nas_domain::storage_profile::StorageProfile;
 use sqlx::PgPool;
 use uuid::Uuid;
+use homelab_core::auth::resolver::ExternalIdResolver;
 
 #[async_trait]
 pub trait StorageProfileRepository: Send + Sync {
@@ -16,6 +18,7 @@ pub trait StorageProfileRepository: Send + Sync {
     ) -> Result<(), DataError>;
 }
 
+#[derive(Clone)]
 pub struct StorageProfileRepositoryImpl {
     pool: PgPool,
 }
@@ -23,6 +26,20 @@ pub struct StorageProfileRepositoryImpl {
 impl StorageProfileRepositoryImpl {
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
+    }
+}
+
+#[async_trait]
+impl ExternalIdResolver for StorageProfileRepositoryImpl {
+    async fn resolve_external_id(&self, external_id: &str) -> Result<String, Box<dyn Error>> {
+        let record = sqlx::query!(
+            "SELECT user_id FROM storage_profiles WHERE external_id = $1",
+            external_id
+        )
+            .fetch_one(&self.pool)
+            .await?;
+
+        Ok(record.user_id.to_string())
     }
 }
 

@@ -17,3 +17,4 @@ serde_json = {workspace = true}
 
 derive-new = {workspace = true}
 tokio = {workspace = true}
+moka = {workspace = true}

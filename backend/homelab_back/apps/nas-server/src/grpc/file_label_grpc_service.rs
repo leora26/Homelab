@@ -11,6 +11,7 @@ use homelab_proto::nas::{
 };
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
+use homelab_core::auth::extractor::RequestIdentityExt;
 
 #[derive(new)]
 pub struct GrpcFileLabelService {
@@ -43,15 +44,15 @@ impl FileLabelService for GrpcFileLabelService {
         &self,
         request: Request<GetLabelsForFileRequest>,
     ) -> Result<Response<LabelListResponse>, Status> {
-        let req = request.into_inner();
+        let internal_user_id = request.get_internal_id(&self.app_state.cached_identity_resolver).await?;
 
+        let req = request.into_inner();
         let file_id = map_entity_id(req.file_id)?;
-        let owner_id = map_entity_id(req.owner_id)?;
 
         let labels = self
             .app_state
             .file_label_service
-            .get_labels_by_file(file_id, owner_id)
+            .get_labels_by_file(file_id, internal_user_id)
             .await?;
 
         let proto_labels = labels.into_iter().map(map_label_to_proto).collect();
@@ -65,15 +66,15 @@ impl FileLabelService for GrpcFileLabelService {
         &self,
         request: Request<GetFilesForLabelRequest>,
     ) -> Result<Response<FileListResponse>, Status> {
-        let req = request.into_inner();
+        let internal_user_id = request.get_internal_id(&self.app_state.cached_identity_resolver).await?;
 
+        let req = request.into_inner();
         let label_id = map_entity_id(req.label_id)?;
-        let owner_id = map_entity_id(req.owner_id)?;
 
         let files = self
             .app_state
             .file_label_service
-            .get_files_by_label(label_id, owner_id)
+            .get_files_by_label(label_id, internal_user_id)
             .await?;
 
         let proto_files = files.into_iter().map(map_file_to_proto).collect();

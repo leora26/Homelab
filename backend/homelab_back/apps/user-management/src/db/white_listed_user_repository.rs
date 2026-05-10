@@ -24,14 +24,15 @@ impl WhiteListedUserRepository for WhiteListedUserRepositoryImpl {
         let user = sqlx::query_as!(
             WhiteListedUser,
             r#"
-            INSERT INTO white_listed_users (id, email, full_name, created_at)
-            VALUES ($1, $2, $3, $4)
-            RETURNING id, email, full_name, created_at
+            INSERT INTO white_listed_users (id, email, full_name, created_at, external_id)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING id, email, full_name, created_at, external_id
             "#,
             user.id,
             user.email,
             user.full_name,
-            user.created_at
+            user.created_at,
+            user.external_id
         )
         .fetch_one(&self.pool)
         .await
@@ -44,7 +45,7 @@ impl WhiteListedUserRepository for WhiteListedUserRepositoryImpl {
         let users: Vec<WhiteListedUser> = sqlx::query_as!(
             WhiteListedUser,
             r#"
-            SELECT id, email, full_name, created_at
+            SELECT id, email, full_name, created_at, external_id
             FROM white_listed_users
             "#
         )
@@ -73,7 +74,7 @@ impl WhiteListedUserRepository for WhiteListedUserRepositoryImpl {
         let user = sqlx::query_as!(
             WhiteListedUser,
             r#"
-            SELECT id, email, full_name, created_at
+            SELECT id, email, full_name, created_at, external_id
             FROM white_listed_users
             WHERE id = $1
             "#,
