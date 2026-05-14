@@ -12,7 +12,7 @@ service FolderService {
   rpc GetFolder (GetFolderRequest) returns (FolderResponse); // TODO: Maybe not needed
   rpc GetSubfolders (GetAllSubfoldersRequest) returns (FolderResponseList); // Done
   rpc GetFilesForFolder (GetFilesForFolderRequest) returns (FileListResponse); // Done
-  rpc GetTrashFilesForFolder (GetTrashFilesForFolderRequest) returns (FileListResponse);
+  rpc GetTrashFilesForFolder (  GetTrashFilesForFolderRequest) returns (FileListResponse);
   rpc GetDeletedFolders (GetDeletedFoldersRequest) returns (FolderResponseList);
   rpc DeleteFolder (DeleteFolderRequest) returns (google.protobuf.Empty); // Done
   rpc RenameFolder (RenameFolderRequest) returns (FolderResponse); // Done
