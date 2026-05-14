@@ -1,5 +1,5 @@
 <script lang="ts">
-    import FolderStructure from "$lib/components/FolderStructure.svelte";
+    import FolderStructure from "$lib/components/folder/FolderStructure.svelte";
     import ContentSection from "$lib/components/ContentSection.svelte";
     import FormModal, {type FormField} from "$lib/components/common/FormModal.svelte";
 
@@ -70,8 +70,8 @@
                 onRequestNewFolder={openNewFolderModal}
         />
 
-        {#if activeFolderId === 'TRASH'}
-            <TrashSection />
+        {#if activeFolderId === 'TRASH_ROOT'}
+            <TrashSection activeFolderId={activeFolderId} />
         {:else if activeFolderId}
             <ContentSection {activeFolderId} />
         {/if}

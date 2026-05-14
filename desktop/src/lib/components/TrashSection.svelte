@@ -4,6 +4,12 @@
     import {userId} from "$lib/types/tempUserId";
     import type {FileView} from "$lib/types/models";
 
+    interface TrashSectionProps {
+        activeFolderId: string;
+    }
+
+    const {activeFolderId}: TrashSectionProps = $props()
+
     let isLoading = $state(true);
     let error = $state<string | null>(null);
     let deletedFiles = $state<FileView[]>([]);
@@ -11,6 +17,8 @@
     async function fetchDeletedFiles() {
         isLoading = true;
         error = null;
+
+        console.log("Fetching delete files for user: ", userId)
 
         const result = await safeInvoke<FileView[]>('get_deleted_files', {
             userId: userId

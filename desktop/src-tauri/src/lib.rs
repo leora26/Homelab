@@ -48,6 +48,8 @@ pub async fn run() {
             commands::folder::rename_folder,
             commands::folder::cleanup_deleted_folder,
             commands::folder::cleanup_trash,
+            commands::folder::get_trash_files_by_folder,
+            commands::folder::get_deleted_folder,
             commands::file::init_file,
             commands::file::upload_content,
             commands::file::rename_file,
