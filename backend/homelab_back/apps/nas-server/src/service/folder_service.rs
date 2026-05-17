@@ -39,6 +39,7 @@ pub trait FolderService: Send + Sync {
     async fn get_deleted_folders(&self, user_id: Uuid) -> Result<Vec<Folder>, DataError>;
     async fn clean_up_trash(&self, user_id: Uuid) -> Result<(), DataError>;
     async fn permanently_delete_folder(&self, folder_id: Uuid, user_id: Uuid) -> Result<(), DataError>;
+    async fn restore_deleted_folder(&self, folder_id: Uuid) -> Result<(), DataError>;
 }
 
 #[derive(new)]
@@ -197,5 +198,12 @@ impl FolderService for FolderServiceImpl {
             .map_err(|e| DataError::MessageQueueError(format!("TrashCleanUpTriggeredEvent to delete a folder {:?}", e)))?;
 
         Ok(())
+    }
+
+    async fn restore_deleted_folder(&self, folder_id: Uuid) -> Result<(), DataError> {
+        let folder  = self.folder_repo.get_by_id(folder_id).await?
+            .ok_or_else(|| DataError::EntityNotFoundException("Folder".to_string()))?;
+        
+        self.folder_repo.restore_deleted_folder(folder_id).await
     }
 }

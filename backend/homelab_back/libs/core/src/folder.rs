@@ -40,10 +40,6 @@ impl Folder {
         self.name = new_name;
     }
     
-    pub fn set_is_deleted(&mut self, is_deleted: bool) {
-        self.is_deleted = is_deleted;
-    }
-
     pub fn update_parent_folder(&mut self, new_parent_folder_id: Uuid) {
         self.parent_folder_id = Option::from(new_parent_folder_id);
     }

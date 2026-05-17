@@ -28,6 +28,7 @@ pub trait FolderRepository: Send + Sync {
     async fn hard_delete_folder_tree(&self, folder_id: Uuid) -> Result<(), DataError>;
     async fn hard_delete_all_trashed_folders(&self, user_id: Uuid) -> Result<(), DataError>;
     async fn hard_delete_global_trashed_folders(&self) -> Result<(), DataError>;
+    async fn restore_deleted_folder(&self, folder_id: Uuid) -> Result<(), DataError>;
 }
 
 pub struct FolderRepositoryImpl {
@@ -408,6 +409,56 @@ impl FolderRepository for FolderRepositoryImpl {
             .execute(&self.pool)
             .await
             .map_err(|e| DataError::DatabaseError(e))?;
+
+        Ok(())
+    }
+
+    async fn restore_deleted_folder(&self, folder_id: Uuid) -> Result<(), DataError> {
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| DataError::DatabaseError(e))?;
+
+        sqlx::query!(
+            r#"
+        WITH RECURSIVE folder_tree AS (
+            SELECT id FROM folders WHERE id = $1
+            
+            UNION ALL
+            
+            SELECT f.id FROM folders f
+            INNER JOIN folder_tree ft ON f.parent_folder_id = ft.id
+        )
+        UPDATE files 
+        SET is_deleted = false
+        WHERE parent_folder_id IN (SELECT id FROM folder_tree);
+        "#,
+            folder_id
+        )
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DataError::DatabaseError(e))?;
+
+        sqlx::query!(
+            r#"
+            WITH RECURSIVE folder_tree as (
+                SELECT id FROM folders WHERE id = $1
+                UNION ALL
+                SELECT f.id FROM folders f
+                INNER JOIN folder_tree ft ON f.parent_folder_id = ft.id
+            )
+            UPDATE folders
+            SET is_deleted = false
+            WHERE id IN (SELECT id FROM folder_tree);
+            "#,
+            folder_id
+        )
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DataError::DatabaseError(e))?;
+
+        tx.commit().await.map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(())
     }
