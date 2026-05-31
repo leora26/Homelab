@@ -147,7 +147,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     ));
 
     tokio::spawn(async move {
-        let patterns = vec!["user.#", "file.#"];
+        let patterns = vec!["user.#", "file.#", "cleanup.#"];
 
         if let Err(e) = RabbitMqConsumer::start(&rabbit_url, event_handler, patterns).await {
             eprintln!("🔥 Consumer died: {}", e);

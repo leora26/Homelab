@@ -1,5 +1,5 @@
 <script lang="ts">
-    import FolderStructure from "$lib/components/FolderStructure.svelte";
+    import FolderStructure from "$lib/components/folder/FolderStructure.svelte";
     import ContentSection from "$lib/components/ContentSection.svelte";
     import FormModal, {type FormField} from "$lib/components/common/FormModal.svelte";
 
@@ -10,13 +10,21 @@
     import TrashSection from "$lib/components/TrashSection.svelte";
 
     let activeFolderId = $state<string | null>(null);
+    let activeTrashFolder = $state<string | null>(null);
     let isNewFolderModalOpen = $state(false);
     let targetParentFolderId = $state<string | null>(null);
+    let isTrashActive = $state(false);
 
     let treeVersion = $state(0);
 
-    const handleActiveFolderChange = (folderId: string) => {
-        activeFolderId = folderId;
+    const handleActiveFolderChange = (folderId: string | null, isTrash: boolean) => {
+        if (isTrash) {
+            activeTrashFolder = folderId;
+        } else {
+            activeFolderId = folderId;
+        }
+
+        isTrashActive = isTrash;
     }
 
     const openNewFolderModal = (targetId?: string) => {
@@ -70,8 +78,8 @@
                 onRequestNewFolder={openNewFolderModal}
         />
 
-        {#if activeFolderId === 'TRASH'}
-            <TrashSection />
+        {#if isTrashActive}
+            <TrashSection activeFolderId={activeTrashFolder} />
         {:else if activeFolderId}
             <ContentSection {activeFolderId} />
         {/if}

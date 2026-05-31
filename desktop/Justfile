@@ -1,4 +1,2 @@
-set shell := ["powershell.exe", "-c"]
-
 run:
     pnpm tauri dev

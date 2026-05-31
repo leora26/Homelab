@@ -8,22 +8,6 @@ use actix_web::web::{Data, Json, Path, Query};
 use actix_web::{delete, get, patch, web, HttpResponse, Responder};
 use uuid::Uuid;
 
-#[get("/folders/{userId}/root")]
-pub async fn get_root_folder(app_state: Data<AppState>, id: Path<Uuid>) -> impl Responder {
-    let user_id = id.into_inner();
-
-    match app_state.folder_service.get_root(user_id).await {
-        Ok(Some(folder)) => HttpResponse::Ok().json(folder),
-        Ok(None) => HttpResponse::NotFound().body(format!(
-            "No root folder was found for user with id: {}",
-            user_id
-        )),
-        Err(e) => {
-            tracing::error!("Failed to fetch root folder: {:?}", e);
-            map_data_err_to_http(e)
-        }
-    }
-}
 
 #[get("/folders/{folderId}")]
 pub async fn get_folder_by_id(app_state: Data<AppState>, id: Path<Uuid>) -> impl Responder {
@@ -192,7 +176,6 @@ pub async fn filter_files_in_folder(
 }
 
 pub fn config(cfg: &mut web::ServiceConfig) {
-    cfg.service(get_root_folder);
     cfg.service(get_folder_by_id);
     cfg.service(get_all_subfolders);
     cfg.service(delete_folder);

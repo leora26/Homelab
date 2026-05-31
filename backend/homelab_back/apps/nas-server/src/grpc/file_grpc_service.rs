@@ -88,6 +88,7 @@ impl FileService for GrpcFileService {
             InitFileCommand::new(destination, internal_user_id, req.name, req.size, req.is_global);
 
         let file = self.app_state.file_service.upload(command).await?;
+        println!("{:#?}", file);
 
         Ok(Response::new(map_file_to_proto(file)))
     }

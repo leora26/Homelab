@@ -1,5 +1,3 @@
-set shell := ["powershell.exe", "-c"]
-
 # Variables for easy maintenance
 nas_pkg := "nas-server"
 user_pkg := "user-management"
