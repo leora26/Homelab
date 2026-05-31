@@ -204,24 +204,6 @@ pub async fn delete_chosen_file(
 }
 
 #[tauri::command]
-pub async fn empty_trash(state: tauri::State<'_, AppState>, user_id: String) -> Result<(), String> {
-    let mut client = FileServiceClient::new(state.nas_grpc_channel.clone());
-
-    let request = Request::new(RemoveAllDeletedFilesRequest {
-        user_id: Some(EntityId { value: user_id }),
-    });
-
-    let response = client
-        .remove_all_deleted_files(request)
-        .await
-        .map_err(|e| format!("Remove all deleted files failed: {}", e))?;
-
-    let _ = response.into_inner();
-
-    Ok(())
-}
-
-#[tauri::command]
 pub async fn remove_deleted_file(
     state: tauri::State<'_, AppState>,
     file_id: String,

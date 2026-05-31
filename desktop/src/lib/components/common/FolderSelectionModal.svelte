@@ -2,7 +2,7 @@
     import {safeInvoke} from "$lib/components/helpers/safeInvoke";
     import {userId} from "$lib/types/tempUserId";
     import type {FolderView} from "$lib/types/models";
-    import FolderTreeItem from "$lib/components/FolderTreeItem.svelte";
+    import FolderTreeItem from "$lib/components/folder/FolderTreeItem.svelte";
 
     interface Props {
         isOpen: boolean;

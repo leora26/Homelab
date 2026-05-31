@@ -12,7 +12,8 @@ service FolderService {
   rpc GetFolder (GetFolderRequest) returns (FolderResponse); // TODO: Maybe not needed
   rpc GetSubfolders (GetAllSubfoldersRequest) returns (FolderResponseList); // Done
   rpc GetFilesForFolder (GetFilesForFolderRequest) returns (FileListResponse); // Done
-  rpc GetTrashFilesForFolder (GetTrashFilesForFolderRequest) returns (FileListResponse);
+  rpc GetTrashFilesForFolder (GetTrashFilesForFolderRequest) returns (FileListResponse); // Done
+  rpc GetTrashSubfolderForFolder (GetTrashSubfoldersForFolderRequest) returns (FolderResponseList);
   rpc GetDeletedFolders (GetDeletedFoldersRequest) returns (FolderResponseList);
   rpc DeleteFolder (DeleteFolderRequest) returns (google.protobuf.Empty); // Done
   rpc RenameFolder (RenameFolderRequest) returns (FolderResponse); // Done
@@ -20,9 +21,10 @@ service FolderService {
   rpc DeleteChosenFolders (DeleteAllFolderRequest) returns (google.protobuf.Empty);
   rpc MoveFolder (MoveFolderRequest) returns (FolderResponse);
   rpc CreateFolder (CreateFolderRequest) returns (FolderResponse); // Done
-  rpc CleanUpDeletedFolder (CleanUpDeletedFoldersRequest) returns (google.protobuf.Empty);
+  rpc CleanUpDeletedFolder (CleanUpDeletedFolderRequest) returns (google.protobuf.Empty);
   rpc CleanUpTrash (CleanUpTrashRequest) returns (google.protobuf.Empty);
-//  Filter folder
+  rpc RestoreDeletedFolder (RestoreDeletedFolderRequest) returns (google.protobuf.Empty); // Done
+  //  Filter folder
 }
 
 message FolderResponse {
@@ -65,6 +67,10 @@ message GetTrashFilesForFolderRequest {
   common.EntityId id = 1;
 }
 
+message GetTrashSubfoldersForFolderRequest {
+  common.EntityId id = 1;
+}
+
 message GetFilesForFolderRequest {
   common.EntityId id = 1;
 }
@@ -90,11 +96,15 @@ message MoveFolderRequest {
   common.EntityId folder_id = 2;
 }
 
-message CleanUpDeletedFoldersRequest {
+message CleanUpDeletedFolderRequest {
   common.EntityId user_id = 1;
   common.EntityId folder_id = 2;
 }
 
 message CleanUpTrashRequest {
   common.EntityId user_id = 1;
+}
+
+message RestoreDeletedFolderRequest {
+  common.EntityId folder_id = 1;
 }

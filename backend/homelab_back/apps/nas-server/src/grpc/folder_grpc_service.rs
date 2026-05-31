@@ -6,7 +6,13 @@ use crate::AppState;
 use async_trait::async_trait;
 use derive_new::new;
 use homelab_proto::nas::folder_service_server::FolderService;
-use homelab_proto::nas::{CleanUpDeletedFoldersRequest, CleanUpTrashRequest, CreateFolderRequest, DeleteAllFolderRequest, DeleteFolderRequest, FileListResponse, FolderResponse, FolderResponseList, GetAllSubfoldersRequest, GetDeletedFoldersRequest, GetFilesForFolderRequest, GetFolderRequest, GetRootFolderRequest, GetTrashFilesForFolderRequest, MoveFolderRequest, RenameFolderRequest, SearchFolderRequest};
+use homelab_proto::nas::{
+    CleanUpDeletedFolderRequest, CleanUpTrashRequest, CreateFolderRequest, DeleteAllFolderRequest,
+    DeleteFolderRequest, FileListResponse, FolderResponse, FolderResponseList,
+    GetAllSubfoldersRequest, GetDeletedFoldersRequest, GetFilesForFolderRequest, GetFolderRequest,
+    GetRootFolderRequest, GetTrashFilesForFolderRequest, GetTrashSubfoldersForFolderRequest,
+    MoveFolderRequest, RenameFolderRequest, RestoreDeletedFolderRequest, SearchFolderRequest,
+};
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
 use uuid::Uuid;
@@ -114,6 +120,30 @@ impl FolderService for GrpcFolderService {
         let proto_files = files.into_iter().map(|f| map_file_to_proto(f)).collect();
 
         Ok(Response::new(FileListResponse { files: proto_files }))
+    }
+
+    async fn get_trash_subfolder_for_folder(
+        &self,
+        request: Request<GetTrashSubfoldersForFolderRequest>,
+    ) -> Result<Response<FolderResponseList>, Status> {
+        let req = request.into_inner();
+
+        let folder_id = map_entity_id(req.id)?;
+
+        let subfolder = self
+            .app_state
+            .folder_service
+            .get_trash_subfolder(folder_id)
+            .await?;
+
+        let proto_folders = subfolder
+            .into_iter()
+            .map(|f| map_folder_to_proto(f))
+            .collect();
+
+        Ok(Response::new(FolderResponseList {
+            folders: proto_folders,
+        }))
     }
 
     async fn get_deleted_folders(
@@ -248,22 +278,52 @@ impl FolderService for GrpcFolderService {
         Ok(Response::new(map_folder_to_proto(folder)))
     }
 
-    async fn clean_up_deleted_folder(&self, request: Request<CleanUpDeletedFoldersRequest>) -> Result<Response<()>, Status> {
+    async fn clean_up_deleted_folder(
+        &self,
+        request: Request<CleanUpDeletedFolderRequest>,
+    ) -> Result<Response<()>, Status> {
         let req = request.into_inner();
+
+        println!("Cleaning up deleted folder: {:?}", req);
 
         let folder_id = map_entity_id(req.folder_id)?;
         let user_id = map_entity_id(req.user_id)?;
 
-        self.app_state.folder_service.permanently_delete_folder(user_id, folder_id).await?;
+        self.app_state
+            .folder_service
+            .permanently_delete_folder(folder_id, user_id)
+            .await?;
 
         Ok(Response::new(()))
     }
 
-    async fn clean_up_trash(&self, request: Request<CleanUpTrashRequest>) -> Result<Response<()>, Status> {
+    async fn clean_up_trash(
+        &self,
+        request: Request<CleanUpTrashRequest>,
+    ) -> Result<Response<()>, Status> {
         let req = request.into_inner();
 
         let user_id = map_entity_id(req.user_id)?;
-        self.app_state.folder_service.clean_up_trash(user_id).await?;
+        self.app_state
+            .folder_service
+            .clean_up_trash(user_id)
+            .await?;
+
+        Ok(Response::new(()))
+    }
+
+    async fn restore_deleted_folder(
+        &self,
+        request: Request<RestoreDeletedFolderRequest>,
+    ) -> Result<Response<()>, Status> {
+        let req = request.into_inner();
+
+        let folder_id = map_entity_id(req.folder_id)?;
+
+        self.app_state
+            .folder_service
+            .restore_deleted_folder(folder_id)
+            .await?;
 
         Ok(Response::new(()))
     }

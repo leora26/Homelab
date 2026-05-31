@@ -31,5 +31,6 @@ export interface FileView {
     size: number,
     upload_status: string,
     created_at: string,
-    updated_at: string
+    updated_at: string,
+    hash: string
 }

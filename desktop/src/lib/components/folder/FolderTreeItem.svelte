@@ -6,7 +6,7 @@
     interface Props {
         folder: FolderView;
         activeFolderId: string | null;
-        onSelect: (folderId: string) => void;
+        onSelect: (folderId: string, isTrash: boolean) => void;
         onContextMenu: (e: MouseEvent, folderId: string, folderName: string) => void;
         depth?: number;
         treeVersion: number;
@@ -55,7 +55,7 @@
 
     async function handleToggle(event: MouseEvent) {
         event.stopPropagation();
-        onSelect(folder.id);
+        onSelect(folder.id, false);
         isExpanded = !isExpanded;
 
         if (isExpanded && !hasLoaded) {
