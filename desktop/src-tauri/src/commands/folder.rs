@@ -1,7 +1,7 @@
 use crate::common::EntityId;
 use crate::helpers::mappings::{map_file_proto_to_view, map_folder_proto_to_view};
 use crate::nas::folder_service_client::FolderServiceClient;
-use crate::nas::{CleanUpDeletedFoldersRequest, CleanUpTrashRequest, CreateFolderRequest, DeleteFolderRequest, GetAllSubfoldersRequest, GetDeletedFoldersRequest, GetFilesForFolderRequest, GetRootFolderRequest, GetTrashFilesForFolderRequest, RenameFolderRequest};
+use crate::nas::{CleanUpDeletedFolderRequest, CleanUpTrashRequest, CreateFolderRequest, DeleteFolderRequest, GetAllSubfoldersRequest, GetDeletedFoldersRequest, GetFilesForFolderRequest, GetRootFolderRequest, GetTrashFilesForFolderRequest, GetTrashSubfoldersForFolderRequest, RenameFolderRequest, RestoreDeletedFolderRequest};
 use crate::types::model::{FileView, FolderView};
 use crate::AppState;
 use tonic::Request;
@@ -168,7 +168,7 @@ pub async fn cleanup_deleted_folder(
 ) -> Result<(), String> {
     let mut client = FolderServiceClient::new(state.nas_grpc_channel.clone());
 
-    let request = tonic::Request::new(CleanUpDeletedFoldersRequest {
+    let request = tonic::Request::new(CleanUpDeletedFolderRequest {
         folder_id: Some(EntityId {
             value: deleted_folder_id.clone(),
         }),
@@ -195,16 +195,14 @@ pub async fn cleanup_trash(
     let mut client = FolderServiceClient::new(state.nas_grpc_channel.clone());
 
     let request = tonic::Request::new(CleanUpTrashRequest {
-        user_id: Some(EntityId { value: user_id.clone() }),
+        user_id: Some(EntityId {
+            value: user_id.clone(),
+        }),
     });
 
     client.clean_up_trash(request).await.map_err(|e| {
         eprintln!("🛑 gRPC Error: [{:?}] {}", e.code(), e.message());
-        format!(
-            "Failed to clean up trash {}: {}",
-            user_id,
-            e.message()
-        )
+        format!("Failed to clean up trash {}: {}", user_id, e.message())
     })?;
 
     Ok(())
@@ -218,7 +216,9 @@ pub async fn get_deleted_folder(
     let mut client = FolderServiceClient::new(state.nas_grpc_channel.clone());
 
     let request = tonic::Request::new(GetDeletedFoldersRequest {
-        owner_id: Some(EntityId {value: user_id.clone()}),
+        owner_id: Some(EntityId {
+            value: user_id.clone(),
+        }),
     });
 
     let response = client.get_deleted_folders(request).await.map_err(|e| {
@@ -251,17 +251,20 @@ pub async fn get_trash_files_by_folder(
     let request = tonic::Request::new(GetTrashFilesForFolderRequest {
         id: Some(EntityId {
             value: folder_id.clone(),
-        })
+        }),
     });
 
-    let response = client.get_trash_files_for_folder(request).await.map_err(|e| {
-        eprintln!("🛑 gRPC Error: [{:?}] {}", e.code(), e.message());
-        format!(
-            "Failed to fetch deleted files for folder {}: {}",
-            folder_id,
-            e.message()
-        )
-    });
+    let response = client
+        .get_trash_files_for_folder(request)
+        .await
+        .map_err(|e| {
+            eprintln!("🛑 gRPC Error: [{:?}] {}", e.code(), e.message());
+            format!(
+                "Failed to fetch deleted files for folder {}: {}",
+                folder_id,
+                e.message()
+            )
+        });
 
     let deleted_files = response?.into_inner();
 
@@ -272,6 +275,42 @@ pub async fn get_trash_files_by_folder(
         .collect();
 
     Ok(mapped_files)
+}
+
+#[tauri::command]
+pub async fn get_trash_subfolders_by_folder(
+    folder_id: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<Vec<FolderView>, String> {
+    let mut client = FolderServiceClient::new(state.nas_grpc_channel.clone());
+
+    let request = tonic::Request::new(GetTrashSubfoldersForFolderRequest {
+        id: Some(EntityId {
+            value: folder_id.clone(),
+        }),
+    });
+
+    let response = client
+        .get_trash_subfolder_for_folder(request)
+        .await
+        .map_err(|e| {
+            eprintln!("🛑 gRPC Error: [{:?}] {}", e.code(), e.message());
+            format!(
+                "Failed to fetch deleted subfolders for folder {}: {}",
+                folder_id,
+                e.message()
+            )
+        });
+
+    let deleted_subfolders = response?.into_inner();
+
+    let mapped_subfolders = deleted_subfolders
+        .folders
+        .into_iter()
+        .map(|f| map_folder_proto_to_view(f))
+        .collect();
+
+    Ok(mapped_subfolders)
 }
 
 #[tauri::command]
@@ -299,4 +338,29 @@ pub async fn rename_folder(
     let rename = response?.into_inner();
 
     Ok(map_folder_proto_to_view(rename))
+}
+
+#[tauri::command]
+pub async fn restore_folder(
+    folder_id: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), String> {
+    let mut client = FolderServiceClient::new(state.nas_grpc_channel.clone());
+
+    let request = tonic::Request::new(RestoreDeletedFolderRequest {
+        folder_id: Some(EntityId {
+            value: folder_id.clone(),
+        }),
+    });
+
+    client.restore_deleted_folder(request).await.map_err(|e| {
+        eprintln!("🛑 gRPC Error Code when restoring folder: {:?}", e.code());
+        format!(
+            "gRPC error details when restoring folder: [{:?}] {}",
+            e.code(),
+            e.message()
+        )
+    })?;
+
+    Ok(())
 }

@@ -1,80 +1,113 @@
 <script lang="ts">
-    import {onMount} from "svelte";
     import {safeInvoke} from "$lib/components/helpers/safeInvoke";
     import {userId} from "$lib/types/tempUserId";
-    import type {FileView} from "$lib/types/models";
+    import type {FileView, FolderView} from "$lib/types/models";
+    import DeletedItemsTable from "$lib/components/folder/DeletedItemsTable.svelte";
+    import FormModal from "$lib/components/common/FormModal.svelte";
 
     interface TrashSectionProps {
-        activeFolderId: string;
+        activeFolderId: string | null;
     }
 
-    const {activeFolderId}: TrashSectionProps = $props()
+    const {activeFolderId}: TrashSectionProps = $props();
 
     let isLoading = $state(true);
     let error = $state<string | null>(null);
     let deletedFiles = $state<FileView[]>([]);
+    let deletedSubfolder = $state<FolderView[]>([]);
+    let fetchId = 0;
 
-    async function fetchDeletedFiles() {
+    let showRestoreModal = $state(false);
+    let itemToRestore = $state<{ id: string, type: 'file' | 'folder' } | null>(null);
+
+    async function fetchDeletedFiles(folderId: string | null) {
+        const currentFetchId = ++fetchId;
         isLoading = true;
         error = null;
 
-        console.log("Fetching delete files for user: ", userId)
+        if (!folderId) {
+            const result = await safeInvoke<FileView[]>('get_deleted_files', {userId});
+            if (currentFetchId !== fetchId) return;
 
-        const result = await safeInvoke<FileView[]>('get_deleted_files', {
-            userId: userId
-        });
-
-        if (result.ok) {
-            deletedFiles = result.data;
+            if (result.ok) {
+                deletedFiles = result.data;
+            } else {
+                error = result.error;
+                console.error("Failed to fetch deleted files:", error);
+            }
+            deletedSubfolder = [];
         } else {
-            error = result.error;
-            console.error("Failed to fetch deleted files:", error);
+            const [filesResult, folderResult] = await Promise.all([
+                safeInvoke<FileView[]>('get_trash_files_by_folder', {folderId}),
+                safeInvoke<FolderView[]>('get_trash_subfolders_by_folder', {folderId})
+            ]);
+
+            if (currentFetchId !== fetchId) return;
+
+            if (filesResult.ok) deletedFiles = filesResult.data;
+            else error = filesResult.error;
+
+            if (folderResult.ok) deletedSubfolder = folderResult.data;
+            else error = folderResult.error;
         }
 
         isLoading = false;
     }
 
-    onMount(() => {
-        fetchDeletedFiles();
+    $effect(() => {
+        fetchDeletedFiles(activeFolderId);
     });
 
-    const restoreFile = async (fileId: string) => {
-        const result = await safeInvoke<FileView>('restore_file', {
-            fileId
-        })
+    const requestRestore = (id: string, type: 'file' | 'folder') => {
+        if (activeFolderId) {
+            itemToRestore = { id, type };
+            showRestoreModal = true;
+        } else {
+            executeRestore(id, type);
+        }
+    };
+
+    const executeRestore = async (id: string, type: 'file' | 'folder') => {
+        const endpoint = type === 'file' ? 'restore_file' : 'restore_folder';
+        const payload = type === 'file' ? { fileId: id } : { folderId: id };
+
+        const result = await safeInvoke(endpoint, payload);
 
         if (!result.ok) {
-            error = result.error;
-            console.error("Failed to restore a file: ", error)
+            error = result.error as string;
+            console.error(`Failed to restore ${type}:`, error);
         }
 
-        fetchDeletedFiles();
+        await fetchDeletedFiles(activeFolderId);
+    };
+
+    const confirmRestore = async (formData: Record<string, string | number>) => {
+        if (itemToRestore) {
+            await executeRestore(itemToRestore.id, itemToRestore.type);
+        }
+        closeModal();
+    };
+
+    const closeModal = () => {
+        showRestoreModal = false;
+        itemToRestore = null;
     };
 
     const permanentlyDeleteFile = async (fileId: string) => {
-        const result = await safeInvoke('remove_deleted_file', {
-            fileId
-        });
-
-        if (!result.ok) {
-            error = result.error;
-            console.error("Failed to permanantry delete a file: ", error)
-        }
-
-        fetchDeletedFiles();
+        const result = await safeInvoke('remove_deleted_file', {fileId});
+        if (!result.ok) error = result.error;
+        fetchDeletedFiles(activeFolderId);
+    };
+    const permanentlyDeleteFolder = async (folderId: string) => {
+        const result = await safeInvoke('cleanup_deleted_folder', {folderId});
+        if (!result.ok) error = result.error;
+        fetchDeletedFiles(activeFolderId);
     };
 
     const emptyTrash = async () => {
-        const result = await safeInvoke('empty_trash', {
-            userId: userId
-        });
-
-        if (!result.ok) {
-            error = result.error;
-            console.error("Failed to empty trash: ", error)
-        }
-
-        fetchDeletedFiles();
+        const result = await safeInvoke('empty_trash', {userId});
+        if (!result.ok) error = result.error;
+        fetchDeletedFiles(activeFolderId);
     }
 </script>
 
@@ -86,7 +119,7 @@
         </div>
         <button
                 class="btn danger"
-                disabled={deletedFiles.length === 0 || isLoading}
+                disabled={(deletedFiles.length === 0 && deletedSubfolder.length === 0) || isLoading}
                 onclick={emptyTrash}
         >
             Empty Trash
@@ -102,49 +135,37 @@
         {:else if error}
             <div class="full-center error">
                 ⚠️ {error}
-                <button class="btn secondary mt-1" onclick={fetchDeletedFiles}>Retry</button>
+                <button class="btn secondary mt-1" onclick={() => fetchDeletedFiles(activeFolderId)}>Retry</button>
             </div>
-        {:else if deletedFiles.length === 0}
+        {:else if deletedFiles.length === 0 && deletedSubfolder.length === 0}
             <div class="full-center empty-state">
                 <span class="large-icon">🗑️</span>
                 <h3>Trash is empty</h3>
-                <p>No deleted files found.</p>
+                <p>No deleted items found.</p>
             </div>
         {:else}
-            <table class="file-table">
-                <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Type</th>
-                    <th>Size (Bytes)</th>
-                    <th class="actions-col">Actions</th>
-                </tr>
-                </thead>
-                <tbody>
-                {#each deletedFiles as file (file.id)}
-                    <tr>
-                        <td class="file-name">
-                            <span class="icon">📄</span>
-                            {file.name}
-                        </td>
-                        <td>{file.file_type || 'Unknown'}</td>
-                        <td>{file.size}</td>
-                        <td class="actions-col">
-                            <button class="action-btn restore" onclick={() => restoreFile(file.id)} title="Restore">
-                                ↩️
-                            </button>
-                            <button class="action-btn delete" onclick={() => permanentlyDeleteFile(file.id)}
-                                    title="Permanently Delete">
-                                ❌
-                            </button>
-                        </td>
-                    </tr>
-                {/each}
-                </tbody>
-            </table>
+            <DeletedItemsTable
+                    files={deletedFiles}
+                    folders={deletedSubfolder}
+                    onRestoreFile={(id) => requestRestore(id, 'file')}
+                    onDeleteFile={permanentlyDeleteFile}
+                    onRestoreFolder={(id) => requestRestore(id, 'folder')}
+                    onDeleteFolder={permanentlyDeleteFolder}
+            />
         {/if}
     </div>
 </div>
+
+<FormModal
+        isOpen={showRestoreModal}
+        title="Confirm Restore"
+        description={`The parent folder for this item is currently in the trash. Restoring this ${itemToRestore?.type || 'item'} will move it directly to your Root Folder. Do you want to proceed?`}
+        fields={[]}
+        submitText="Confirm Restore"
+        loadingText="Restoring..."
+        onClose={closeModal}
+        onSubmit={confirmRestore}
+/>
 
 <style>
     .trash-container {
@@ -163,7 +184,7 @@
         align-items: center;
         padding: 1.5rem;
         border-bottom: 1px solid #e1e4e8;
-        background: #fdfdfd;
+        background: #ffd3d3;
     }
 
     .trash-header h2 {
@@ -181,69 +202,9 @@
     .trash-content {
         flex: 1;
         overflow-y: auto;
+        padding-bottom: 2rem;
     }
 
-    /* --- Table Styles --- */
-    .file-table {
-        width: 100%;
-        border-collapse: collapse;
-        text-align: left;
-    }
-
-    .file-table th {
-        position: sticky;
-        top: 0;
-        background: #f8f9fa;
-        padding: 0.75rem 1.5rem;
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: #4a5568;
-        border-bottom: 1px solid #e1e4e8;
-    }
-
-    .file-table td {
-        padding: 0.75rem 1.5rem;
-        border-bottom: 1px solid #f0f2f5;
-        font-size: 0.9rem;
-        color: #1e1e2f;
-        vertical-align: middle;
-    }
-
-    .file-table tbody tr:hover {
-        background: #fdfdfd;
-    }
-
-    .file-name {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-weight: 500;
-    }
-
-    .actions-col {
-        text-align: right;
-        width: 120px;
-    }
-
-    .action-btn {
-        background: none;
-        border: none;
-        cursor: pointer;
-        padding: 0.4rem;
-        border-radius: 4px;
-        font-size: 1.1rem;
-        transition: background 0.2s;
-    }
-
-    .action-btn.restore:hover {
-        background: #e6f4ea;
-    }
-
-    .action-btn.delete:hover {
-        background: #ffebee;
-    }
-
-    /* --- Utility Styles --- */
     .btn {
         padding: 0.5rem 1rem;
         border-radius: 6px;

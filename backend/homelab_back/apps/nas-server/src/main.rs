@@ -159,7 +159,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let event_handler = Arc::new(NasEventHandler::new(storage_profile_service.clone(), clean_up_service.clone()));
 
     tokio::spawn(async move {
-        let patterns = vec!["user.#", "file.#"];
+        let patterns = vec!["user.#", "file.#", "cleanup.#"];
 
         if let Err(e) = RabbitMqConsumer::start(&rabbit_url, event_handler, patterns).await {
             eprintln!("🔥 Consumer died: {}", e);

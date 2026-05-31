@@ -36,6 +36,7 @@ pub trait FolderService: Send + Sync {
     async fn create(&self, command: CreateFolderCommand) -> Result<Folder, DataError>;
     async fn move_folder(&self, command: MoveFolderCommand) -> Result<Folder, DataError>;
     async fn get_trash_files(&self, folder_id: Uuid) -> Result<Vec<File>, DataError>;
+    async fn get_trash_subfolder(&self, folder_id: Uuid) -> Result<Vec<Folder>, DataError>;
     async fn get_deleted_folders(&self, user_id: Uuid) -> Result<Vec<Folder>, DataError>;
     async fn clean_up_trash(&self, user_id: Uuid) -> Result<(), DataError>;
     async fn permanently_delete_folder(&self, folder_id: Uuid, user_id: Uuid) -> Result<(), DataError>;
@@ -156,6 +157,10 @@ impl FolderService for FolderServiceImpl {
         self.folder_repo.get_trash_file_for_folder(folder_id).await
     }
 
+    async fn get_trash_subfolder(&self, folder_id: Uuid) -> Result<Vec<Folder>, DataError> {
+        self.folder_repo.get_trash_subfolder_for_folder(folder_id).await
+    }
+
     async fn get_deleted_folders(&self, user_id: Uuid) -> Result<Vec<Folder>, DataError> {
         self.folder_repo.get_deleted_folders(user_id).await
     }
@@ -177,7 +182,7 @@ impl FolderService for FolderServiceImpl {
     }
 
     async fn permanently_delete_folder(&self, folder_id: Uuid, user_id: Uuid) -> Result<(), DataError> {
-        
+        println!("Cleaning up deleted folder: {:?}", folder_id);
         let folder = self.folder_repo.get_by_id(folder_id).await?
             .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
         
@@ -201,9 +206,22 @@ impl FolderService for FolderServiceImpl {
     }
 
     async fn restore_deleted_folder(&self, folder_id: Uuid) -> Result<(), DataError> {
-        let folder  = self.folder_repo.get_by_id(folder_id).await?
+        let mut folder = self.folder_repo.get_by_id(folder_id).await?
             .ok_or_else(|| DataError::EntityNotFoundException("Folder".to_string()))?;
-        
+
+        let parent_folder = self.folder_repo.get_by_id(folder.parent_folder_id.unwrap())
+            .await?
+            .ok_or_else(|| DataError::EntityNotFoundException("Folder".to_string()))?;
+
+        let root_folder = self.folder_repo.get_root(folder.owner_id)
+            .await?.ok_or_else(|| DataError::EntityNotFoundException("Folder".to_string()))?;
+
+        if parent_folder.is_deleted {
+            folder.update_parent_folder(root_folder.id);
+
+            let _f = self.folder_repo.update_folder(folder).await?;
+        }
+
         self.folder_repo.restore_deleted_folder(folder_id).await
     }
 }

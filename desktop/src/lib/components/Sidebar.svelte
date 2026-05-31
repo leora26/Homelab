@@ -27,7 +27,7 @@
         <li>
             <a href="/nas">
                 <span class="icon">📁</span>
-                <span class="label">NAS Storage</span>
+                <span class="label">Storage (NAS)</span>
             </a>
         </li>
         <li>

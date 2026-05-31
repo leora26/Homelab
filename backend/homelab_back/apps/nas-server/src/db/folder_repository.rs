@@ -24,6 +24,7 @@ pub trait FolderRepository: Send + Sync {
     async fn mark_folder_deleted(&self, folder_id: Uuid) -> Result<(), DataError>;
     async fn mark_folders_deleted(&self, folder_ids: &[Uuid]) -> Result<(), DataError>;
     async fn get_trash_file_for_folder(&self, folder_id: Uuid) -> Result<Vec<File>, DataError>;
+    async fn get_trash_subfolder_for_folder(&self, folder_id: Uuid) -> Result<Vec<Folder>, DataError>;
     async fn get_deleted_folders(&self, user_id: Uuid) -> Result<Vec<Folder>, DataError>;
     async fn hard_delete_folder_tree(&self, folder_id: Uuid) -> Result<(), DataError>;
     async fn hard_delete_all_trashed_folders(&self, user_id: Uuid) -> Result<(), DataError>;
@@ -354,6 +355,22 @@ impl FolderRepository for FolderRepositoryImpl {
         Ok(f)
     }
 
+    async fn get_trash_subfolder_for_folder(&self, folder_id: Uuid) -> Result<Vec<Folder>, DataError> {
+        let deleted_subfolder = sqlx::query_as!(
+            Folder,
+            r#"
+        SELECT f.* FROM folders f
+        WHERE f.is_deleted = true AND f.parent_folder_id = $1
+        "#,
+            folder_id
+        )
+            .fetch_all(&self.pool)
+        .await
+        .map_err(|e| DataError::DatabaseError(e))?;
+
+        Ok(deleted_subfolder)
+    }
+
     async fn get_deleted_folders(&self, user_id: Uuid) -> Result<Vec<Folder>, DataError> {
         let deleted_folders: Vec<Folder> = sqlx::query_as!(
             Folder,
@@ -424,13 +441,13 @@ impl FolderRepository for FolderRepositoryImpl {
             r#"
         WITH RECURSIVE folder_tree AS (
             SELECT id FROM folders WHERE id = $1
-            
+
             UNION ALL
-            
+
             SELECT f.id FROM folders f
             INNER JOIN folder_tree ft ON f.parent_folder_id = ft.id
         )
-        UPDATE files 
+        UPDATE files
         SET is_deleted = false
         WHERE parent_folder_id IN (SELECT id FROM folder_tree);
         "#,

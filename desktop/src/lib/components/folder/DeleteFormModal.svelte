@@ -34,7 +34,7 @@
 <FormModal
         isOpen={isOpen}
         title="Delete Folder"
-        description="Are you sure you want to permanently delete this folder? This action cannot be undone and subfolder and files withing this folder will be permanently deleted."
+        description="Are you sure you want to permanently delete this folder? You will be able to restore this folder in the Trash section together with all the files and subfolders of it."
         fields={[]}
         submitText="Yes, Delete"
         loadingText="Deleting..."

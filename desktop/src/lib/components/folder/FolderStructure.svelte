@@ -5,10 +5,12 @@
     import TrashDirectoryTree from "$lib/components/folder/TrashDirectoryTree.svelte";
     import ActiveDirectoryTree from "$lib/components/folder/ActiveDirectoryTree.svelte";
     import FolderContextMenu from "$lib/components/folder/FolderContextMenu.svelte";
+    import {safeInvoke} from "$lib/components/helpers/safeInvoke";
+    import {userId} from "$lib/types/tempUserId";
 
     interface FolderStructureProps {
         activeFolderId: string | null;
-        onActiveFolderChange: (folderId: string, isTrash: boolean) => void;
+        onActiveFolderChange: (folderId: string | null, isTrash: boolean) => void;
         onRequestNewFolder: (parentId: string) => void;
         treeVersion: number;
     }
@@ -33,7 +35,7 @@
     const toggleTrashMode = () => {
         if (viewMode === "active") {
             viewMode = "trash";
-            onActiveFolderChange('TRASH_ROOT', true);
+            onActiveFolderChange(null, true);
         } else {
             viewMode = "active";
             if (rootFolder) {
@@ -61,6 +63,30 @@
         if (contextMenu.targetId === rootFolder?.id) return;
         isDeleteModalOpen = true;
     };
+
+    const triggerRestore = async () => {
+        if (!contextMenu.targetId) return;
+        console.log("Trying to restore a folder: ", contextMenu.targetId)
+        const result = await safeInvoke('restore_folder', {
+            folderId: contextMenu.targetId
+        });
+
+        if (!result.ok){
+            console.error("Failed to restore folder", result.error);
+        }
+    }
+
+    const triggerRemove = async () => {
+        if (!contextMenu.targetId) return;
+        const result = await safeInvoke('cleanup_deleted_folder', {
+            deletedFolderId: contextMenu.targetId,
+            userId: userId
+        });
+
+        if (!result.ok) {
+            console.error("Failed to permanently delete a folder: ", contextMenu.targetId, result.error);
+        }
+    }
 
     const triggerRename = () => {
         if (contextMenu.targetId === rootFolder?.id) return;
@@ -131,14 +157,14 @@
                 triggerDelete();
                 closeContextMenu();
             }}
-            onRestore={() => {
-                // TODO: Implement Restore API call here
+            onRestore={ async () => {
+                await triggerRestore();
                 console.log("Restoring folder:", contextMenu.targetId);
                 closeContextMenu();
                 treeVersion++; // Trigger tree refresh after restore
             }}
-            onRemove={() => {
-                // TODO: Open Hard Delete Confirmation Modal
+            onRemove={ async () => {
+                await triggerRemove();
                 console.log("Permanently deleting:", contextMenu.targetId);
                 closeContextMenu();
             }}
