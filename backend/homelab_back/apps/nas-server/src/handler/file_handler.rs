@@ -11,7 +11,7 @@ async fn download_file(
 ) -> actix_web::Result<NamedFile> {
     let id = file_id.into_inner();
 
-    let path = match app_state.file_service.get_file_for_streaming(id).await {
+    let path = match app_state.file_read_service.get_file_for_streaming(id).await {
         Ok(path) => path,
         Err(e) => {
             tracing::error!("Failed to download a file: {:?}", e);

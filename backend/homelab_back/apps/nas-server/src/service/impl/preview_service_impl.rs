@@ -6,10 +6,7 @@ use std::path::PathBuf;
 use std::process::Stdio;
 use tokio::process::Command;
 use tokio::task;
-
-pub trait PreviewService {
-    fn spawn_generation(file: File, storage_path: PathBuf);
-}
+use crate::service::contract::preview_service::PreviewService;
 
 #[derive(new)]
 pub struct PreviewServiceImpl;
@@ -27,7 +24,7 @@ impl PreviewService for PreviewServiceImpl {
                     task::spawn_blocking(move || {
                         Self::generate_image_preview(&file_path, &preview_path)
                     })
-                    .await
+                        .await
                 }
                 FileType::Video => {
                     let f_path = file_path.to_string_lossy().to_string();
@@ -179,7 +176,7 @@ impl PreviewServiceImpl {
             image::ColorType::Rgba8,
             image::ImageFormat::Jpeg,
         )
-        .map_err(|e| format!("Disk Write Error: {}", e))?;
+            .map_err(|e| format!("Disk Write Error: {}", e))?;
 
         Ok(())
     }

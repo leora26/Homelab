@@ -14,17 +14,7 @@ use crate::db::global_file_repository::GlobalFileRepositoryImpl;
 use crate::db::label_repository::LabelRepositoryImpl;
 use crate::db::shared_file_repository::SharedFileRepositoryImpl;
 use crate::db::storage_profile_repository::StorageProfileRepositoryImpl;
-
-// TODO: add all other Grpc servers
 use homelab_proto::nas::file_service_server::FileServiceServer;
-
-use crate::service::file_label_service::{FileLabelService, FileLabelServiceImpl};
-use crate::service::file_service::{FileService, FileServiceImpl};
-use crate::service::folder_service::{FolderService, FolderServiceImpl};
-use crate::service::global_file_service::{GlobalFileService, GlobalFileServiceImpl};
-use crate::service::label_service::{LabelService, LabelServiceImpl};
-use crate::service::shared_file_service::{SharedFileService, SharedFileServiceImpl};
-
 use crate::events::nas_event_handler::NasEventHandler;
 use crate::events::rabbitmq::RabbitMqPublisher;
 use crate::grpc::file_grpc_service::GrpcFileService;
@@ -34,8 +24,6 @@ use crate::grpc::global_file_grpc_service::GrpcGlobalFileService;
 use crate::grpc::grpc_label_service::GrpcLabelService;
 use crate::grpc::storage_profile_grpc_service::GrpcStorageProfileService;
 use crate::jobs::delete_cron_job::init_delete_job;
-use crate::service::clean_up_service::CleanUpServiceImpl;
-use crate::service::storage_profile_service::{StorageProfileService, StorageProfileServiceImpl};
 use actix_web::{web, App, HttpServer};
 use dotenvy::dotenv;
 use homelab_core::helpers::rabbitmq_consumer::RabbitMqConsumer;
@@ -51,16 +39,37 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tonic::transport::Server;
 use tracing_subscriber::EnvFilter;
+use crate::service::contract::file_label_service::FileLabelService;
+use crate::service::contract::file_read_service::FileReadService;
+use crate::service::contract::file_write_service::FileWriteService;
+use crate::service::contract::folder_read_service::FolderReadService;
+use crate::service::contract::folder_write_service::FolderWriteService;
+use crate::service::contract::global_file_service::GlobalFileService;
+use crate::service::contract::label_service::LabelService;
+use crate::service::contract::shared_file_service::SharedFileService;
+use crate::service::contract::sp_service::StorageProfileService;
+use crate::service::r#impl::clean_up_service_impl::CleanUpServiceImpl;
+use crate::service::r#impl::file_label_service_impl::FileLabelServiceImpl;
+use crate::service::r#impl::file_read_service_impl::FileReadServiceImpl;
+use crate::service::r#impl::file_write_service_impl::FileWriteServiceImpl;
+use crate::service::r#impl::folder_read_service_impl::FolderReadServiceImpl;
+use crate::service::r#impl::folder_write_service_impl::FolderWriteServiceImpl;
+use crate::service::r#impl::global_file_service_impl::GlobalFileServiceImpl;
+use crate::service::r#impl::label_service_impl::LabelServiceImpl;
+use crate::service::r#impl::shared_file_service_impl::SharedFileServiceImpl;
+use crate::service::r#impl::sp_service_impl::StorageProfileServiceImpl;
 
 pub struct AppState {
-    pub file_service: Arc<dyn FileService>,
-    pub folder_service: Arc<dyn FolderService>,
+    pub file_write_service: Arc<dyn FileWriteService>,
+    pub folder_read_service: Arc<dyn FolderReadService>,
     pub shared_file_service: Arc<dyn SharedFileService>,
     pub file_repo: Arc<dyn FileRepository>,
     pub global_file_service: Arc<dyn GlobalFileService>,
     pub label_service: Arc<dyn LabelService>,
     pub file_label_service: Arc<dyn FileLabelService>,
     pub storage_profile_service: Arc<dyn StorageProfileService>,
+    pub file_read_service: Arc<dyn FileReadService>,
+    pub folder_write_service: Arc<dyn FolderWriteService>,
 }
 
 #[actix_web::main]
@@ -113,11 +122,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let label_repo = Arc::new(LabelRepositoryImpl::new(pool.clone()));
     let file_label_repo = Arc::new(FileLabelRepositoryImpl::new(pool.clone()));
 
-    let folder_service = Arc::new(FolderServiceImpl::new(
+    let folder_read_service = Arc::new(FolderReadServiceImpl::new(
+        folder_repo.clone(),
+    ));
+
+    let folder_write_service = Arc::new(FolderWriteServiceImpl::new(
         folder_repo.clone(),
         publisher.clone(),
     ));
-    let file_service = Arc::new(FileServiceImpl::new(
+    
+    let file_write_service = Arc::new(FileWriteServiceImpl::new(
         file_repo.clone(),
         folder_repo.clone(),
         storage_profile_repo.clone(),
@@ -125,6 +139,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
         global_file_repo.clone(),
         publisher.clone(),
     ));
+    let file_read_service = Arc::new(FileReadServiceImpl::new(
+        file_repo.clone(),
+        root_path.to_path_buf(),
+    ));
+    
     let shared_file_service = Arc::new(SharedFileServiceImpl::new(
         share_file_repo.clone(),
         storage_profile_repo.clone(),
@@ -171,14 +190,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
     });
 
     let app_state = web::Data::new(AppState {
-        file_service,
-        folder_service,
+        file_write_service,
+        folder_read_service,
         shared_file_service,
         file_repo: file_repo.clone(),
         global_file_service,
         label_service,
         file_label_service,
         storage_profile_service,
+        file_read_service,
+        folder_write_service,
     });
 
     let rest_addr = ("0.0.0.0", 8080);

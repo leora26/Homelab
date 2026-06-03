@@ -1,9 +1,2 @@
-pub mod file_label_service;
-pub mod file_service;
-pub mod folder_service;
-pub mod global_file_service;
-pub mod label_service;
-pub mod preview_service;
-pub mod shared_file_service;
-pub mod storage_profile_service;
-pub mod clean_up_service;
+pub mod contract;
+pub mod r#impl;

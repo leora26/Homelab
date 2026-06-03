@@ -1,24 +1,18 @@
-use crate::db::file_repository::FileRepository;
-use crate::db::folder_repository::FolderRepository;
-use crate::helpers::data_error::DataError;
-use crate::service::storage_profile_service::StorageProfileService;
-use async_trait::async_trait;
-use derive_new::new;
-use futures::stream::{self, StreamExt};
-use homelab_core::events::{DeletionType, TrashCleanUpTriggeredEvent};
-use homelab_core::file::File;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
+use async_trait::async_trait;
+use derive_new::new;
 use tokio::fs;
 use uuid::Uuid;
-
-#[async_trait]
-pub trait CleanUpService: Send + Sync {
-    async fn handle_trash_delete(&self, event: TrashCleanUpTriggeredEvent)
-        -> Result<(), DataError>;
-    async fn hard_delete_all_trash(&self) -> Result<(), DataError>;
-}
+use homelab_core::events::{DeletionType, TrashCleanUpTriggeredEvent};
+use homelab_core::file::File;
+use crate::db::file_repository::FileRepository;
+use crate::db::folder_repository::FolderRepository;
+use crate::helpers::data_error::DataError;
+use crate::service::contract::clean_up_service::CleanUpService;
+use futures::stream::{self, StreamExt};
+use crate::service::contract::sp_service::StorageProfileService;
 
 #[derive(new)]
 pub struct CleanUpServiceImpl {

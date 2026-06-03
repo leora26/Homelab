@@ -3,8 +3,8 @@ use async_trait::async_trait;
 use derive_new::new;
 use homelab_core::events::{TrashCleanUpTriggeredEvent, UserCreatedEvent};
 use homelab_core::helpers::event_handler::EventHandler;
-use crate::service::clean_up_service::CleanUpService;
-use crate::service::storage_profile_service::StorageProfileService;
+use crate::service::contract::clean_up_service::CleanUpService;
+use crate::service::contract::sp_service::StorageProfileService;
 
 #[derive(new)]
 pub struct NasEventHandler {
