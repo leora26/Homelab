@@ -34,6 +34,7 @@ use crate::grpc::global_file_grpc_service::GrpcGlobalFileService;
 use crate::grpc::grpc_label_service::GrpcLabelService;
 use crate::grpc::storage_profile_grpc_service::GrpcStorageProfileService;
 use crate::jobs::delete_cron_job::init_delete_job;
+use crate::service::clean_up_service::CleanUpServiceImpl;
 use crate::service::storage_profile_service::{StorageProfileService, StorageProfileServiceImpl};
 use actix_web::{web, App, HttpServer};
 use dotenvy::dotenv;
@@ -50,7 +51,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tonic::transport::Server;
 use tracing_subscriber::EnvFilter;
-use crate::service::clean_up_service::CleanUpServiceImpl;
 
 pub struct AppState {
     pub file_service: Arc<dyn FileService>,
@@ -70,10 +70,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .init();
 
     dotenv().ok();
-
-    let server_mode = env::var("SERVER_MODE")
-        .unwrap_or_else(|_| "hybrid".to_string())
-        .to_lowercase();
 
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set in .env file");
 
@@ -117,7 +113,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let label_repo = Arc::new(LabelRepositoryImpl::new(pool.clone()));
     let file_label_repo = Arc::new(FileLabelRepositoryImpl::new(pool.clone()));
 
-    let folder_service = Arc::new(FolderServiceImpl::new(folder_repo.clone(), publisher.clone()));
+    let folder_service = Arc::new(FolderServiceImpl::new(
+        folder_repo.clone(),
+        publisher.clone(),
+    ));
     let file_service = Arc::new(FileServiceImpl::new(
         file_repo.clone(),
         folder_repo.clone(),
@@ -142,8 +141,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
         file_label_repo.clone(),
         storage_profile_repo.clone(),
     ));
-    let storage_profile_service =
-        Arc::new(StorageProfileServiceImpl::new(storage_profile_repo.clone(), publisher.clone()));
+    let storage_profile_service = Arc::new(StorageProfileServiceImpl::new(
+        storage_profile_repo.clone(),
+        publisher.clone(),
+    ));
     let clean_up_service = Arc::new(CleanUpServiceImpl::new(
         folder_repo.clone(),
         file_repo.clone(),
@@ -156,7 +157,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let rabbit_url = std::env::var("RABBITMQ_URL")
         .unwrap_or_else(|_| "amqp://admin:password@localhost:5672".to_string());
 
-    let event_handler = Arc::new(NasEventHandler::new(storage_profile_service.clone(), clean_up_service.clone()));
+    let event_handler = Arc::new(NasEventHandler::new(
+        storage_profile_service.clone(),
+        clean_up_service.clone(),
+    ));
 
     tokio::spawn(async move {
         let patterns = vec!["user.#", "file.#", "cleanup.#"];
@@ -180,87 +184,44 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let rest_addr = ("0.0.0.0", 8080);
     let grpc_addr: std::net::SocketAddr = "[::1]:50051".parse().unwrap();
 
-    println!(
-        "System starting in [{}] mode...",
-        server_mode.to_uppercase()
-    );
+    println!("🚀 Starting gRPC Server only at {}", grpc_addr);
+    let app_state_arc = app_state.clone().into_inner();
 
-    match server_mode.as_str() {
-        "rest" => {
-            println!(
-                "🚀 Starting REST Server only at http://{}:{}",
-                rest_addr.0, rest_addr.1
-            );
-            HttpServer::new(move || {
-                App::new()
-                    .app_data(app_state.clone())
-                    .configure(handler_config)
-            })
-            .bind(rest_addr)?
-            .run()
-            .await?;
+    let file_impl = GrpcFileService::new(app_state_arc.clone());
+    let folder_impl = GrpcFolderService::new(app_state_arc.clone());
+    let file_label_impl = GrpcFileLabelService::new(app_state_arc.clone());
+    let global_file_impl = GrpcGlobalFileService::new(app_state_arc.clone());
+    let label_impl = GrpcLabelService::new(app_state_arc.clone());
+    let storage_profile_impl = GrpcStorageProfileService::new(app_state_arc.clone());
+
+    let grpc_server =
+    Server::builder()
+        .add_service(FileServiceServer::new(file_impl))
+        .add_service(FolderServiceServer::new(folder_impl))
+        .add_service(FileLabelServiceServer::new(file_label_impl))
+        .add_service(GlobalFileServiceServer::new(global_file_impl))
+        .add_service(LabelServiceServer::new(label_impl))
+        .add_service(StorageProfileServiceServer::new(storage_profile_impl))
+        .serve(grpc_addr);
+
+    tokio::spawn(async move {
+        if let Err(e) = grpc_server.await {
+            eprintln!("gRPC Server crashed: {}", e);
         }
-        "grpc" => {
-            println!("🚀 Starting gRPC Server only at {}", grpc_addr);
-            let app_state_arc = app_state.clone().into_inner();
+    });
 
-            let file_impl = GrpcFileService::new(app_state_arc.clone());
-            let folder_impl = GrpcFolderService::new(app_state_arc.clone());
-            let file_label_impl = GrpcFileLabelService::new(app_state_arc.clone());
-            let global_file_impl = GrpcGlobalFileService::new(app_state_arc.clone());
-            let label_impl = GrpcLabelService::new(app_state_arc.clone());
-            let storage_profile_impl = GrpcStorageProfileService::new(app_state_arc.clone());
-
-            Server::builder()
-                .add_service(FileServiceServer::new(file_impl))
-                .add_service(FolderServiceServer::new(folder_impl))
-                .add_service(FileLabelServiceServer::new(file_label_impl))
-                .add_service(GlobalFileServiceServer::new(global_file_impl))
-                .add_service(LabelServiceServer::new(label_impl))
-                .add_service(StorageProfileServiceServer::new(storage_profile_impl))
-                .serve(grpc_addr)
-                .await?;
-        }
-        "hybrid" => {
-            println!("🚀 Starting Hybrid Mode (REST + gRPC)");
-
-            let app_state_arc = app_state.clone().into_inner();
-
-            let file_impl = GrpcFileService::new(app_state_arc.clone());
-
-            let grpc_handle = Server::builder()
-                .add_service(FileServiceServer::new(file_impl))
-                .serve(grpc_addr);
-
-            println!(
-                "   - REST listening at http://{}:{}",
-                rest_addr.0, rest_addr.1
-            );
-            HttpServer::new(move || {
-                App::new()
-                    .app_data(app_state.clone())
-                    .configure(handler_config)
-            })
-            .bind(rest_addr)?
-            .run()
-            .await?;
-
-            let _ = grpc_handle.await;
-        }
-        _ => panic!(
-            "Invalid SERVER_MODE: {}. Use 'rest', 'grpc', or 'hybrid'",
-            server_mode
-        ),
-    }
+    HttpServer::new(move || {
+        App::new()
+            .app_data(app_state.clone())
+            .configure(handler_config)
+    })
+        .bind(rest_addr)?
+        .run()
+        .await?;
 
     Ok(())
 }
 
 fn handler_config(cfg: &mut web::ServiceConfig) {
-    cfg.service(
-        web::scope("/api")
-            .configure(handler::folder_handler::config)
-            .configure(handler::file_handler::config)
-            .configure(handler::shared_file_handler::config),
-    );
+    cfg.service(web::scope("/api").configure(handler::file_handler::config));
 }
