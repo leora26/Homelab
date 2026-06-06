@@ -16,6 +16,7 @@
     let isTrashActive = $state(false);
 
     let treeVersion = $state(0);
+    let fileVersion = $state(0);
 
     const handleActiveFolderChange = (folderId: string | null, isTrash: boolean) => {
         if (isTrash) {
@@ -68,6 +69,7 @@
     <NasToolbar
             openNewFolderModal={openNewFolderModal}
             activeFolderId={activeFolderId}
+            onUploadComplete={() => fileVersion++}
     />
 
     <main class="split-view">
@@ -81,7 +83,7 @@
         {#if isTrashActive}
             <TrashSection activeFolderId={activeTrashFolder} />
         {:else if activeFolderId}
-            <ContentSection {activeFolderId} />
+            <ContentSection {activeFolderId} fileVersion={fileVersion} />
         {/if}
     </main>
 </div>

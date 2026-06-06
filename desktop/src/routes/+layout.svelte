@@ -1,5 +1,6 @@
 <script lang="ts">
     import Sidebar from "$lib/components/Sidebar.svelte";
+    import NotificationManager from "$lib/components/common/NotificationManager.svelte";
     let { children } = $props();
 </script>
 

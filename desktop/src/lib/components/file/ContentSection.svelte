@@ -6,12 +6,12 @@
     import {safeInvoke} from "$lib/components/helpers/safeInvoke";
     import FolderSelectionModal from "$lib/components/common/FolderSelectionModal.svelte";
     import FileContextMenu from "$lib/components/file/FileContextMenu.svelte";
-    import {formatBytes} from "$lib/components/helpers/file/formatBytes";
-    import {getFileIcon} from "$lib/components/helpers/file/getFileIcon";
     import PreviewSection from "$lib/components/file/PreviewSection.svelte";
+    import NotificationManager from "$lib/components/common/NotificationManager.svelte";
 
     interface ContentSectionProps {
-        activeFolderId: string
+        activeFolderId: string;
+        fileVersion: number;
     }
 
     export interface IFileContextMenu {
@@ -22,7 +22,10 @@
         targetName: string;
     }
 
-    const {activeFolderId}: ContentSectionProps = $props();
+    const {
+        activeFolderId,
+        fileVersion
+    }: ContentSectionProps = $props();
 
     let files = $state<FileView[]>([]);
     let isLoading = $state(false);
@@ -59,6 +62,7 @@
     }
 
     $effect(() => {
+        fileVersion;
         fetchFiles();
     });
 
@@ -256,13 +260,17 @@
 
     {#if selectedFile}
         <PreviewSection
-            selectedFile={selectedFile}
-            closePreview={() => {
-                selectedFile = null
-            }}
+                selectedFile={selectedFile}
+                closePreview={() => { selectedFile = null }}
+                triggerRename={triggerRename}
+                triggerCopy={triggerCopy}
+                triggerMove={triggerMove}
+                triggerDelete={() => triggerDelete(selectedFile!.id)}
+                triggerArchive={triggerArchive}
+                triggerUnarchive={triggerUnarchive}
         />
     {/if}
-</section>>
+</section>
 
 {#if contextMenu.isOpen}
     <FileContextMenu
@@ -340,6 +348,8 @@
         }}
         onSubmit={confirmCopyFile}
 />
+
+<NotificationManager />
 
 <style>
     .content-pane-wrapper {
