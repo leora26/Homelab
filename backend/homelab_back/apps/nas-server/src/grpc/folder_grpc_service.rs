@@ -34,7 +34,7 @@ impl FolderService for GrpcFolderService {
 
         let folder = self
             .app_state
-            .folder_service
+            .folder_read_service
             .get_root(user_id)
             .await?
             .ok_or_else(|| Status::not_found(format!("Failed to find root {}", user_id)))?;
@@ -52,7 +52,7 @@ impl FolderService for GrpcFolderService {
 
         let folder = self
             .app_state
-            .folder_service
+            .folder_read_service
             .get_by_id(folder_id)
             .await?
             .ok_or_else(|| Status::not_found(format!("No folder found with id: {}", folder_id)))?;
@@ -70,7 +70,7 @@ impl FolderService for GrpcFolderService {
 
         let folders = self
             .app_state
-            .folder_service
+            .folder_read_service
             .get_children_by_id(folder_id)
             .await?;
 
@@ -94,7 +94,7 @@ impl FolderService for GrpcFolderService {
 
         let files = self
             .app_state
-            .folder_service
+            .folder_read_service
             .get_by_folder(folder_id)
             .await?;
 
@@ -113,7 +113,7 @@ impl FolderService for GrpcFolderService {
 
         let files = self
             .app_state
-            .folder_service
+            .folder_read_service
             .get_trash_files(folder_id)
             .await?;
 
@@ -132,7 +132,7 @@ impl FolderService for GrpcFolderService {
 
         let subfolder = self
             .app_state
-            .folder_service
+            .folder_read_service
             .get_trash_subfolder(folder_id)
             .await?;
 
@@ -156,7 +156,7 @@ impl FolderService for GrpcFolderService {
 
         let folders = self
             .app_state
-            .folder_service
+            .folder_read_service
             .get_deleted_folders(user_id)
             .await?;
 
@@ -178,7 +178,7 @@ impl FolderService for GrpcFolderService {
 
         let folder_id = map_entity_id(req.id)?;
 
-        self.app_state.folder_service.trash(folder_id).await?;
+        self.app_state.folder_write_service.trash(folder_id).await?;
 
         Ok(Response::new(()))
     }
@@ -195,7 +195,7 @@ impl FolderService for GrpcFolderService {
 
         let folder = self
             .app_state
-            .folder_service
+            .folder_write_service
             .update_folder_name(command, folder_id)
             .await?;
 
@@ -210,7 +210,7 @@ impl FolderService for GrpcFolderService {
 
         let folders = self
             .app_state
-            .folder_service
+            .folder_read_service
             .search_folder(req.query)
             .await?;
 
@@ -237,7 +237,7 @@ impl FolderService for GrpcFolderService {
             .collect::<Result<Vec<_>, _>>()?;
 
         self.app_state
-            .folder_service
+            .folder_write_service
             .trash_chosen_folders(&folder_ids)
             .await?;
 
@@ -256,7 +256,7 @@ impl FolderService for GrpcFolderService {
 
         let command = MoveFolderCommand::new(target_folder, folder_id);
 
-        let folder = self.app_state.folder_service.move_folder(command).await?;
+        let folder = self.app_state.folder_write_service.move_folder(command).await?;
 
         Ok(Response::new(map_folder_to_proto(folder)))
     }
@@ -273,7 +273,7 @@ impl FolderService for GrpcFolderService {
 
         let command = CreateFolderCommand::new(parent_folder_id, req.name, owner_id);
 
-        let folder = self.app_state.folder_service.create(command).await?;
+        let folder = self.app_state.folder_write_service.create(command).await?;
 
         Ok(Response::new(map_folder_to_proto(folder)))
     }
@@ -290,7 +290,7 @@ impl FolderService for GrpcFolderService {
         let user_id = map_entity_id(req.user_id)?;
 
         self.app_state
-            .folder_service
+            .folder_write_service
             .permanently_delete_folder(folder_id, user_id)
             .await?;
 
@@ -305,7 +305,7 @@ impl FolderService for GrpcFolderService {
 
         let user_id = map_entity_id(req.user_id)?;
         self.app_state
-            .folder_service
+            .folder_write_service
             .clean_up_trash(user_id)
             .await?;
 
@@ -321,7 +321,7 @@ impl FolderService for GrpcFolderService {
         let folder_id = map_entity_id(req.folder_id)?;
 
         self.app_state
-            .folder_service
+            .folder_write_service
             .restore_deleted_folder(folder_id)
             .await?;
 

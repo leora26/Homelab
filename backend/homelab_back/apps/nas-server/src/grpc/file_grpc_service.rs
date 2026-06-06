@@ -31,7 +31,7 @@ impl FileService for GrpcFileService {
 
         let file = self
             .app_state
-            .file_service
+            .file_read_service
             .get_by_id(file_id)
             .await?
             .ok_or_else(|| Status::not_found(format!("No user found with email: {}", file_id)))?;
@@ -47,7 +47,7 @@ impl FileService for GrpcFileService {
 
         let files = self
             .app_state
-            .file_service
+            .file_read_service
             .search_file(req.file_name)
             .await?;
 
@@ -66,7 +66,7 @@ impl FileService for GrpcFileService {
 
         let files = self
             .app_state
-            .file_service
+            .file_read_service
             .get_all_deleted_files(user_id)
             .await?;
 
@@ -88,7 +88,7 @@ impl FileService for GrpcFileService {
         let command =
             InitFileCommand::new(destination, owner_id, req.name, req.size, req.is_global);
 
-        let file = self.app_state.file_service.upload(command).await?;
+        let file = self.app_state.file_write_service.upload(command).await?;
         println!("{:#?}", file);
 
         Ok(Response::new(map_file_to_proto(file)))
@@ -120,7 +120,7 @@ impl FileService for GrpcFileService {
 
         let service_handle = tokio::spawn(async move {
             app_state_clone
-                .file_service
+                .file_write_service
                 .upload_stream(file_id, rx)
                 .await
         });
@@ -168,7 +168,7 @@ impl FileService for GrpcFileService {
 
         let file = self
             .app_state
-            .file_service
+            .file_write_service
             .update_file_name(command, file_id)
             .await?;
 
@@ -185,7 +185,7 @@ impl FileService for GrpcFileService {
 
         let file = self
             .app_state
-            .file_service
+            .file_write_service
             .update_deleted_file(file_id)
             .await?;
 
@@ -205,7 +205,7 @@ impl FileService for GrpcFileService {
             .collect::<Result<Vec<_>, _>>()?;
 
         self.app_state
-            .file_service
+            .file_write_service
             .delete_chosen_files(&file_ids)
             .await?;
 
@@ -220,7 +220,7 @@ impl FileService for GrpcFileService {
 
         let file_id = map_entity_id(req.id)?;
 
-        self.app_state.file_service.delete(file_id).await?;
+        self.app_state.file_write_service.delete(file_id).await?;
 
         Ok(Response::new(()))
     }
@@ -239,7 +239,7 @@ impl FileService for GrpcFileService {
 
         let command = MoveFileCommand::new(folder_id, file_id);
 
-        let file = self.app_state.file_service.move_file(command).await?;
+        let file = self.app_state.file_write_service.move_file(command).await?;
 
         Ok(Response::new(map_file_to_proto(file)))
     }
@@ -256,7 +256,7 @@ impl FileService for GrpcFileService {
 
         let command = CopyFileCommand::new(file_id, target_folder_id);
 
-        let file = self.app_state.file_service.copy_file(command).await?;
+        let file = self.app_state.file_write_service.copy_file(command).await?;
 
         Ok(Response::new(map_file_to_proto(file)))
     }
@@ -287,7 +287,7 @@ impl FileService for GrpcFileService {
 
         let service_handle = tokio::spawn(async move {
             app_state_clone
-                .file_service
+                .file_write_service
                 .update_stream(file_id, rx)
                 .await
         });
@@ -331,7 +331,7 @@ impl FileService for GrpcFileService {
 
         let file_id = map_entity_id(req.file_id)?;
 
-        self.app_state.file_service.archive_file(file_id).await?;
+        self.app_state.file_write_service.archive_file(file_id).await?;
 
         Ok(Response::new(()))
     }
@@ -344,7 +344,7 @@ impl FileService for GrpcFileService {
 
         let file_id = map_entity_id(req.file_id)?;
 
-        self.app_state.file_service.unarchive_file(file_id).await?;
+        self.app_state.file_write_service.unarchive_file(file_id).await?;
 
         Ok(Response::new(()))
     }
@@ -355,7 +355,7 @@ impl FileService for GrpcFileService {
 
         let file_id = map_entity_id(req.file_id)?;
 
-        self.app_state.file_service.remove_deleted_file(file_id).await?;
+        self.app_state.file_write_service.remove_deleted_file(file_id).await?;
 
         Ok(Response::new(()))
     }

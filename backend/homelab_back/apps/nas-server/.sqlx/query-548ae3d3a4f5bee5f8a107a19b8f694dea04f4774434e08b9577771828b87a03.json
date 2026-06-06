@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT user_id, allowed_storage, taken_storage, is_blocked\n        FROM storage_profiles\n        WHERE user_id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "allowed_storage",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "taken_storage",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "is_blocked",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "548ae3d3a4f5bee5f8a107a19b8f694dea04f4774434e08b9577771828b87a03"
+}

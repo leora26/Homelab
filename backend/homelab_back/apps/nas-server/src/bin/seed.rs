@@ -61,7 +61,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Giving the user 100 MB of total allowed space (Note: 100 * 512 is technically ~50KB,
     // if you meant 100 Megabytes, you might want: 100 * 1024 * 1024)
-    let allowed_storage: i64 = 100 * 512;
+    let allowed_storage: i64 = 100 * 1024 * 1024;
 
     sqlx::query!(
         r#"

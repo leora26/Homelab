@@ -1,9 +1,10 @@
 use crate::db::user_repository::UserRepositoryImpl;
 use crate::db::white_listed_user_repository::WhiteListedUserRepositoryImpl;
+use crate::events::rabbitmq::RabbitMqPublisher;
 use crate::grpc::user_grpc_service::GrpcUserService;
 use crate::service::user_service::{UserService, UserServiceImpl};
 use crate::service::white_listed_user_service::{WhiteListedServiceImpl, WhiteListedUserService};
-use actix_web::{web, App, HttpServer};
+use actix_web::{web};
 use dotenvy::dotenv;
 use homelab_proto::user::user_service_server::UserServiceServer;
 use sqlx::postgres::PgPoolOptions;
@@ -11,16 +12,13 @@ use std::env;
 use std::sync::Arc;
 use tonic::transport::Server;
 use tracing_subscriber::EnvFilter;
-use crate::events::rabbitmq::RabbitMqPublisher;
 
 pub mod data;
-pub mod events;
 pub mod db;
+pub mod events;
 pub mod grpc;
-pub mod handler;
 pub mod helpers;
 pub mod service;
-
 pub struct AppState {
     pub user_service: Arc<dyn UserService>,
     pub white_listed_user_service: Arc<dyn WhiteListedUserService>,
@@ -33,10 +31,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .init();
 
     dotenv().ok();
-
-    let server_mode = env::var("SERVER_MODE")
-        .unwrap_or_else(|_| "hybrid".to_string())
-        .to_lowercase();
 
     let database_url = env::var("DATABASE_URL").expect("DATABSE_URL must be set in .env file");
 
@@ -65,7 +59,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let white_listed_user_service = Arc::new(WhiteListedServiceImpl::new(
         wlu_repo.clone(),
         user_repo.clone(),
-        publisher.clone()
+        publisher.clone(),
     ));
 
     let app_state = web::Data::new(AppState {
@@ -73,79 +67,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         white_listed_user_service,
     });
 
-    let rest_addr = ("0.0.0.0", 8081);
-    let grpc_addr: std::net::SocketAddr = "[::1]:50052".parse().unwrap();
+    let grpc_addr: std::net::SocketAddr = "[::1]:50052".parse()?;
 
-    println!(
-        "System starting in [{}] mode...",
-        server_mode.to_uppercase()
-    );
+    println!("🚀 Starting gRPC Server only at {}", grpc_addr);
+    let app_state_arc = app_state.clone().into_inner();
 
-    match server_mode.as_str() {
-        "rest" => {
-            println!(
-                "🚀 Starting REST Server only at http://{}:{}",
-                rest_addr.0, rest_addr.1
-            );
-            HttpServer::new(move || {
-                App::new()
-                    .app_data(app_state.clone())
-                    .configure(handler_config)
-            })
-            .bind(rest_addr)?
-            .run()
-            .await?;
-        }
-        "grpc" => {
-            println!("🚀 Starting gRPC Server only at {}", grpc_addr);
-            let app_state_arc = app_state.clone().into_inner();
+    let user_impl = GrpcUserService::new(app_state_arc.clone());
 
-            let user_impl = GrpcUserService::new(app_state_arc.clone());
+    Server::builder()
+        .add_service(UserServiceServer::new(user_impl))
+        .serve(grpc_addr)
+        .await?;
 
-            Server::builder()
-                .add_service(UserServiceServer::new(user_impl))
-                .serve(grpc_addr)
-                .await?;
-        }
-        "hybrid" => {
-            println!("🚀 Starting Hybrid Mode (REST + gRPC)");
-
-            let app_state_arc = app_state.clone().into_inner();
-
-            let user_impl = GrpcUserService::new(app_state_arc.clone());
-
-            let grpc_handle = Server::builder()
-                .add_service(UserServiceServer::new(user_impl))
-                .serve(grpc_addr);
-
-            println!(
-                "   - REST listening at http://{}:{}",
-                rest_addr.0, rest_addr.1
-            );
-            HttpServer::new(move || {
-                App::new()
-                    .app_data(app_state.clone())
-                    .configure(handler_config)
-            })
-            .bind(rest_addr)?
-            .run()
-            .await?;
-
-            let _ = grpc_handle.await;
-        }
-        _ => panic!(
-            "Invalid SERVER_MODE: {}. Use 'rest', 'grpc', or 'hybrid'",
-            server_mode
-        ),
-    }
-
+    println!("Started gRPC Server only at {}", grpc_addr);
     Ok(())
-}
-
-fn handler_config(cfg: &mut web::ServiceConfig) {
-    cfg.service(
-        web::scope("/api")
-            .configure(handler::user_handler::config)
-            .configure(handler::white_listed_user_handler::config),
-    );
 }

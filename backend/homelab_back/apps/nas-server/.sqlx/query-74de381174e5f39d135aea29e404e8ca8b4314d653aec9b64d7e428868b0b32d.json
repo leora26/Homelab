@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM folders WHERE owner_id = $1 AND is_deleted = true",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "74de381174e5f39d135aea29e404e8ca8b4314d653aec9b64d7e428868b0b32d"
+}
