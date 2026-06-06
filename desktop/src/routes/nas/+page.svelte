@@ -1,6 +1,6 @@
 <script lang="ts">
     import FolderStructure from "$lib/components/folder/FolderStructure.svelte";
-    import ContentSection from "$lib/components/ContentSection.svelte";
+    import ContentSection from "$lib/components/file/ContentSection.svelte";
     import FormModal, {type FormField} from "$lib/components/common/FormModal.svelte";
 
     import {userId} from "$lib/types/tempUserId";
