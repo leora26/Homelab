@@ -159,22 +159,13 @@ impl CleanUpServiceImpl {
             .map(|file| async move {
                 let path = file.build_file_path(&self.storage_path);
 
-                let remove_result = match fs::remove_file(&path).await {
-                    Ok(_) => Ok((file.id, file.owner_id, file.size)),
-                    Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-                        let mut gz_path = path.clone().into_os_string();
-                        gz_path.push(".gz");
-                        let gz_path = PathBuf::from(gz_path);
+                let results = futures::future::join_all(vec![
+                    fs::remove_file(&path),
+                    fs::remove_file(&path.with_extension("preview.jpg")),
+                    fs::remove_file(&path.with_extension("preview.png")),
+                ]).await;
 
-                        match fs::remove_file(gz_path).await {
-                            Ok(_) => Ok((file.id, file.owner_id, file.size)),
-                            Err(e2) => Err((file.id, e2)),
-                        }
-                    }
-                    Err(e) => Err((file.id, e)),
-                };
-
-                if remove_result.is_ok() {
+                if results[0].is_ok() {
                     if let Some(bucket2) = path.parent() {
                         if fs::remove_dir(bucket2).await.is_ok() {
                             if let Some(bucket1) = bucket2.parent() {
@@ -184,7 +175,11 @@ impl CleanUpServiceImpl {
                     }
                 }
 
-                remove_result
+                if results[0].is_ok() {
+                    Ok((file.id, file.owner_id, file.size))
+                } else {
+                    Err((file.id, results[0].as_ref().err().unwrap().to_string()))
+                }
             })
             .buffer_unordered(CONCURRENCY_LIMIT)
             .collect::<Vec<_>>()

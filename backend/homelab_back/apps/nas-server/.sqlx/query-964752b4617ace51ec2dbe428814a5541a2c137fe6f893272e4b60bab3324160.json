@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE storage_profiles\n            SET allowed_storage = $1, taken_storage = $2\n            WHERE user_id = $3\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "964752b4617ace51ec2dbe428814a5541a2c137fe6f893272e4b60bab3324160"
+}
