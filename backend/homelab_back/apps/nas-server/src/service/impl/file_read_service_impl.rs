@@ -47,4 +47,35 @@ impl FileReadService for FileReadServiceImpl {
 
         Ok(file_path)
     }
+
+    async fn get_file_preview_for_streaming(&self, file_id: Uuid) -> Result<PathBuf, DataError> {
+        let file = self
+            .file_repo
+            .get_by_id(file_id)
+            .await?
+            .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
+
+        let original_path = file.build_file_path(&self.storage_path);
+
+        if !original_path.exists() {
+            return Err(DataError::IOError(
+                "File metadata exists but disk file is missing".to_string(),
+            ));
+        }
+        
+        let png_preview = original_path.with_extension("preview.png");
+        let jpg_preview = original_path.with_extension("preview.jpg");
+        
+        if png_preview.exists() {
+            return Ok(png_preview);
+        }
+        
+        if jpg_preview.exists() {
+            return Ok(jpg_preview);
+        }
+
+        Err(DataError::IOError(
+            "Preview for a file does not exist".to_string(),
+        ))
+    }
 }

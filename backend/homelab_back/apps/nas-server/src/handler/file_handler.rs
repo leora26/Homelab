@@ -27,6 +27,30 @@ async fn download_file(
     Ok(named_file)
 }
 
+#[get("/files/{id}/preview")]
+async fn preview_file(
+    file_id: Path<Uuid>,
+    app_state: Data<AppState>,
+) -> actix_web::Result<NamedFile> {
+    let id = file_id.into_inner();
+    
+    let path = match app_state.file_read_service.get_file_preview_for_streaming(id).await {
+        Ok(path) => path,
+        Err(e) => {
+            tracing::error!("Failed to download preview for a file: {:?}", e);
+            return Err(error::ErrorNotFound("File not found or access denied"));
+        }
+    };
+    
+    let named_file = NamedFile::open(path).map_err(|e| {
+        eprintln!("File exists in DB but not on disk: {:?}", e);
+        error::ErrorNotFound("File content is missing")
+    })?;
+    
+    Ok(named_file)
+}
+
 pub fn config(c: &mut ServiceConfig) {
     c.service(download_file);
+    c.service(preview_file);
 }
