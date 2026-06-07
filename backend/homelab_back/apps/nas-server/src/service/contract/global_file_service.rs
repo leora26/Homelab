@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use homelab_core::global_file::GlobalFile;
+use homelab_core::nas_domain::global_file::GlobalFile;
 use crate::helpers::data_error::DataError;
 
 #[async_trait]

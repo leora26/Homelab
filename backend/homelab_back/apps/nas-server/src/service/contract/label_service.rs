@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use uuid::Uuid;
-use homelab_core::label::Label;
+use homelab_core::nas_domain::label::Label;
 use crate::data::change_label_command::ChangeLabelCommand;
 use crate::data::create_label_command::CreateLabelCommand;
 use crate::helpers::data_error::DataError;

@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use uuid::Uuid;
 use homelab_core::events::{UserBlockedEvent, UserCreatedEvent};
-use homelab_core::storage_profile::StorageProfile;
+use homelab_core::nas_domain::storage_profile::StorageProfile;
 use crate::helpers::data_error::DataError;
 
 #[async_trait]

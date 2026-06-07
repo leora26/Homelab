@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use uuid::Uuid;
-use homelab_core::shared_file::SharedFile;
+use homelab_core::nas_domain::shared_file::SharedFile;
 use crate::data::create_shared_file_command::CreateSharedFileCommand;
 use crate::helpers::data_error::DataError;
 

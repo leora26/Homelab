@@ -4,9 +4,9 @@ use crate::data::move_file_command::MoveFileCommand;
 use crate::data::update_file_name_command::UpdateFileNameCommand;
 use crate::helpers::data_error::DataError;
 use async_trait::async_trait;
-use homelab_core::file::{File};
 use tokio::sync::mpsc::Receiver;
 use uuid::Uuid;
+use homelab_core::nas_domain::file::File;
 
 #[async_trait]
 pub trait FileWriteService: Send + Sync {

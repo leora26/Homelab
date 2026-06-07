@@ -2,11 +2,11 @@ use crate::db::folder_repository::FolderRepository;
 use crate::helpers::data_error::DataError;
 use async_recursion::async_recursion;
 use async_trait::async_trait;
-use homelab_core::file::{File, FileType};
-use homelab_core::folder::Folder;
 use std::sync::Arc;
 use derive_new::new;
 use uuid::Uuid;
+use homelab_core::nas_domain::file::{File, FileType};
+use homelab_core::nas_domain::folder::Folder;
 use crate::service::contract::folder_read_service::FolderReadService;
 
 #[derive(new)]
