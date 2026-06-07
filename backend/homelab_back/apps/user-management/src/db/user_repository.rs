@@ -2,7 +2,7 @@ use std::error::Error;
 use crate::helpers::data_error::DataError;
 use crate::helpers::data_error::DataError::DatabaseError;
 use async_trait::async_trait;
-use homelab_core::user_domain::user::{Role, User};
+use homelab_core::user_domain::user::{User};
 use sqlx::PgPool;
 use uuid::Uuid;
 use homelab_core::auth::resolver::ExternalIdResolver;

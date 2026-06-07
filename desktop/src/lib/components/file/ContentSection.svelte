@@ -1,23 +1,36 @@
 <script lang="ts">
     import type {FileView} from "$lib/types/models";
     import {invoke} from "@tauri-apps/api/core";
-    import ContextMenu, {type ContextMenuOption} from "$lib/components/common/ContextMenu.svelte";
-    import ContentSectionItem from "$lib/components/ContentSectionItem.svelte";
+    import ContentSectionItem from "$lib/components/file/ContentSectionItem.svelte";
     import FormModal, {type FormField} from "$lib/components/common/FormModal.svelte";
     import {safeInvoke} from "$lib/components/helpers/safeInvoke";
     import FolderSelectionModal from "$lib/components/common/FolderSelectionModal.svelte";
-    import isFileArchived from "$lib/components/helpers/file/isFileArchived";
+    import FileContextMenu from "$lib/components/file/FileContextMenu.svelte";
+    import PreviewSection from "$lib/components/file/PreviewSection.svelte";
+    import NotificationManager from "$lib/components/common/NotificationManager.svelte";
 
     interface ContentSectionProps {
-        activeFolderId: string
+        activeFolderId: string;
+        fileVersion: number;
     }
 
-    const {activeFolderId}: ContentSectionProps = $props();
+    export interface IFileContextMenu {
+        isOpen: boolean;
+        x: number;
+        y: number;
+        targetId: string;
+        targetName: string;
+    }
+
+    const {
+        activeFolderId,
+        fileVersion
+    }: ContentSectionProps = $props();
 
     let files = $state<FileView[]>([]);
     let isLoading = $state(false);
     let error = $state<string | null>(null);
-    let contextMenu = $state({isOpen: false, x: 0, y: 0, targetId: '', targetName: ''});
+    let contextMenu = $state<IFileContextMenu>({isOpen: false, x: 0, y: 0, targetId: '', targetName: ''});
     let isMoveModalOpen = $state(false);
     let isCopyModalOpen = $state(false);
     let fileToCopy = $state<string | null>(null);
@@ -26,6 +39,7 @@
     let isRenameModalOpen = $state(false);
     let isDeleteModalOpen = $state(false);
     let fileToDelete = $state<string | null>(null);
+    let selectedFile = $state<FileView | null>(null);
 
 
     const fetchFiles = async () => {
@@ -48,6 +62,7 @@
     }
 
     $effect(() => {
+        fileVersion;
         fetchFiles();
     });
 
@@ -171,71 +186,6 @@
         fetchFiles();
     }
 
-    let menuOptions = $derived.by<ContextMenuOption[]>(() => {
-
-        let targetIsArchived = isFileArchived(contextMenu.targetName);
-        console.log("File archived: ", targetIsArchived)
-
-        const options: ContextMenuOption[] = [
-            {
-                label: 'Rename',
-                icon: '✏️',
-                action: () => {
-                    closeContextMenu();
-                    triggerRename()
-                }
-            },
-            {
-                label: 'Copy',
-                icon: '📋',
-                danger: false,
-                action: () => {
-                    triggerCopy();
-                    closeContextMenu();
-                }
-            },
-            {
-                label: 'Delete',
-                icon: '🗑️',
-                danger: true,
-                action: () => {
-                    closeContextMenu();
-                    triggerDelete(contextMenu.targetId);
-                }
-            },
-            {
-                label: 'Move',
-                icon: '➡️',
-                danger: false,
-                action: () => {
-                    triggerMove();
-                    closeContextMenu();
-                }
-            },
-            {
-                label: 'Archive',
-                icon: '📦',
-                disabled: targetIsArchived,
-                action: () => {
-                    if (targetIsArchived) return;
-                    closeContextMenu();
-                    triggerArchive();
-                }
-            },
-            {
-                label: 'Extract',
-                icon: '🗜️',
-                disabled: !targetIsArchived,
-                action: () => {
-                    if (!targetIsArchived) return;
-                    closeContextMenu();
-                    triggerUnarchive();
-                }
-            },
-        ];
-
-        return options;
-    });
 
     let renameFields = $derived<FormField[]>([
         {
@@ -256,56 +206,99 @@
             targetName: fileName
         };
     };
+
+    const handleFileClick = (file: FileView) => {
+        selectedFile = file;
+    };
 </script>
 
 <svelte:window onclick={closeContextMenu} onscroll={closeContextMenu}/>
 
-<section class="content-pane">
-    <div class="content-header">
-        <h3>Folder Contents</h3>
-    </div>
+<section class="content-pane-wrapper">
+    <section class="content-pane">
+        <div class="content-header">
+            <h3>Folder Contents</h3>
+        </div>
 
-    <div class="table-wrapper">
-        {#if isLoading}
-            <div class="status-message">
-                <div class="spinner"></div>
-                <p>Loading files...</p>
-            </div>
-        {:else if error}
-            <div class="status-message error">
-                <p>⚠️ {error}</p>
-            </div>
-        {:else if files.length === 0}
-            <div class="status-message empty-state">
-                <p>This folder is empty.</p>
-            </div>
-        {:else}
-            <table class="file-table">
-                <thead>
-                <tr>
-                    <th class="col-name">Name</th>
-                    <th class="col-date">Date Modified</th>
-                    <th class="col-size">Size</th>
-                </tr>
-                </thead>
-                <tbody>
-                {#each files as file (file.id)}
-                    <ContentSectionItem
-                            file={file}
-                            onContextMenu={handleContextMenu}
-                    />
-                {/each}
-                </tbody>
-            </table>
-        {/if}
-    </div>
+        <div class="table-wrapper">
+            {#if isLoading}
+                <div class="status-message">
+                    <div class="spinner"></div>
+                    <p>Loading files...</p>
+                </div>
+            {:else if error}
+                <div class="status-message error">
+                    <p>⚠️ {error}</p>
+                </div>
+            {:else if files.length === 0}
+                <div class="status-message empty-state">
+                    <p>This folder is empty.</p>
+                </div>
+            {:else}
+                <table class="file-table">
+                    <thead>
+                    <tr>
+                        <th class="col-name">Name</th>
+                        <th class="col-date">Date Modified</th>
+                        <th class="col-size">Size</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {#each files as file (file.id)}
+                        <ContentSectionItem
+                                file={file}
+                                isSelected={selectedFile?.id === file.id}
+                                onClick={handleFileClick}
+                                onContextMenu={handleContextMenu}
+                        />
+                    {/each}
+                    </tbody>
+                </table>
+            {/if}
+        </div>
+    </section>
+
+    {#if selectedFile}
+        <PreviewSection
+                selectedFile={selectedFile}
+                closePreview={() => { selectedFile = null }}
+                triggerRename={triggerRename}
+                triggerCopy={triggerCopy}
+                triggerMove={triggerMove}
+                triggerDelete={() => triggerDelete(selectedFile!.id)}
+                triggerArchive={triggerArchive}
+                triggerUnarchive={triggerUnarchive}
+        />
+    {/if}
 </section>
 
 {#if contextMenu.isOpen}
-    <ContextMenu
-            x={contextMenu.x}
-            y={contextMenu.y}
-            options={menuOptions}
+    <FileContextMenu
+            contextMenu={contextMenu}
+            triggerArchive={() => {
+                triggerArchive();
+                closeContextMenu();
+            }}
+            triggerCopy={() => {
+                triggerCopy();
+                closeContextMenu();
+            }}
+            triggerDelete={(id) => {
+                triggerDelete(id);
+                closeContextMenu();
+            }}
+            triggerMove={() => {
+                triggerMove();
+                closeContextMenu();
+            }}
+            triggerRename={() => {
+                triggerRename();
+                closeContextMenu();
+            }}
+            triggerUnarchive={() => {
+                triggerUnarchive();
+                closeContextMenu();
+            }}
     />
 {/if}
 
@@ -356,7 +349,17 @@
         onSubmit={confirmCopyFile}
 />
 
+<NotificationManager />
+
 <style>
+    .content-pane-wrapper {
+        display: flex;
+        gap: 1.5rem;
+        height: 100%;
+        overflow: hidden;
+    }
+
+
     .content-pane {
         background: white;
         border-radius: 8px;
@@ -365,6 +368,7 @@
         flex-direction: column;
         overflow: hidden;
         height: 100%;
+        flex: 1;
     }
 
     .content-header {

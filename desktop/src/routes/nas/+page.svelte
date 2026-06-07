@@ -1,6 +1,6 @@
 <script lang="ts">
     import FolderStructure from "$lib/components/folder/FolderStructure.svelte";
-    import ContentSection from "$lib/components/ContentSection.svelte";
+    import ContentSection from "$lib/components/file/ContentSection.svelte";
     import FormModal, {type FormField} from "$lib/components/common/FormModal.svelte";
 
     import {userId} from "$lib/types/tempUserId";
@@ -16,6 +16,7 @@
     let isTrashActive = $state(false);
 
     let treeVersion = $state(0);
+    let fileVersion = $state(0);
 
     const handleActiveFolderChange = (folderId: string | null, isTrash: boolean) => {
         if (isTrash) {
@@ -68,6 +69,7 @@
     <NasToolbar
             openNewFolderModal={openNewFolderModal}
             activeFolderId={activeFolderId}
+            onUploadComplete={() => fileVersion++}
     />
 
     <main class="split-view">
@@ -81,7 +83,7 @@
         {#if isTrashActive}
             <TrashSection activeFolderId={activeTrashFolder} />
         {:else if activeFolderId}
-            <ContentSection {activeFolderId} />
+            <ContentSection {activeFolderId} fileVersion={fileVersion} />
         {/if}
     </main>
 </div>

@@ -1,34 +1,17 @@
+use std::sync::Arc;
+use async_trait::async_trait;
+use derive_new::new;
+use uuid::Uuid;
+use homelab_core::nas_domain::file::File;
+use homelab_core::nas_domain::file_label::FileLabel;
+use homelab_core::nas_domain::label::Label;
 use crate::data::create_file_label_command::CreateFileLabelCommand;
 use crate::db::file_label_repository::FileLabelRepository;
 use crate::db::file_repository::FileRepository;
 use crate::db::label_repository::LabelRepository;
 use crate::db::storage_profile_repository::StorageProfileRepository;
 use crate::helpers::data_error::DataError;
-use async_trait::async_trait;
-use derive_new::new;
-use homelab_core::nas_domain::file::File;
-use homelab_core::nas_domain::file_label::FileLabel;
-use homelab_core::nas_domain::label::Label;
-use std::sync::Arc;
-use uuid::Uuid;
-
-#[async_trait]
-pub trait FileLabelService: Send + Sync {
-    async fn create_file_label(
-        &self,
-        command: CreateFileLabelCommand,
-    ) -> Result<FileLabel, DataError>;
-    async fn get_files_by_label(
-        &self,
-        label_id: Uuid,
-        owner_id: Uuid,
-    ) -> Result<Vec<File>, DataError>;
-    async fn get_labels_by_file(
-        &self,
-        file_id: Uuid,
-        owner_id: Uuid,
-    ) -> Result<Vec<Label>, DataError>;
-}
+use crate::service::contract::file_label_service::FileLabelService;
 
 #[derive(new)]
 pub struct FileLabelServiceImpl {

@@ -5,23 +5,28 @@
 
     interface Props {
         onContextMenu: (e: MouseEvent, fileId: string, fileName: string) => void;
-        file: FileView
+        onClick: (file: FileView) => void;
+        file: FileView;
+        isSelected?: boolean;
     }
 
     const {
         onContextMenu,
-        file
+        onClick,
+        file,
+        isSelected
     }: Props = $props()
 
-    console.log("File: ", file)
 </script>
 
 <tr
         class="file-row"
+        class:selected={isSelected}
+        onclick={() => onClick(file)}
         oncontextmenu={(e) => {
-                                e.preventDefault();
-                                onContextMenu(e, file.id, file.name)
-                            }}
+            e.preventDefault();
+            onContextMenu(e, file.id, file.name)
+        }}
 >
     <td class="col-name">
         <div class="name-cell">
@@ -41,6 +46,10 @@
 
     .file-row:hover {
         background-color: #f4f6f8;
+    }
+
+    .file-row.selected {
+        background-color: #e3f2fd;
     }
 
     .col-name {

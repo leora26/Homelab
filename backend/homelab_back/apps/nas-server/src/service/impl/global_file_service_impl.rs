@@ -4,11 +4,7 @@ use async_trait::async_trait;
 use derive_new::new;
 use homelab_core::nas_domain::global_file::GlobalFile;
 use std::sync::Arc;
-
-#[async_trait]
-pub trait GlobalFileService: Send + Sync {
-    async fn get_all(&self) -> Result<Vec<GlobalFile>, DataError>;
-}
+use crate::service::contract::global_file_service::GlobalFileService;
 
 #[derive(new)]
 pub struct GlobalFileServiceImpl {

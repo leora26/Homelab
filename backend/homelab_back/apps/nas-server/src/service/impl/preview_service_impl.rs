@@ -6,10 +6,7 @@ use std::path::PathBuf;
 use std::process::Stdio;
 use tokio::process::Command;
 use tokio::task;
-
-pub trait PreviewService {
-    fn spawn_generation(file: File, storage_path: PathBuf);
-}
+use crate::service::contract::preview_service::PreviewService;
 
 #[derive(new)]
 pub struct PreviewServiceImpl;
@@ -18,20 +15,20 @@ impl PreviewService for PreviewServiceImpl {
     fn spawn_generation(file: File, storage_path: PathBuf) {
         tokio::spawn(async move {
             let file_path = file.build_file_path(&storage_path);
-            let preview_path = file_path.with_extension("preview");
+            let base_path = file_path.clone();
 
             let ffmpeg_binary = "/usr/lib/jellyfin-ffmpeg/ffmpeg";
 
             let thread_result = match file.file_type {
                 FileType::Image => {
                     task::spawn_blocking(move || {
-                        Self::generate_image_preview(&file_path, &preview_path)
+                        Self::generate_image_preview(&file_path, &base_path)
                     })
-                    .await
+                        .await
                 }
                 FileType::Video => {
                     let f_path = file_path.to_string_lossy().to_string();
-                    let p_path = preview_path.to_string_lossy().to_string();
+                    let p_path = base_path.to_string_lossy().to_string();
 
                     let video_result =
                         match Self::try_extract_cover(ffmpeg_binary, &f_path, &p_path).await {
@@ -56,7 +53,7 @@ impl PreviewService for PreviewServiceImpl {
                 }
                 FileType::Audio => {
                     let f_path = file_path.to_string_lossy().to_string();
-                    let p_path = preview_path.to_string_lossy().to_string();
+                    let p_path = base_path.to_string_lossy().to_string();
 
                     let _ = Self::try_extract_cover(ffmpeg_binary, &f_path, &p_path).await;
                     Ok(Ok(()))
@@ -64,7 +61,7 @@ impl PreviewService for PreviewServiceImpl {
                 FileType::Pdf if file.name.ends_with(".pdf") => {
                     let f_path = file_path.to_string_lossy().to_string();
 
-                    match Self::generate_pdf_preview(&f_path, &preview_path).await {
+                    match Self::generate_pdf_preview(&f_path, &base_path).await {
                         Ok(_) => Ok(Ok(())),
                         Err(e) => Ok(Err(e)),
                     }
@@ -103,9 +100,9 @@ impl PreviewService for PreviewServiceImpl {
 }
 
 impl PreviewServiceImpl {
-    async fn generate_pdf_preview(input: &str, output_path: &PathBuf) -> Result<(), String> {
-        let parent = output_path.parent().ok_or("Invalid parent dir")?;
-        let temp_prefix = output_path
+    async fn generate_pdf_preview(input: &str, base_path: &PathBuf) -> Result<(), String> {
+        let parent = base_path.parent().ok_or("Invalid parent dir")?;
+        let temp_prefix = base_path
             .file_stem()
             .ok_or("Invalid temp prefix")?
             .to_string_lossy();
@@ -134,17 +131,20 @@ impl PreviewServiceImpl {
 
         let generated_filename = format!("{}-1.jpg", temp_prefix_path.to_string_lossy());
 
-        tokio::fs::rename(generated_filename, output_path)
+        let final_output = base_path.with_extension("preview.jpg");
+
+        tokio::fs::rename(generated_filename, final_output)
             .await
             .map_err(|e| format!("Failed to rename PDF preview: {}", e))?;
 
         Ok(())
     }
 
-    fn generate_image_preview(input_path: &PathBuf, output_path: &PathBuf) -> Result<(), String> {
+    fn generate_image_preview(input_path: &PathBuf, base_path: &PathBuf) -> Result<(), String> {
         let img = image::open(input_path)
             .map_err(|e| format!("Corrupt or unsupported image format: {}", e))?;
 
+        let has_alpha = img.color().has_alpha();
         let width = img.width() as f32;
         let height = img.height() as f32;
         let max_dim = 100.0;
@@ -155,31 +155,46 @@ impl PreviewServiceImpl {
 
         let src_w = NonZeroU32::new(img.width()).ok_or("Image width is 0")?;
         let src_h = NonZeroU32::new(img.height()).ok_or("Image height is 0")?;
-
-        let src_image =
-            Image::from_vec_u8(src_w, src_h, img.to_rgba8().into_raw(), PixelType::U8x4)
-                .map_err(|_| "Failed to create source buffer")?;
-
         let dst_width = NonZeroU32::new(new_width).ok_or("Calculated width is 0")?;
         let dst_height = NonZeroU32::new(new_height).ok_or("Calculated height is 0")?;
 
-        let mut dst_image = Image::new(dst_width, dst_height, PixelType::U8x4);
-
         let mut resizer = Resizer::new(ResizeAlg::Convolution(FilterType::Lanczos3));
 
-        resizer
-            .resize(&src_image.view(), &mut dst_image.view_mut())
-            .map_err(|_| "Failed to resize image")?;
+        if has_alpha {
+            let rgba_img = img.into_rgba8();
+            let src_img = Image::from_vec_u8(src_w, src_h, rgba_img.into_raw(), PixelType::U8x4)
+                .map_err(|e| format!("Image conversion failed: {}", e))?;
 
-        image::save_buffer_with_format(
-            output_path,
-            dst_image.buffer(),
-            new_width,
-            new_height,
-            image::ColorType::Rgba8,
-            image::ImageFormat::Jpeg,
-        )
-        .map_err(|e| format!("Disk Write Error: {}", e))?;
+            let dst_len = (new_width * new_height * 4) as usize;
+            let mut dst_image = Image::from_vec_u8(
+                dst_width, dst_height, vec![0u8; dst_len], PixelType::U8x4
+            ).map_err(|_| "Failed to map destination buffer")?;
+
+            resizer.resize(&src_img.view(), &mut dst_image.view_mut()).map_err(|_| "Failed to resize")?;
+
+            let final_output = base_path.with_extension("preview.png");
+            image::save_buffer_with_format(
+                &final_output, dst_image.buffer(), new_width, new_height,
+                image::ColorType::Rgba8, image::ImageFormat::Png,
+            ).map_err(|e| format!("Failed to save image: {}", e))?;
+        } else {
+            let rgba_img = img.into_rgb8();
+            let src_img = Image::from_vec_u8(src_w, src_h, rgba_img.into_raw(), PixelType::U8x3)
+                .map_err(|e| format!("Image conversion failed: {}", e))?;
+
+            let dst_len = (new_width * new_height * 3) as usize;
+            let mut dst_image = Image::from_vec_u8(
+                dst_width, dst_height, vec![0u8; dst_len], PixelType::U8x3
+            ).map_err(|_| "Failed to map destination buffer")?;
+
+            resizer.resize(&src_img.view(), &mut dst_image.view_mut()).map_err(|_| "Failed to resize")?;
+
+            let final_output = base_path.with_extension("preview.jpg");
+            image::save_buffer_with_format(
+                &final_output, dst_image.buffer(), new_width, new_height,
+                image::ColorType::Rgb8, image::ImageFormat::Jpeg,
+            ).map_err(|e| format!("Failed to save image: {}", e))?;
+        }
 
         Ok(())
     }

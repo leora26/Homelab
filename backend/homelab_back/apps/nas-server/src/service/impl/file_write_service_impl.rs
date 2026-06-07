@@ -8,7 +8,6 @@ use crate::db::global_file_repository::GlobalFileRepository;
 use crate::db::storage_profile_repository::StorageProfileRepository;
 use crate::events::rabbitmq::RabbitMqPublisher;
 use crate::helpers::data_error::DataError;
-use crate::service::preview_service::{PreviewService, PreviewServiceImpl};
 use async_compression::tokio::write::{GzipDecoder, GzipEncoder};
 use async_trait::async_trait;
 use derive_new::new;
@@ -25,41 +24,12 @@ use tokio::fs;
 use tokio::io::{AsyncWriteExt, BufReader, BufWriter};
 use tokio::sync::mpsc::Receiver;
 use uuid::Uuid;
-
-#[async_trait]
-pub trait FileService: Send + Sync {
-    async fn get_by_id(&self, file_id: Uuid) -> Result<Option<File>, DataError>;
-    async fn get_all_deleted_files(&self, user_id: Uuid) -> Result<Vec<File>, DataError>;
-    async fn search_file(&self, search_query: String) -> Result<Vec<File>, DataError>;
-    async fn upload(&self, command: InitFileCommand) -> Result<File, DataError>;
-    async fn upload_stream(
-        &self,
-        file_id: Uuid,
-        rx: Receiver<Result<Vec<u8>, DataError>>,
-    ) -> Result<(), DataError>;
-    async fn update_file_name(
-        &self,
-        command: UpdateFileNameCommand,
-        id: Uuid,
-    ) -> Result<File, DataError>;
-    async fn update_deleted_file(&self, id: Uuid) -> Result<File, DataError>;
-    async fn delete_chosen_files(&self, file_ids: &[Uuid]) -> Result<(), DataError>;
-    async fn delete(&self, file_id: Uuid) -> Result<(), DataError>;
-    async fn move_file(&self, command: MoveFileCommand) -> Result<File, DataError>;
-    async fn copy_file(&self, command: CopyFileCommand) -> Result<File, DataError>;
-    async fn update_stream(
-        &self,
-        file_id: Uuid,
-        rx: Receiver<Result<Vec<u8>, DataError>>,
-    ) -> Result<(), DataError>;
-    async fn get_file_for_streaming(&self, file_id: Uuid) -> Result<PathBuf, DataError>;
-    async fn archive_file(&self, file_id: Uuid) -> Result<(), DataError>;
-    async fn unarchive_file(&self, file_id: Uuid) -> Result<(), DataError>;
-    async fn remove_deleted_file(&self, file_id: Uuid) -> Result<(), DataError>;
-}
+use crate::service::contract::file_write_service::FileWriteService;
+use crate::service::contract::preview_service::PreviewService;
+use crate::service::r#impl::preview_service_impl::PreviewServiceImpl;
 
 #[derive(new)]
-pub struct FileServiceImpl {
+pub struct FileWriteServiceImpl {
     file_repo: Arc<dyn FileRepository>,
     folder_repo: Arc<dyn FolderRepository>,
     sp_repo: Arc<dyn StorageProfileRepository>,
@@ -69,20 +39,7 @@ pub struct FileServiceImpl {
 }
 
 #[async_trait]
-impl FileService for FileServiceImpl {
-    async fn get_by_id(&self, file_id: Uuid) -> Result<Option<File>, DataError> {
-        self.file_repo.get_by_id(file_id).await
-    }
-
-    async fn get_all_deleted_files(&self, user_id: Uuid) -> Result<Vec<File>, DataError> {
-        self.file_repo.get_all_deleted(user_id).await
-    }
-
-    async fn search_file(&self, search_query: String) -> Result<Vec<File>, DataError> {
-        self.file_repo
-            .search_by_name(format!("%{}%", search_query))
-            .await
-    }
+impl FileWriteService for FileWriteServiceImpl {
 
     async fn upload(&self, command: InitFileCommand) -> Result<File, DataError> {
         let folder: Folder = self
@@ -217,7 +174,7 @@ impl FileService for FileServiceImpl {
             let _ = tokio::fs::remove_file(&file_path).await;
             return Err(DataError::NotMatchingByteSizeError);
         }
-        
+
         let final_hash = hasher.finalize().to_hex().to_string();
 
         f.update_status(UploadStatus::Completed);
@@ -547,24 +504,6 @@ impl FileService for FileServiceImpl {
         self.file_repo.update(f).await?;
 
         Ok(())
-    }
-
-    async fn get_file_for_streaming(&self, file_id: Uuid) -> Result<PathBuf, DataError> {
-        let file = self
-            .file_repo
-            .get_by_id(file_id)
-            .await?
-            .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
-
-        let file_path = file.build_file_path(&self.storage_path);
-
-        if !file_path.exists() {
-            return Err(DataError::IOError(
-                "File metadata exists but disk file is missing".to_string(),
-            ));
-        }
-
-        Ok(file_path)
     }
 
     async fn archive_file(&self, file_id: Uuid) -> Result<(), DataError> {

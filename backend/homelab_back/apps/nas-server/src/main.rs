@@ -14,14 +14,6 @@ use crate::db::global_file_repository::GlobalFileRepositoryImpl;
 use crate::db::label_repository::LabelRepositoryImpl;
 use crate::db::shared_file_repository::SharedFileRepositoryImpl;
 use crate::db::storage_profile_repository::StorageProfileRepositoryImpl;
-
-use crate::service::file_label_service::{FileLabelService, FileLabelServiceImpl};
-use crate::service::file_service::{FileService, FileServiceImpl};
-use crate::service::folder_service::{FolderService, FolderServiceImpl};
-use crate::service::global_file_service::{GlobalFileService, GlobalFileServiceImpl};
-use crate::service::label_service::{LabelService, LabelServiceImpl};
-use crate::service::shared_file_service::{SharedFileService, SharedFileServiceImpl};
-
 use crate::events::nas_event_handler::NasEventHandler;
 use crate::events::rabbitmq::RabbitMqPublisher;
 use crate::grpc::file_grpc_service::GrpcFileService;
@@ -31,15 +23,33 @@ use crate::grpc::global_file_grpc_service::GrpcGlobalFileService;
 use crate::grpc::grpc_label_service::GrpcLabelService;
 use crate::grpc::storage_profile_grpc_service::GrpcStorageProfileService;
 use crate::jobs::delete_cron_job::init_delete_job;
-use crate::service::clean_up_service::CleanUpServiceImpl;
-use crate::service::storage_profile_service::{StorageProfileService, StorageProfileServiceImpl};
+use crate::service::contract::file_label_service::FileLabelService;
+use crate::service::contract::file_read_service::FileReadService;
+use crate::service::contract::file_write_service::FileWriteService;
+use crate::service::contract::folder_read_service::FolderReadService;
+use crate::service::contract::folder_write_service::FolderWriteService;
+use crate::service::contract::global_file_service::GlobalFileService;
+use crate::service::contract::label_service::LabelService;
+use crate::service::contract::shared_file_service::SharedFileService;
+use crate::service::contract::sp_service::StorageProfileService;
+use crate::service::r#impl::clean_up_service_impl::CleanUpServiceImpl;
+use crate::service::r#impl::file_label_service_impl::FileLabelServiceImpl;
+use crate::service::r#impl::file_read_service_impl::FileReadServiceImpl;
+use crate::service::r#impl::file_write_service_impl::FileWriteServiceImpl;
+use crate::service::r#impl::folder_read_service_impl::FolderReadServiceImpl;
+use crate::service::r#impl::folder_write_service_impl::FolderWriteServiceImpl;
+use crate::service::r#impl::global_file_service_impl::GlobalFileServiceImpl;
+use crate::service::r#impl::label_service_impl::LabelServiceImpl;
+use crate::service::r#impl::shared_file_service_impl::SharedFileServiceImpl;
+use crate::service::r#impl::sp_service_impl::StorageProfileServiceImpl;
 use actix_web::web::Data;
 use actix_web::{web, App, HttpServer};
 use dotenvy::dotenv;
 use homelab_core::auth::auth::AuthState;
+use homelab_core::auth::identity_cache::CacheIdentityResolver;
 use homelab_core::helpers::rabbitmq_consumer::RabbitMqConsumer;
-use homelab_proto::nas::file_service_server::FileServiceServer;
 use homelab_proto::nas::file_label_service_server::FileLabelServiceServer;
+use homelab_proto::nas::file_service_server::FileServiceServer;
 use homelab_proto::nas::folder_service_server::FolderServiceServer;
 use homelab_proto::nas::global_file_service_server::GlobalFileServiceServer;
 use homelab_proto::nas::label_service_server::LabelServiceServer;
@@ -53,11 +63,10 @@ use std::sync::Arc;
 use tonic::service::Interceptor;
 use tonic::transport::Server;
 use tracing_subscriber::EnvFilter;
-use homelab_core::auth::identity_cache::CacheIdentityResolver;
 
 pub struct AppState {
-    pub file_service: Arc<dyn FileService>,
-    pub folder_service: Arc<dyn FolderService>,
+    pub file_write_service: Arc<dyn FileWriteService>,
+    pub folder_write_service: Arc<dyn FolderWriteService>,
     pub folder_repo: Arc<dyn FolderRepository>,
     pub shared_file_service: Arc<dyn SharedFileService>,
     pub file_repo: Arc<dyn FileRepository>,
@@ -65,7 +74,9 @@ pub struct AppState {
     pub label_service: Arc<dyn LabelService>,
     pub file_label_service: Arc<dyn FileLabelService>,
     pub storage_profile_service: Arc<dyn StorageProfileService>,
-    pub cached_identity_resolver: Arc<CacheIdentityResolver<StorageProfileRepositoryImpl>>
+    pub folder_read_service: Arc<dyn FolderReadService>,
+    pub file_read_service: Arc<dyn FileReadService>,
+    pub cached_identity_resolver: Arc<CacheIdentityResolver<StorageProfileRepositoryImpl>>,
 }
 
 #[actix_web::main]
@@ -76,17 +87,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     dotenv().ok();
 
-    let zitadel_domain = env::var("ZITADEL_DOMAIN")
-        .expect("ZITADEL_DOMAIN must be set in .env file");
+    let zitadel_domain =
+        env::var("ZITADEL_DOMAIN").expect("ZITADEL_DOMAIN must be set in .env file");
 
-    let target_client_id = env::var("ZITADEL_API_CLIENT_ID")
-        .expect("ZITADEL_API_CLIENT_ID must be set in .env file");
+    let target_client_id =
+        env::var("ZITADEL_API_CLIENT_ID").expect("ZITADEL_API_CLIENT_ID must be set in .env file");
 
     let auth_state = AuthState::init(&zitadel_domain, &target_client_id).await?;
-
-    let server_mode = env::var("SERVER_MODE")
-        .unwrap_or_else(|_| "hybrid".to_string())
-        .to_lowercase();
 
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set in .env file");
 
@@ -117,20 +124,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    let rabbit_url = std::env::var("RABBITMQ_URL")
+    let rabbit_url = env::var("RABBITMQ_URL")
         .unwrap_or_else(|_| "amqp://admin:password@localhost:5672".to_string());
 
     let publisher = Arc::new(RabbitMqPublisher::new(&rabbit_url).await?);
 
-    let rest_addr = ("0.0.0.0", 8080);
-    let grpc_addr: std::net::SocketAddr = "[::1]:50051".parse().unwrap();
-
-    println!(
-        "System starting in [{}] mode...",
-        server_mode.to_uppercase()
-    );
-
     let app_state = init_app_state(pool, publisher, root_path.clone()).await;
+
+    let rest_addr = ("0.0.0.0", 8080);
+    let grpc_addr: std::net::SocketAddr = "[::1]:50051".parse()?;
 
     let clean_up_service = Arc::new(CleanUpServiceImpl::new(
         app_state.folder_repo.clone(),
@@ -154,111 +156,69 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
     });
 
-    match server_mode.as_str() {
-        "rest" => {
-            println!(
-                "🚀 Starting REST Server only at http://{}:{}",
-                rest_addr.0, rest_addr.1
-            );
-            HttpServer::new(move || {
-                App::new()
-                    .app_data(app_state.clone())
-                    .configure(handler_config)
-            })
-            .bind(rest_addr)?
-            .run()
-            .await?;
+    println!("🚀 Starting gRPC Server only at {}", grpc_addr);
+    let app_state_arc = app_state.clone().into_inner();
+
+    let file_impl = GrpcFileService::new(app_state_arc.clone());
+    let folder_impl = GrpcFolderService::new(app_state_arc.clone());
+    let file_label_impl = GrpcFileLabelService::new(app_state_arc.clone());
+    let global_file_impl = GrpcGlobalFileService::new(app_state_arc.clone());
+    let label_impl = GrpcLabelService::new(app_state_arc.clone());
+    let storage_profile_impl = GrpcStorageProfileService::new(app_state_arc.clone());
+
+    let auth_interceptor = init_auth_interceptor(auth_state);
+
+    let grpc_server = Server::builder()
+        .add_service(FileServiceServer::with_interceptor(
+            file_impl,
+            auth_interceptor.clone(),
+        ))
+        .add_service(FolderServiceServer::with_interceptor(
+            folder_impl,
+            auth_interceptor.clone(),
+        ))
+        .add_service(FileLabelServiceServer::with_interceptor(
+            file_label_impl,
+            auth_interceptor.clone(),
+        ))
+        .add_service(GlobalFileServiceServer::with_interceptor(
+            global_file_impl,
+            auth_interceptor.clone(),
+        ))
+        .add_service(LabelServiceServer::with_interceptor(
+            label_impl,
+            auth_interceptor.clone(),
+        ))
+        .add_service(StorageProfileServiceServer::with_interceptor(
+            storage_profile_impl,
+            auth_interceptor.clone(),
+        ))
+        .serve(grpc_addr);
+
+    tokio::spawn(async move {
+        if let Err(e) = grpc_server.await {
+            eprintln!("gRPC Server crashed: {}", e);
         }
-        "grpc" => {
-            println!("🚀 Starting gRPC Server only at {}", grpc_addr);
-            let app_state_arc = app_state.clone().into_inner();
+    });
 
-            let file_impl = GrpcFileService::new(app_state_arc.clone());
-            let folder_impl = GrpcFolderService::new(app_state_arc.clone());
-            let file_label_impl = GrpcFileLabelService::new(app_state_arc.clone());
-            let global_file_impl = GrpcGlobalFileService::new(app_state_arc.clone());
-            let label_impl = GrpcLabelService::new(app_state_arc.clone());
-            let storage_profile_impl = GrpcStorageProfileService::new(app_state_arc.clone());
-
-            let auth_interceptor = init_auth_interceptor(auth_state);
-
-            Server::builder()
-                .add_service(FileServiceServer::with_interceptor(
-                    file_impl,
-                    auth_interceptor.clone(),
-                ))
-                .add_service(FolderServiceServer::with_interceptor(
-                    folder_impl,
-                    auth_interceptor.clone(),
-                ))
-                .add_service(FileLabelServiceServer::with_interceptor(
-                    file_label_impl,
-                    auth_interceptor.clone(),
-                ))
-                .add_service(GlobalFileServiceServer::with_interceptor(
-                    global_file_impl,
-                    auth_interceptor.clone(),
-                ))
-                .add_service(LabelServiceServer::with_interceptor(
-                    label_impl,
-                    auth_interceptor.clone(),
-                ))
-                .add_service(StorageProfileServiceServer::with_interceptor(
-                    storage_profile_impl,
-                    auth_interceptor.clone(),
-                ))
-                .serve(grpc_addr)
-                .await?;
-        }
-        "hybrid" => {
-            println!("🚀 Starting Hybrid Mode (REST + gRPC)");
-
-            let app_state_arc = app_state.clone().into_inner();
-
-            let file_impl = GrpcFileService::new(app_state_arc.clone());
-
-            let auth_interceptor = init_auth_interceptor(auth_state);
-
-            let grpc_handle = Server::builder()
-                .add_service(FileServiceServer::with_interceptor(file_impl, auth_interceptor))
-                .serve(grpc_addr);
-
-            println!(
-                "   - REST listening at http://{}:{}",
-                rest_addr.0, rest_addr.1
-            );
-            HttpServer::new(move || {
-                App::new()
-                    .app_data(app_state.clone())
-                    .configure(handler_config)
-            })
-            .bind(rest_addr)?
-            .run()
-            .await?;
-
-            let _ = grpc_handle.await;
-        }
-        _ => panic!(
-            "Invalid SERVER_MODE: {}. Use 'rest', 'grpc', or 'hybrid'",
-            server_mode
-        ),
-    }
+    HttpServer::new(move || {
+        App::new()
+            .app_data(app_state.clone())
+            .configure(handler_config)
+    })
+    .bind(rest_addr)?
+    .run()
+    .await?;
 
     Ok(())
 }
 
 fn handler_config(cfg: &mut web::ServiceConfig) {
-    cfg.service(
-        web::scope("/api")
-            .configure(handler::folder_handler::config)
-            .configure(handler::file_handler::config)
-            .configure(handler::shared_file_handler::config),
-    );
+    cfg.service(web::scope("/api").configure(handler::file_handler::config));
 }
 
 fn init_auth_interceptor(auth_state: AuthState) -> impl Interceptor + Clone {
-    move |mut req: tonic::Request<()>|
-        match req.metadata().get("authorization") {
+    move |mut req: tonic::Request<()>| match req.metadata().get("authorization") {
         Some(token_header) => {
             let token_str = token_header.to_str().unwrap_or("").replace("Bearer", "");
 
@@ -287,17 +247,24 @@ async fn init_app_state(
     let label_repo = Arc::new(LabelRepositoryImpl::new(pool.clone()));
     let file_label_repo = Arc::new(FileLabelRepositoryImpl::new(pool.clone()));
 
-    let folder_service = Arc::new(FolderServiceImpl::new(
+    let folder_write_service = Arc::new(FolderWriteServiceImpl::new(
         folder_repo.clone(),
         publisher.clone(),
     ));
-    let file_service = Arc::new(FileServiceImpl::new(
+    let folder_read_service = Arc::new(FolderReadServiceImpl::new(
+        folder_repo.clone(),
+    ));
+    let file_write_service = Arc::new(FileWriteServiceImpl::new(
         file_repo.clone(),
         folder_repo.clone(),
         storage_profile_repo.clone(),
         root_path.to_path_buf(),
         global_file_repo.clone(),
         publisher.clone(),
+    ));
+    let file_read_service = Arc::new(FileReadServiceImpl::new(
+        file_repo.clone(),
+        root_path.to_path_buf(),
     ));
     let shared_file_service = Arc::new(SharedFileServiceImpl::new(
         share_file_repo.clone(),
@@ -319,14 +286,13 @@ async fn init_app_state(
         storage_profile_repo.clone(),
         publisher.clone(),
     ));
-    
-    let cached_identity_resolver = Arc::new(
-        CacheIdentityResolver::new((*storage_profile_repo).clone())
-    );
+
+    let cached_identity_resolver =
+        Arc::new(CacheIdentityResolver::new((*storage_profile_repo).clone()));
 
     Data::new(AppState {
-        file_service,
-        folder_service,
+        file_write_service,
+        folder_write_service,
         folder_repo,
         shared_file_service,
         file_repo: file_repo.clone(),
@@ -334,6 +300,8 @@ async fn init_app_state(
         label_service,
         file_label_service,
         storage_profile_service,
-        cached_identity_resolver
+        file_read_service,
+        folder_read_service,
+        cached_identity_resolver,
     })
 }

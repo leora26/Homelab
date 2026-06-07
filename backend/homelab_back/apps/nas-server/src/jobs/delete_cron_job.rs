@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use tokio_cron_scheduler::{Job, JobScheduler};
-use crate::service::clean_up_service::CleanUpService;
+use crate::service::contract::clean_up_service::CleanUpService;
 
 pub async fn init_delete_job(clean_up_service: Arc<dyn CleanUpService>) -> JobScheduler {
     let sched = JobScheduler::new()

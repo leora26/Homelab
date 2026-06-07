@@ -10,18 +10,7 @@ use homelab_core::nas_domain::shared_file::{SharedFile, SharedFileAccessType};
 use homelab_core::nas_domain::storage_profile::StorageProfile;
 use std::sync::Arc;
 use uuid::Uuid;
-
-#[async_trait]
-pub trait SharedFileService: Send + Sync {
-    async fn create_shared_file(
-        &self,
-        command: CreateSharedFileCommand,
-    ) -> Result<SharedFile, DataError>;
-    async fn get_all_shared_files_per_user(
-        &self,
-        user_id: Uuid,
-    ) -> Result<Vec<SharedFile>, DataError>;
-}
+use crate::service::contract::shared_file_service::SharedFileService;
 
 #[derive(new)]
 pub struct SharedFileServiceImpl {

@@ -8,14 +8,7 @@ use derive_new::new;
 use homelab_core::nas_domain::label::Label;
 use std::sync::Arc;
 use uuid::Uuid;
-
-#[async_trait]
-pub trait LabelService: Send + Sync {
-    async fn get_all(&self) -> Result<Vec<Label>, DataError>;
-    async fn create_label(&self, command: CreateLabelCommand) -> Result<Label, DataError>;
-    async fn delete_label(&self, label_id: Uuid) -> Result<(), DataError>;
-    async fn change_label(&self, command: ChangeLabelCommand) -> Result<Label, DataError>;
-}
+use crate::service::contract::label_service::LabelService;
 
 #[derive(new)]
 pub struct LabelServiceImpl {
