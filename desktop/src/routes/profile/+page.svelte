@@ -4,7 +4,6 @@
     import UserCard from "$lib/components/UserCard.svelte";
     import StorageCard from "$lib/components/StorageCard.svelte";
     import type {StorageProfileView, UserProfileView} from "$lib/types/models";
-    import {userId} from "$lib/types/tempUserId";
 
     let error = $state<string | null>(null);
     let isLoading = $state(true);
@@ -21,8 +20,8 @@
     onMount(async () => {
         try {
             const [fetchedUser, fetchedSp] = await Promise.all([
-                invoke<UserProfileView>('get_user_profile', { userId }),
-                invoke<StorageProfileView>('get_storage_profile', { userId })
+                invoke<UserProfileView>('get_user_profile'),
+                invoke<StorageProfileView>('get_storage_profile')
             ]);
 
             user = fetchedUser;

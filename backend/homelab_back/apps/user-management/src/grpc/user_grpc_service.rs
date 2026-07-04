@@ -16,9 +16,9 @@ pub struct GrpcUserService {
 #[tonic::async_trait]
 impl UserService for GrpcUserService {
     async fn get_by_id(&self, request: Request<GetUserByIdRequest>) -> Result<Response<UserResponse>, Status> {
-        let req = request.into_inner();
-
-        let user_id = map_entity_id(req.id)?;
+        // Identity comes from the validated token (sub -> internal id), not from a
+        // client-supplied id, so a caller can only ever read their own profile.
+        let user_id = request.get_internal_id(&self.app_state.cached_identity_resolver).await?;
 
         let user = self
             .app_state

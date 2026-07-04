@@ -30,3 +30,5 @@ image = {workspace = true}
 serde_json = {workspace = true}
 lapin = {workspace = true}
 blake3 = {workspace = true}
+reqwest = {workspace = true}
+jsonwebtoken = {workspace = true}

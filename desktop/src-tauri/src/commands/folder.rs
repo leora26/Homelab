@@ -1,21 +1,32 @@
 use crate::common::EntityId;
 use crate::helpers::mappings::{map_file_proto_to_view, map_folder_proto_to_view};
+use crate::helpers::with_auth::with_auth;
 use crate::nas::folder_service_client::FolderServiceClient;
 use crate::nas::{CleanUpDeletedFolderRequest, CleanUpTrashRequest, CreateFolderRequest, DeleteFolderRequest, GetAllSubfoldersRequest, GetDeletedFoldersRequest, GetFilesForFolderRequest, GetRootFolderRequest, GetTrashFilesForFolderRequest, GetTrashSubfoldersForFolderRequest, RenameFolderRequest, RestoreDeletedFolderRequest};
 use crate::types::model::{FileView, FolderView};
 use crate::AppState;
 use tonic::Request;
 
+// Reads the current access token from state; every NAS gRPC call must carry it,
+// otherwise the backend auth interceptor rejects the request. Identity (the owner)
+// is derived from this token on the backend, not from any client-supplied id.
+async fn auth_token(state: &tauri::State<'_, AppState>) -> Result<String, String> {
+    let lock = state.access_token.read().await;
+    lock.clone().ok_or_else(|| "User is not authenticated".to_string())
+}
+
 #[tauri::command]
 pub async fn get_root_folder(
-    user_id: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<FolderView, String> {
-    let mut client = FolderServiceClient::new(state.nas_grpc_channel.clone());
+    let token = auth_token(&state).await?;
+    let mut client = FolderServiceClient::with_interceptor(
+        state.nas_grpc_channel.clone(),
+        with_auth(token),
+    );
 
-    let request = Request::new(GetRootFolderRequest {
-        user_id: Some(EntityId { value: user_id }),
-    });
+    // Owner is resolved from the auth token on the backend.
+    let request = Request::new(GetRootFolderRequest { user_id: None });
 
     let response = client.get_root_folder(request).await.map_err(|e| {
         eprintln!(
@@ -39,7 +50,11 @@ pub async fn get_files_for_folder(
     folder_id: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<Vec<FileView>, String> {
-    let mut client = FolderServiceClient::new(state.nas_grpc_channel.clone());
+    let token = auth_token(&state).await?;
+    let mut client = FolderServiceClient::with_interceptor(
+        state.nas_grpc_channel.clone(),
+        with_auth(token),
+    );
 
     let request = Request::new(GetFilesForFolderRequest {
         id: Some(EntityId { value: folder_id }),
@@ -72,7 +87,11 @@ pub async fn get_subfolders(
     folder_id: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<Vec<FolderView>, String> {
-    let mut client = FolderServiceClient::new(state.nas_grpc_channel.clone());
+    let token = auth_token(&state).await?;
+    let mut client = FolderServiceClient::with_interceptor(
+        state.nas_grpc_channel.clone(),
+        with_auth(token),
+    );
 
     let request = Request::new(GetAllSubfoldersRequest {
         id: Some(EntityId { value: folder_id }),
@@ -104,18 +123,22 @@ pub async fn get_subfolders(
 #[tauri::command]
 pub async fn create_folder(
     parent_folder_id: String,
-    user_id: String,
     name: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<FolderView, String> {
-    let mut client = FolderServiceClient::new(state.nas_grpc_channel.clone());
+    let token = auth_token(&state).await?;
+    let mut client = FolderServiceClient::with_interceptor(
+        state.nas_grpc_channel.clone(),
+        with_auth(token),
+    );
 
+    // Owner is resolved from the auth token on the backend.
     let request = Request::new(CreateFolderRequest {
         parent_folder_id: Some(EntityId {
             value: parent_folder_id,
         }),
         name,
-        owner_id: Some(EntityId { value: user_id }),
+        owner_id: None,
     });
 
     let response = client.create_folder(request).await.map_err(|e| {
@@ -140,7 +163,11 @@ pub async fn delete_selected_folder(
     selected_folder_id: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<(), String> {
-    let mut client = FolderServiceClient::new(state.nas_grpc_channel.clone());
+    let token = auth_token(&state).await?;
+    let mut client = FolderServiceClient::with_interceptor(
+        state.nas_grpc_channel.clone(),
+        with_auth(token),
+    );
 
     let request = tonic::Request::new(DeleteFolderRequest {
         id: Some(EntityId {
@@ -163,16 +190,20 @@ pub async fn delete_selected_folder(
 #[tauri::command]
 pub async fn cleanup_deleted_folder(
     deleted_folder_id: String,
-    user_id: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<(), String> {
-    let mut client = FolderServiceClient::new(state.nas_grpc_channel.clone());
+    let token = auth_token(&state).await?;
+    let mut client = FolderServiceClient::with_interceptor(
+        state.nas_grpc_channel.clone(),
+        with_auth(token),
+    );
 
+    // Owner is resolved from the auth token on the backend.
     let request = tonic::Request::new(CleanUpDeletedFolderRequest {
         folder_id: Some(EntityId {
             value: deleted_folder_id.clone(),
         }),
-        user_id: Some(EntityId { value: user_id }),
+        user_id: None,
     });
 
     client.clean_up_deleted_folder(request).await.map_err(|e| {
@@ -189,20 +220,20 @@ pub async fn cleanup_deleted_folder(
 
 #[tauri::command]
 pub async fn cleanup_trash(
-    user_id: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<(), String> {
-    let mut client = FolderServiceClient::new(state.nas_grpc_channel.clone());
+    let token = auth_token(&state).await?;
+    let mut client = FolderServiceClient::with_interceptor(
+        state.nas_grpc_channel.clone(),
+        with_auth(token),
+    );
 
-    let request = tonic::Request::new(CleanUpTrashRequest {
-        user_id: Some(EntityId {
-            value: user_id.clone(),
-        }),
-    });
+    // Owner is resolved from the auth token on the backend.
+    let request = tonic::Request::new(CleanUpTrashRequest { user_id: None });
 
     client.clean_up_trash(request).await.map_err(|e| {
         eprintln!("🛑 gRPC Error: [{:?}] {}", e.code(), e.message());
-        format!("Failed to clean up trash {}: {}", user_id, e.message())
+        format!("Failed to clean up trash: {}", e.message())
     })?;
 
     Ok(())
@@ -210,24 +241,20 @@ pub async fn cleanup_trash(
 
 #[tauri::command]
 pub async fn get_deleted_folder(
-    user_id: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<Vec<FolderView>, String> {
-    let mut client = FolderServiceClient::new(state.nas_grpc_channel.clone());
+    let token = auth_token(&state).await?;
+    let mut client = FolderServiceClient::with_interceptor(
+        state.nas_grpc_channel.clone(),
+        with_auth(token),
+    );
 
-    let request = tonic::Request::new(GetDeletedFoldersRequest {
-        owner_id: Some(EntityId {
-            value: user_id.clone(),
-        }),
-    });
+    // Owner is resolved from the auth token on the backend.
+    let request = tonic::Request::new(GetDeletedFoldersRequest { owner_id: None });
 
     let response = client.get_deleted_folders(request).await.map_err(|e| {
         eprintln!("🛑 gRPC Error: [{:?}] {}", e.code(), e.message());
-        format!(
-            "Failed to fetch deleted folder {}: {}",
-            user_id,
-            e.message()
-        )
+        format!("Failed to fetch deleted folders: {}", e.message())
     });
 
     let deleted_folders = response?.into_inner();
@@ -246,7 +273,11 @@ pub async fn get_trash_files_by_folder(
     folder_id: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<Vec<FileView>, String> {
-    let mut client = FolderServiceClient::new(state.nas_grpc_channel.clone());
+    let token = auth_token(&state).await?;
+    let mut client = FolderServiceClient::with_interceptor(
+        state.nas_grpc_channel.clone(),
+        with_auth(token),
+    );
 
     let request = tonic::Request::new(GetTrashFilesForFolderRequest {
         id: Some(EntityId {
@@ -282,7 +313,11 @@ pub async fn get_trash_subfolders_by_folder(
     folder_id: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<Vec<FolderView>, String> {
-    let mut client = FolderServiceClient::new(state.nas_grpc_channel.clone());
+    let token = auth_token(&state).await?;
+    let mut client = FolderServiceClient::with_interceptor(
+        state.nas_grpc_channel.clone(),
+        with_auth(token),
+    );
 
     let request = tonic::Request::new(GetTrashSubfoldersForFolderRequest {
         id: Some(EntityId {
@@ -319,7 +354,11 @@ pub async fn rename_folder(
     new_name: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<FolderView, String> {
-    let mut client = FolderServiceClient::new(state.nas_grpc_channel.clone());
+    let token = auth_token(&state).await?;
+    let mut client = FolderServiceClient::with_interceptor(
+        state.nas_grpc_channel.clone(),
+        with_auth(token),
+    );
 
     let request = tonic::Request::new(RenameFolderRequest {
         id: Some(EntityId { value: folder_id }),
@@ -345,7 +384,11 @@ pub async fn restore_folder(
     folder_id: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<(), String> {
-    let mut client = FolderServiceClient::new(state.nas_grpc_channel.clone());
+    let token = auth_token(&state).await?;
+    let mut client = FolderServiceClient::with_interceptor(
+        state.nas_grpc_channel.clone(),
+        with_auth(token),
+    );
 
     let request = tonic::Request::new(RestoreDeletedFolderRequest {
         folder_id: Some(EntityId {

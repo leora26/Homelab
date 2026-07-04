@@ -1,4 +1,3 @@
-use crate::common::EntityId;
 use crate::types::model::UserProfileView;
 use crate::user::user_service_client::UserServiceClient;
 use crate::user::GetUserByIdRequest;
@@ -6,21 +5,25 @@ use crate::utils::format_timestamp;
 use crate::AppState;
 use tauri::State;
 use tonic::Request;
+use crate::helpers::with_auth::with_auth;
 
 #[tauri::command]
 pub async fn get_user_profile(
-    user_id: String,
     state: State<'_, AppState>,
 ) -> Result<UserProfileView, String> {
-    println!(
-        "🦀 [RUST] Received request to fetch user profile for ID: {}",
-        user_id
-    );
-    let mut client = UserServiceClient::new(state.user_grpc_channel.clone());
 
-    let request = Request::new(GetUserByIdRequest {
-        id: Some(EntityId { value: user_id }),
-    });
+    let token = {
+        let lock = state.access_token.read().await;
+        lock.clone().ok_or("User is not authenticated")?
+    };
+
+    let mut client = UserServiceClient::with_interceptor(
+        state.user_grpc_channel.clone(),
+        with_auth(token)
+    );
+
+    // Identity is derived from the auth token on the backend; no id is sent.
+    let request = Request::new(GetUserByIdRequest { id: None });
 
     let response = client.get_by_id(request).await.map_err(|e| {
         eprintln!(

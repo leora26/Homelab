@@ -2,7 +2,6 @@
     import { invoke } from "@tauri-apps/api/core";
     import { open } from "@tauri-apps/plugin-dialog";
     import { stat } from "@tauri-apps/plugin-fs";
-    import { userId } from "$lib/types/tempUserId";
     import type { FileView } from "$lib/types/models";
 
 
@@ -40,7 +39,6 @@
             const fileView = await invoke<FileView>('init_file', {
                 name: fileName,
                 destination: activeFolderId,
-                ownerId: userId,
                 localPath: selectedPath,
                 isGlobal: false
             });
