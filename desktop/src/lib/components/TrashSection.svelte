@@ -1,6 +1,5 @@
 <script lang="ts">
     import {safeInvoke} from "$lib/components/helpers/safeInvoke";
-    import {userId} from "$lib/types/tempUserId";
     import type {FileView, FolderView} from "$lib/types/models";
     import DeletedItemsTable from "$lib/components/folder/DeletedItemsTable.svelte";
     import FormModal from "$lib/components/common/FormModal.svelte";
@@ -26,7 +25,7 @@
         error = null;
 
         if (!folderId) {
-            const result = await safeInvoke<FileView[]>('get_deleted_files', {userId});
+            const result = await safeInvoke<FileView[]>('get_deleted_files');
             if (currentFetchId !== fetchId) return;
 
             if (result.ok) {
@@ -105,7 +104,7 @@
     };
 
     const emptyTrash = async () => {
-        const result = await safeInvoke('empty_trash', {userId});
+        const result = await safeInvoke('cleanup_trash');
         if (!result.ok) error = result.error;
         fetchDeletedFiles(activeFolderId);
     }

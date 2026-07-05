@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=Pavuk NAS
+Exec=__PATH__ %u
+Type=Application
+Terminal=false
+Categories=Utility;
+MimeType=x-scheme-handler/pavuk;

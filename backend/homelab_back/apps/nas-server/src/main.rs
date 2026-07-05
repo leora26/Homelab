@@ -77,6 +77,7 @@ pub struct AppState {
     pub folder_read_service: Arc<dyn FolderReadService>,
     pub file_read_service: Arc<dyn FileReadService>,
     pub cached_identity_resolver: Arc<CacheIdentityResolver<StorageProfileRepositoryImpl>>,
+    pub auth_state: AuthState,
 }
 
 #[actix_web::main]
@@ -129,7 +130,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let publisher = Arc::new(RabbitMqPublisher::new(&rabbit_url).await?);
 
-    let app_state = init_app_state(pool, publisher, root_path.clone()).await;
+    let app_state = init_app_state(pool, publisher, root_path.clone(), auth_state.clone()).await;
 
     let rest_addr = ("0.0.0.0", 8080);
     let grpc_addr: std::net::SocketAddr = "[::1]:50051".parse()?;
@@ -220,7 +221,7 @@ fn handler_config(cfg: &mut web::ServiceConfig) {
 fn init_auth_interceptor(auth_state: AuthState) -> impl Interceptor + Clone {
     move |mut req: tonic::Request<()>| match req.metadata().get("authorization") {
         Some(token_header) => {
-            let token_str = token_header.to_str().unwrap_or("").replace("Bearer", "");
+            let token_str = token_header.to_str().unwrap_or("").replace("Bearer ", "");
 
             let claims = auth_state.verify_token(&token_str)?;
 
@@ -238,6 +239,7 @@ async fn init_app_state(
     pool: Pool<Postgres>,
     publisher: Arc<RabbitMqPublisher>,
     root_path: PathBuf,
+    auth_state: AuthState,
 ) -> Data<AppState> {
     let file_repo = Arc::new(FileRepositoryImpl::new(pool.clone()));
     let storage_profile_repo = Arc::new(StorageProfileRepositoryImpl::new(pool.clone()));
@@ -303,5 +305,6 @@ async fn init_app_state(
         file_read_service,
         folder_read_service,
         cached_identity_resolver,
+        auth_state,
     })
 }

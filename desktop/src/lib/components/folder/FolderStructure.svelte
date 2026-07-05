@@ -6,7 +6,6 @@
     import ActiveDirectoryTree from "$lib/components/folder/ActiveDirectoryTree.svelte";
     import FolderContextMenu from "$lib/components/folder/FolderContextMenu.svelte";
     import {safeInvoke} from "$lib/components/helpers/safeInvoke";
-    import {userId} from "$lib/types/tempUserId";
 
     interface FolderStructureProps {
         activeFolderId: string | null;
@@ -79,8 +78,7 @@
     const triggerRemove = async () => {
         if (!contextMenu.targetId) return;
         const result = await safeInvoke('cleanup_deleted_folder', {
-            deletedFolderId: contextMenu.targetId,
-            userId: userId
+            deletedFolderId: contextMenu.targetId
         });
 
         if (!result.ok) {

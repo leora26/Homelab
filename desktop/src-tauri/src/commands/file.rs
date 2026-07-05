@@ -1,8 +1,9 @@
 use crate::common::EntityId;
 use crate::helpers::mappings::map_file_proto_to_view;
+use crate::helpers::with_auth::with_auth;
 use crate::nas::file_chunk::Data;
 use crate::nas::file_service_client::FileServiceClient;
-use crate::nas::{ArchiveFileRequest, CopyFileRequest, DeleteChosenFilesRequest, DeleteFileRequest, FileChunk, GetDeletedFilesRequest, InitFileRequest, MoveFileRequest, RemoveAllDeletedFilesRequest, RemoveDeletedFileRequest, RenameFileRequest, UnarchiveFileRequest, UndeleteFileRequest};
+use crate::nas::{ArchiveFileRequest, CopyFileRequest, DeleteChosenFilesRequest, DeleteFileRequest, FileChunk, GetDeletedFilesRequest, InitFileRequest, MoveFileRequest, RemoveDeletedFileRequest, RenameFileRequest, UnarchiveFileRequest, UndeleteFileRequest};
 use crate::types::model::FileView;
 use crate::AppState;
 use async_stream::stream;
@@ -11,12 +12,19 @@ use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 use tonic::Request;
 
+// Reads the current access token from state; every NAS gRPC call must carry it,
+// otherwise the backend auth interceptor rejects the request. Identity (the owner)
+// is derived from this token on the backend, not from any client-supplied id.
+async fn auth_token(state: &tauri::State<'_, AppState>) -> Result<String, String> {
+    let lock = state.access_token.read().await;
+    lock.clone().ok_or_else(|| "User is not authenticated".to_string())
+}
+
 #[tauri::command]
 pub async fn init_file(
     state: tauri::State<'_, AppState>,
     name: String,
     destination: String,
-    owner_id: String,
     local_path: String,
     is_global: bool,
 ) -> Result<FileView, String> {
@@ -26,12 +34,17 @@ pub async fn init_file(
 
     let size = metadata.len() as i64;
 
-    let mut client = FileServiceClient::new(state.nas_grpc_channel.clone());
+    let token = auth_token(&state).await?;
+    let mut client = FileServiceClient::with_interceptor(
+        state.nas_grpc_channel.clone(),
+        with_auth(token),
+    );
 
+    // Owner is resolved from the auth token on the backend.
     let request = Request::new(InitFileRequest {
         name,
         destination: Some(EntityId { value: destination }),
-        owner_id: Some(EntityId { value: owner_id }),
+        owner_id: None,
         size,
         is_global,
     });
@@ -52,7 +65,11 @@ pub async fn upload_content(
     file_id: String,
     local_path: String,
 ) -> Result<(), String> {
-    let mut client = FileServiceClient::new(state.nas_grpc_channel.clone());
+    let token = auth_token(&state).await?;
+    let mut client = FileServiceClient::with_interceptor(
+        state.nas_grpc_channel.clone(),
+        with_auth(token),
+    );
 
     let mut file = File::open(&local_path)
         .await
@@ -93,7 +110,11 @@ pub async fn upload_content(
 
 #[tauri::command]
 pub async fn delete_file(state: tauri::State<'_, AppState>, file_id: String) -> Result<(), String> {
-    let mut client = FileServiceClient::new(state.nas_grpc_channel.clone());
+    let token = auth_token(&state).await?;
+    let mut client = FileServiceClient::with_interceptor(
+        state.nas_grpc_channel.clone(),
+        with_auth(token),
+    );
 
     let request = Request::new(DeleteFileRequest {
         id: Some(EntityId {
@@ -117,7 +138,11 @@ pub async fn rename_file(
     file_id: String,
     new_name: String,
 ) -> Result<FileView, String> {
-    let mut client = FileServiceClient::new(state.nas_grpc_channel.clone());
+    let token = auth_token(&state).await?;
+    let mut client = FileServiceClient::with_interceptor(
+        state.nas_grpc_channel.clone(),
+        with_auth(token),
+    );
 
     let request = Request::new(RenameFileRequest {
         id: Some(EntityId { value: file_id }),
@@ -137,13 +162,15 @@ pub async fn rename_file(
 #[tauri::command]
 pub async fn get_deleted_files(
     state: tauri::State<'_, AppState>,
-    user_id: String,
 ) -> Result<Vec<FileView>, String> {
-    let mut client = FileServiceClient::new(state.nas_grpc_channel.clone());
+    let token = auth_token(&state).await?;
+    let mut client = FileServiceClient::with_interceptor(
+        state.nas_grpc_channel.clone(),
+        with_auth(token),
+    );
 
-    let request = Request::new(GetDeletedFilesRequest {
-        user_id: Some(EntityId { value: user_id }),
-    });
+    // Owner is resolved from the auth token on the backend.
+    let request = Request::new(GetDeletedFilesRequest { user_id: None });
 
     let response = client
         .get_deleted_files(request)
@@ -166,7 +193,11 @@ pub async fn restore_file(
     state: tauri::State<'_, AppState>,
     file_id: String,
 ) -> Result<FileView, String> {
-    let mut client = FileServiceClient::new(state.nas_grpc_channel.clone());
+    let token = auth_token(&state).await?;
+    let mut client = FileServiceClient::with_interceptor(
+        state.nas_grpc_channel.clone(),
+        with_auth(token),
+    );
 
     let request = Request::new(UndeleteFileRequest {
         id: Some(EntityId { value: file_id }),
@@ -187,7 +218,11 @@ pub async fn delete_chosen_file(
     state: tauri::State<'_, AppState>,
     file_id: Vec<String>,
 ) -> Result<(), String> {
-    let mut client = FileServiceClient::new(state.nas_grpc_channel.clone());
+    let token = auth_token(&state).await?;
+    let mut client = FileServiceClient::with_interceptor(
+        state.nas_grpc_channel.clone(),
+        with_auth(token),
+    );
 
     let request = Request::new(DeleteChosenFilesRequest {
         file_ids: file_id.into_iter().map(|f| EntityId { value: f }).collect(),
@@ -208,7 +243,11 @@ pub async fn remove_deleted_file(
     state: tauri::State<'_, AppState>,
     file_id: String,
 ) -> Result<(), String> {
-    let mut client = FileServiceClient::new(state.nas_grpc_channel.clone());
+    let token = auth_token(&state).await?;
+    let mut client = FileServiceClient::with_interceptor(
+        state.nas_grpc_channel.clone(),
+        with_auth(token),
+    );
 
     let request = Request::new(RemoveDeletedFileRequest {
         file_id: Some(EntityId { value: file_id }),
@@ -230,7 +269,11 @@ pub async fn move_file(
     folder_id: String,
     file_id: String,
 ) -> Result<FileView, String> {
-    let mut client = FileServiceClient::new(state.nas_grpc_channel.clone());
+    let token = auth_token(&state).await?;
+    let mut client = FileServiceClient::with_interceptor(
+        state.nas_grpc_channel.clone(),
+        with_auth(token),
+    );
 
     let request = Request::new(MoveFileRequest {
         folder_id: Some(EntityId { value: folder_id }),
@@ -254,7 +297,11 @@ pub async fn copy_file(
     file_id: String,
     target_folder_id: String,
 ) -> Result<FileView, String> {
-    let mut client = FileServiceClient::new(state.nas_grpc_channel.clone());
+    let token = auth_token(&state).await?;
+    let mut client = FileServiceClient::with_interceptor(
+        state.nas_grpc_channel.clone(),
+        with_auth(token),
+    );
 
     let request = Request::new(CopyFileRequest {
         file_id: Some(EntityId { value: file_id }),
@@ -277,7 +324,11 @@ pub async fn archive_file (
     file_id: String,
 ) -> Result<(), String> {
     println!("arhciving file: {}", file_id);
-    let mut client = FileServiceClient::new(state.nas_grpc_channel.clone());
+    let token = auth_token(&state).await?;
+    let mut client = FileServiceClient::with_interceptor(
+        state.nas_grpc_channel.clone(),
+        with_auth(token),
+    );
 
     let request = Request::new(ArchiveFileRequest {
         file_id: Some(EntityId { value: file_id }),
@@ -298,7 +349,11 @@ pub async fn unarchive_file(
     state: tauri::State<'_, AppState>,
     file_id: String,
 ) -> Result<(), String> {
-    let mut client = FileServiceClient::new(state.nas_grpc_channel.clone());
+    let token = auth_token(&state).await?;
+    let mut client = FileServiceClient::with_interceptor(
+        state.nas_grpc_channel.clone(),
+        with_auth(token),
+    );
 
     let request = Request::new(UnarchiveFileRequest {
         file_id: Some(EntityId { value: file_id }),

@@ -18,6 +18,13 @@ resource "zitadel_machine_key" "backend_key" {
   key_type = "KEY_TYPE_JSON"
 }
 
+resource "zitadel_org_member" "backend_svc_account_permissions" {
+  org_id  = var.zitadel_org_id
+  user_id = zitadel_machine_user.backend_svc_account.id
+  # Grants permission to create, update, and delete users in this organization
+  roles   = ["ORG_USER_MANAGER"]
+}
+
 
 output "backend_service_account_key" {
   value       = zitadel_machine_key.backend_key.key_details

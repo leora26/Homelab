@@ -7,6 +7,9 @@
 /Nas
 
 /backend/homelab_back/apps/user-management/backend-key.json
+/backend/homelab_back/apps/nas-server/backend-key.json
+/backend/homelab_back/libs/core/src/auth/backend-key.json
+
 
 /rabbitmq_data
 /postgres_data

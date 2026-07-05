@@ -1,20 +1,27 @@
-use crate::common::EntityId;
 use crate::nas::storage_profile_service_client::StorageProfileServiceClient;
 use crate::nas::GetStorageProfileByIdRequest;
 use crate::types::model::StorageProfileView;
 use crate::AppState;
 use tonic::Request;
+use crate::helpers::with_auth::with_auth;
 
 #[tauri::command]
 pub async fn get_storage_profile(
-    user_id: String,
     state: tauri::State<'_, AppState>,
 ) -> Result<StorageProfileView, String> {
-    let mut client = StorageProfileServiceClient::new(state.nas_grpc_channel.clone());
 
-    let request = Request::new(GetStorageProfileByIdRequest {
-        id: Some(EntityId { value: user_id }),
-    });
+    let token = {
+        let lock = state.access_token.read().await;
+        lock.clone().ok_or("User is not authenticated")?
+    };
+
+    let mut client = StorageProfileServiceClient::with_interceptor(
+        state.nas_grpc_channel.clone(),
+        with_auth(token)
+    );
+
+    // Identity is derived from the auth token on the backend; no id is sent.
+    let request = Request::new(GetStorageProfileByIdRequest { id: None });
 
     let response = client.get_by_id(request).await.map_err(|e| {
         eprintln!(

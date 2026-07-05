@@ -2,7 +2,6 @@
     import { fly } from "svelte/transition";
     import type { FolderView } from "$lib/types/models";
     import { safeInvoke } from "$lib/components/helpers/safeInvoke";
-    import { userId } from "$lib/types/tempUserId";
     import FolderTreeItem from "$lib/components/folder/FolderTreeItem.svelte";
 
     interface TrashDirectoryTreeProps {
@@ -30,7 +29,7 @@
 
     const fetchTrashedFolders = async () => {
         isLoading = true;
-        const result = await safeInvoke<FolderView[]>('get_deleted_folder', {userId: userId});
+        const result = await safeInvoke<FolderView[]>('get_deleted_folder');
 
         if (result.ok) {
             trashedFolders = result.data;

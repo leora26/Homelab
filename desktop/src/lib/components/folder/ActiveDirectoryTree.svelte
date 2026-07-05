@@ -2,7 +2,6 @@
     import { fly } from "svelte/transition";
     import type { FolderView } from "$lib/types/models";
     import { safeInvoke } from "$lib/components/helpers/safeInvoke";
-    import { userId } from "$lib/types/tempUserId";
     import FolderTreeItem from "$lib/components/folder/FolderTreeItem.svelte";
     import { onMount } from "svelte";
 
@@ -32,7 +31,7 @@
 
     const fetchActiveRoot = async () => {
         try {
-            const result = await safeInvoke<FolderView>('get_root_folder', {userId});
+            const result = await safeInvoke<FolderView>('get_root_folder');
 
             if (result.ok) {
                 rootFolder = result.data;

@@ -1,6 +1,7 @@
 use crate::data::create_folder_command::CreateFolderCommand;
 use crate::data::move_folder_command::MoveFolderCommand;
 use crate::data::update_folder_name_command::UpdateFolderNameCommand;
+use crate::grpc::ownership::folder_owned_by;
 use crate::helpers::proto_mappers::{map_entity_id, map_file_to_proto, map_folder_to_proto};
 use crate::AppState;
 use async_trait::async_trait;
@@ -49,16 +50,15 @@ impl FolderService for GrpcFolderService {
         &self,
         request: Request<GetFolderRequest>,
     ) -> Result<Response<FolderResponse>, Status> {
+        let user_id = request
+            .get_internal_id(&self.app_state.cached_identity_resolver)
+            .await?;
+
         let req = request.into_inner();
 
         let folder_id = map_entity_id(req.id)?;
 
-        let folder = self
-            .app_state
-            .folder_read_service
-            .get_by_id(folder_id)
-            .await?
-            .ok_or_else(|| Status::not_found(format!("No folder found with id: {}", folder_id)))?;
+        let folder = folder_owned_by(&self.app_state, folder_id, user_id).await?;
 
         Ok(Response::new(map_folder_to_proto(folder)))
     }
@@ -67,9 +67,15 @@ impl FolderService for GrpcFolderService {
         &self,
         request: Request<GetAllSubfoldersRequest>,
     ) -> Result<Response<FolderResponseList>, Status> {
+        let user_id = request
+            .get_internal_id(&self.app_state.cached_identity_resolver)
+            .await?;
+
         let req = request.into_inner();
 
         let folder_id = map_entity_id(req.id)?;
+
+        folder_owned_by(&self.app_state, folder_id, user_id).await?;
 
         let folders = self
             .app_state
@@ -91,9 +97,15 @@ impl FolderService for GrpcFolderService {
         &self,
         request: Request<GetFilesForFolderRequest>,
     ) -> Result<Response<FileListResponse>, Status> {
+        let user_id = request
+            .get_internal_id(&self.app_state.cached_identity_resolver)
+            .await?;
+
         let req = request.into_inner();
 
         let folder_id = map_entity_id(req.id)?;
+
+        folder_owned_by(&self.app_state, folder_id, user_id).await?;
 
         let files = self
             .app_state
@@ -110,9 +122,15 @@ impl FolderService for GrpcFolderService {
         &self,
         request: Request<GetTrashFilesForFolderRequest>,
     ) -> Result<Response<FileListResponse>, Status> {
+        let user_id = request
+            .get_internal_id(&self.app_state.cached_identity_resolver)
+            .await?;
+
         let req = request.into_inner();
 
         let folder_id = map_entity_id(req.id)?;
+
+        folder_owned_by(&self.app_state, folder_id, user_id).await?;
 
         let files = self
             .app_state
@@ -129,9 +147,15 @@ impl FolderService for GrpcFolderService {
         &self,
         request: Request<GetTrashSubfoldersForFolderRequest>,
     ) -> Result<Response<FolderResponseList>, Status> {
+        let user_id = request
+            .get_internal_id(&self.app_state.cached_identity_resolver)
+            .await?;
+
         let req = request.into_inner();
 
         let folder_id = map_entity_id(req.id)?;
+
+        folder_owned_by(&self.app_state, folder_id, user_id).await?;
 
         let subfolder = self
             .app_state
@@ -177,9 +201,15 @@ impl FolderService for GrpcFolderService {
         &self,
         request: Request<DeleteFolderRequest>,
     ) -> Result<Response<()>, Status> {
+        let user_id = request
+            .get_internal_id(&self.app_state.cached_identity_resolver)
+            .await?;
+
         let req = request.into_inner();
 
         let folder_id = map_entity_id(req.id)?;
+
+        folder_owned_by(&self.app_state, folder_id, user_id).await?;
 
         self.app_state.folder_write_service.trash(folder_id).await?;
 
@@ -190,9 +220,15 @@ impl FolderService for GrpcFolderService {
         &self,
         request: Request<RenameFolderRequest>,
     ) -> Result<Response<FolderResponse>, Status> {
+        let user_id = request
+            .get_internal_id(&self.app_state.cached_identity_resolver)
+            .await?;
+
         let req = request.into_inner();
 
         let folder_id = map_entity_id(req.id)?;
+
+        folder_owned_by(&self.app_state, folder_id, user_id).await?;
 
         let command = UpdateFolderNameCommand::new(req.new_name);
 
@@ -231,6 +267,10 @@ impl FolderService for GrpcFolderService {
         &self,
         request: Request<DeleteAllFolderRequest>,
     ) -> Result<Response<()>, Status> {
+        let user_id = request
+            .get_internal_id(&self.app_state.cached_identity_resolver)
+            .await?;
+
         let req = request.into_inner();
 
         let folder_ids: Vec<Uuid> = req
@@ -238,6 +278,10 @@ impl FolderService for GrpcFolderService {
             .into_iter()
             .map(|folder_id| map_entity_id(Some(folder_id)))
             .collect::<Result<Vec<_>, _>>()?;
+
+        for folder_id in &folder_ids {
+            folder_owned_by(&self.app_state, *folder_id, user_id).await?;
+        }
 
         self.app_state
             .folder_write_service
@@ -251,11 +295,19 @@ impl FolderService for GrpcFolderService {
         &self,
         request: Request<MoveFolderRequest>,
     ) -> Result<Response<FolderResponse>, Status> {
+        let user_id = request
+            .get_internal_id(&self.app_state.cached_identity_resolver)
+            .await?;
+
         let req = request.into_inner();
 
         let target_folder = map_entity_id(req.target_folder)?;
 
         let folder_id = map_entity_id(req.folder_id)?;
+
+        // Both the folder being moved and its destination must belong to the caller.
+        folder_owned_by(&self.app_state, folder_id, user_id).await?;
+        folder_owned_by(&self.app_state, target_folder, user_id).await?;
 
         let command = MoveFolderCommand::new(target_folder, folder_id);
 
@@ -276,6 +328,10 @@ impl FolderService for GrpcFolderService {
 
         let parent_folder_id = map_entity_id(req.parent_folder_id)?;
 
+        // The parent must belong to the caller, otherwise a user could plant a
+        // folder inside another user's tree.
+        folder_owned_by(&self.app_state, parent_folder_id, internal_user_id).await?;
+
         let command = CreateFolderCommand::new(parent_folder_id, req.name, internal_user_id);
 
         let folder = self.app_state.folder_write_service.create(command).await?;
@@ -294,6 +350,8 @@ impl FolderService for GrpcFolderService {
 
         let folder_id = map_entity_id(req.folder_id)?;
 
+        folder_owned_by(&self.app_state, folder_id, internal_user_id).await?;
+
         self.app_state
             .folder_write_service
             .permanently_delete_folder(folder_id, internal_user_id)
@@ -309,7 +367,7 @@ impl FolderService for GrpcFolderService {
         let internal_user_id = request
             .get_internal_id(&self.app_state.cached_identity_resolver)
             .await?;
-        
+
         self.app_state
             .folder_write_service
             .clean_up_trash(internal_user_id)
@@ -322,9 +380,15 @@ impl FolderService for GrpcFolderService {
         &self,
         request: Request<RestoreDeletedFolderRequest>,
     ) -> Result<Response<()>, Status> {
+        let user_id = request
+            .get_internal_id(&self.app_state.cached_identity_resolver)
+            .await?;
+
         let req = request.into_inner();
 
         let folder_id = map_entity_id(req.folder_id)?;
+
+        folder_owned_by(&self.app_state, folder_id, user_id).await?;
 
         self.app_state
             .folder_write_service
