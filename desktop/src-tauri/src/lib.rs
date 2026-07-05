@@ -159,6 +159,8 @@ pub async fn run() {
             commands::file::copy_file,
             commands::file::archive_file,
             commands::file::unarchive_file,
+            commands::download::download_file,
+            commands::download::get_file_preview,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
