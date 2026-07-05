@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT id, email, full_name, created_at\n            FROM white_listed_users\n            WHERE id = $1\n            ",
+  "query": "\n            INSERT INTO white_listed_users (id, email, full_name, created_at, external_id)\n            VALUES ($1, $2, $3, $4, $5)\n            RETURNING id, email, full_name, created_at, external_id\n            ",
   "describe": {
     "columns": [
       {
@@ -22,19 +22,29 @@
         "ordinal": 3,
         "name": "created_at",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "external_id",
+        "type_info": "Varchar"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "Uuid",
+        "Text",
+        "Text",
+        "Timestamptz",
+        "Varchar"
       ]
     },
     "nullable": [
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "dfe05e089f91bdca94dec99bebd306960f7a5955321a8b4ad9602dc5a63d8f29"
+  "hash": "7e199ceb71e62e56137d0f090e1a24ba9d554383739ce25557d5abc1b7c59d4d"
 }

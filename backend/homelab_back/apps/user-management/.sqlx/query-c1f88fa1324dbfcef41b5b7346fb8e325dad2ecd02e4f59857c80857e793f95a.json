@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        INSERT INTO users (id, email, full_name, password_hash, role, is_blocked)\n        VALUES ($1, $2, $3, $4, $5, $6)\n        RETURNING id, email, full_name, password_hash, created_at, role as \"role: _\", is_blocked\n        ",
+  "query": "\n        SELECT id, email, full_name, external_id, created_at,  role as \"role: _\", is_blocked\n        FROM users\n        WHERE id = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -20,8 +20,8 @@
       },
       {
         "ordinal": 3,
-        "name": "password_hash",
-        "type_info": "Text"
+        "name": "external_id",
+        "type_info": "Varchar"
       },
       {
         "ordinal": 4,
@@ -51,22 +51,7 @@
     ],
     "parameters": {
       "Left": [
-        "Uuid",
-        "Text",
-        "Text",
-        "Text",
-        {
-          "Custom": {
-            "name": "user_role",
-            "kind": {
-              "Enum": [
-                "user",
-                "admin"
-              ]
-            }
-          }
-        },
-        "Bool"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -79,5 +64,5 @@
       false
     ]
   },
-  "hash": "536a0c06a889b0ec1a4281ed91e68873cf0bd43ce20669bee5829e9967cacfc0"
+  "hash": "c1f88fa1324dbfcef41b5b7346fb8e325dad2ecd02e4f59857c80857e793f95a"
 }

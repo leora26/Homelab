@@ -261,7 +261,6 @@ async fn init_app_state(
         folder_repo.clone(),
         storage_profile_repo.clone(),
         root_path.to_path_buf(),
-        global_file_repo.clone(),
         publisher.clone(),
     ));
     let file_read_service = Arc::new(FileReadServiceImpl::new(

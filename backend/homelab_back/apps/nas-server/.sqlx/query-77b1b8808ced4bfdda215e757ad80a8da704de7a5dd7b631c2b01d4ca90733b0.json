@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM global_files WHERE original_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "77b1b8808ced4bfdda215e757ad80a8da704de7a5dd7b631c2b01d4ca90733b0"
+}

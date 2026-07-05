@@ -15,6 +15,13 @@
         />
 
         <Tile
+                url="/global"
+                icon="🌐"
+                name="Global Files"
+                description="View and download files shared with every user."
+        />
+
+        <Tile
                 url="/profile"
                 icon="👤"
                 name="User Profile"

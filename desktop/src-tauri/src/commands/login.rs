@@ -1,7 +1,7 @@
 use rand::RngCore;
 use sha2::{Sha256, Digest};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
-use tauri::State;
+use tauri::{AppHandle, Emitter, State};
 use webbrowser;
 use crate::AppState;
 
@@ -51,4 +51,24 @@ pub async fn trigger_login(state: State<'_, AppState>) -> Result<(), String> {
 pub async fn get_auth_status(state: tauri::State<'_, AppState>) -> Result<bool, String> {
     let token_guard = state.access_token.read().await;
     Ok(token_guard.is_some())
+}
+
+/// Clears the cached access token (and any in-flight PKCE verifier) and notifies the UI
+/// so it returns to the login screen. Combined with `prompt=login` on the auth URL, this
+/// lets a user sign out and log in as a different account.
+#[tauri::command]
+pub async fn logout(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
+    {
+        let mut token_lock = state.access_token.write().await;
+        *token_lock = None;
+    }
+    {
+        let mut verifier_lock = state.pkce_verifier.write().await;
+        *verifier_lock = None;
+    }
+
+    app.emit("auth_state_changed", false)
+        .map_err(|e| format!("Failed to emit auth state: {}", e))?;
+
+    Ok(())
 }

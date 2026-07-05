@@ -34,3 +34,9 @@ export interface FileView {
     updated_at: string,
     hash: string
 }
+
+export interface GlobalFileView {
+    id: string,
+    original_id: string,
+    file: FileView
+}

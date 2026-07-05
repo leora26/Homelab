@@ -40,8 +40,13 @@ impl FileService for GrpcFileService {
             .file_read_service
             .get_by_id(file_id)
             .await?
-            .filter(|f| f.owner_id == user_id)
             .ok_or_else(|| Status::not_found("File not found"))?;
+
+        if file.owner_id != user_id
+            && !self.app_state.global_file_service.is_global(file.id).await?
+        {
+            return Err(Status::not_found("File not found"));
+        }
 
         Ok(Response::new(map_file_to_proto(file)))
     }
@@ -94,7 +99,7 @@ impl FileService for GrpcFileService {
         folder_owned_by(&self.app_state, destination, internal_user_id).await?;
 
         let command =
-            InitFileCommand::new(destination, internal_user_id, req.name, req.size, req.is_global);
+            InitFileCommand::new(destination, internal_user_id, req.name, req.size);
 
         let file = self.app_state.file_write_service.upload(command).await?;
         println!("{:#?}", file);

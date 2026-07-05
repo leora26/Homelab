@@ -26,7 +26,6 @@ pub async fn init_file(
     name: String,
     destination: String,
     local_path: String,
-    is_global: bool,
 ) -> Result<FileView, String> {
     let metadata = fs::metadata(&local_path)
         .await
@@ -46,7 +45,6 @@ pub async fn init_file(
         destination: Some(EntityId { value: destination }),
         owner_id: None,
         size,
-        is_global,
     });
 
     let response = client

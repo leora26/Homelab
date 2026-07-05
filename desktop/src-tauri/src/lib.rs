@@ -133,6 +133,8 @@ pub async fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::login::trigger_login,
+            commands::login::get_auth_status,
+            commands::login::logout,
             commands::user::get_user_profile,
             commands::storage_profile::get_storage_profile,
             commands::folder::get_root_folder,
@@ -161,6 +163,10 @@ pub async fn run() {
             commands::file::unarchive_file,
             commands::download::download_file,
             commands::download::get_file_preview,
+            commands::global_file::get_global_files,
+            commands::global_file::make_file_global,
+            commands::global_file::make_file_private,
+            commands::global_file::is_file_global,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

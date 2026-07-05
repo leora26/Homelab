@@ -39,3 +39,10 @@ pub struct FileView {
     pub created_at: String,
     pub updated_at: String,
 }
+
+#[derive(Serialize, Debug)]
+pub struct GlobalFileView {
+    pub id: String,
+    pub original_id: String,
+    pub file: FileView,
+}

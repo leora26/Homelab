@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO users (id, external_id, email, full_name, role)\n        VALUES ($1, $2, $3, $4, 'admin')\n        ON CONFLICT (email) DO UPDATE\n        SET external_id = EXCLUDED.external_id\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "d8c433e53cbcb1c6950ff2d57b4e6dcc0bc204332d3faa08c297ad5ff0f1bae8"
+}

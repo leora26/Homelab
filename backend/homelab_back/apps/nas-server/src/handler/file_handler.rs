@@ -34,21 +34,41 @@ async fn authenticate(req: &HttpRequest, app_state: &AppState) -> actix_web::Res
         })
 }
 
-/// Fetches a file and confirms it belongs to `user_id`, returning 404 otherwise so
-/// callers cannot probe for files they do not own.
-async fn assert_file_owner(app_state: &AppState, file_id: Uuid, user_id: Uuid) -> actix_web::Result<()> {
+/// Fetches a file and confirms the caller may read it: either they own it, or it has
+/// been published as a global file (readable by any authenticated user). Returns 404
+/// otherwise so callers cannot probe for files they cannot access.
+async fn assert_file_readable(app_state: &AppState, file_id: Uuid, user_id: Uuid) -> actix_web::Result<()> {
     let file = app_state
         .file_read_service
         .get_by_id(file_id)
         .await
         .map_err(|e| {
-            tracing::error!("Failed to load file for ownership check: {:?}", e);
+            tracing::error!("Failed to load file for access check: {:?}", e);
             error::ErrorInternalServerError("Failed to load file")
         })?;
 
-    match file {
-        Some(f) if f.owner_id == user_id => Ok(()),
-        _ => Err(error::ErrorNotFound("File not found")),
+    let file = match file {
+        Some(f) => f,
+        None => return Err(error::ErrorNotFound("File not found")),
+    };
+
+    if file.owner_id == user_id {
+        return Ok(());
+    }
+
+    let is_global = app_state
+        .global_file_service
+        .is_global(file.id)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to check global status: {:?}", e);
+            error::ErrorInternalServerError("Failed to load file")
+        })?;
+
+    if is_global {
+        Ok(())
+    } else {
+        Err(error::ErrorNotFound("File not found"))
     }
 }
 
@@ -62,7 +82,7 @@ async fn download_file(
     let id = file_id.into_inner();
 
     let user_id = authenticate(&req, &app_state).await?;
-    assert_file_owner(&app_state, id, user_id).await?;
+    assert_file_readable(&app_state, id, user_id).await?;
 
     let path = match app_state.file_read_service.get_file_for_streaming(id).await {
         Ok(path) => path,
@@ -96,7 +116,7 @@ async fn preview_file(
     let id = file_id.into_inner();
 
     let user_id = authenticate(&req, &app_state).await?;
-    assert_file_owner(&app_state, id, user_id).await?;
+    assert_file_readable(&app_state, id, user_id).await?;
 
     let path = match app_state.file_read_service.get_file_preview_for_streaming(id).await {
         Ok(path) => path,

@@ -4,7 +4,6 @@ use crate::data::move_file_command::MoveFileCommand;
 use crate::data::update_file_name_command::UpdateFileNameCommand;
 use crate::db::file_repository::FileRepository;
 use crate::db::folder_repository::FolderRepository;
-use crate::db::global_file_repository::GlobalFileRepository;
 use crate::db::storage_profile_repository::StorageProfileRepository;
 use crate::events::rabbitmq::RabbitMqPublisher;
 use crate::helpers::data_error::DataError;
@@ -15,7 +14,6 @@ use homelab_core::constants::MB;
 use homelab_core::events::{DeletionType, FileUpdatedEvent, FileUploadedEvent, TrashCleanUpTriggeredEvent, UserUpdatedEvent};
 use homelab_core::nas_domain::file::{File, FileType, UploadStatus};
 use homelab_core::nas_domain::folder::Folder;
-use homelab_core::nas_domain::global_file::GlobalFile;
 use homelab_core::nas_domain::storage_profile::StorageProfile;
 use sqlx::types::time::OffsetDateTime;
 use std::path::{Path, PathBuf};
@@ -34,7 +32,6 @@ pub struct FileWriteServiceImpl {
     folder_repo: Arc<dyn FolderRepository>,
     sp_repo: Arc<dyn StorageProfileRepository>,
     storage_path: PathBuf,
-    global_file_repo: Arc<dyn GlobalFileRepository>,
     publisher: Arc<RabbitMqPublisher>,
 }
 
@@ -73,13 +70,6 @@ impl FileWriteService for FileWriteServiceImpl {
                 OffsetDateTime::now_utc(),
                 OffsetDateTime::now_utc(),
             );
-
-            if command.is_global {
-                let original = f.id.clone();
-                let global_file = GlobalFile::new(Uuid::new_v4(), original);
-
-                self.global_file_repo.save(global_file).await?;
-            }
 
             let file_event: FileUploadedEvent = FileUploadedEvent::new(
                 f.id.clone(),
