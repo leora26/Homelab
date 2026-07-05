@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use uuid::Uuid;
-use homelab_core::folder::Folder;
+use homelab_core::nas_domain::folder::Folder;
 use crate::data::create_folder_command::CreateFolderCommand;
 use crate::data::move_folder_command::MoveFolderCommand;
 use crate::data::update_folder_name_command::UpdateFolderNameCommand;

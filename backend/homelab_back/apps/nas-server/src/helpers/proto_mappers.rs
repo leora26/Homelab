@@ -1,13 +1,13 @@
-use homelab_core::file::{File, FileType as DomainFileType, UploadStatus as DomainUploadStatus};
-use homelab_core::file_label::FileLabel;
-use homelab_core::folder::Folder;
-use homelab_core::global_file::GlobalFile;
-use homelab_core::label::Label;
+use homelab_core::nas_domain::file::{File, FileType as DomainFileType, UploadStatus as DomainUploadStatus};
+use homelab_core::nas_domain::file_label::FileLabel;
+use homelab_core::nas_domain::folder::Folder;
+use homelab_core::nas_domain::global_file::GlobalFile;
+use homelab_core::nas_domain::label::Label;
 use homelab_proto::common::EntityId;
 use homelab_proto::nas::{FileLabelResponse, FileResponse, FileType as ProtoFileType, FolderResponse, GlobalFileResponse, LabelResponse, StorageProfileResponse, UploadStatus as ProtoUploadStatus};
 use tonic::Status;
 use uuid::Uuid;
-use homelab_core::storage_profile::StorageProfile;
+use homelab_core::nas_domain::storage_profile::StorageProfile;
 
 pub fn map_storage_profile_to_proto(sp: StorageProfile) -> StorageProfileResponse {
     StorageProfileResponse {

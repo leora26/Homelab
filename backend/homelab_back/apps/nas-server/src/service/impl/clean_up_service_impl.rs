@@ -1,3 +1,4 @@
+use homelab_core::nas_domain::file::File;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -6,7 +7,6 @@ use derive_new::new;
 use tokio::fs;
 use uuid::Uuid;
 use homelab_core::events::{DeletionType, TrashCleanUpTriggeredEvent};
-use homelab_core::file::File;
 use crate::db::file_repository::FileRepository;
 use crate::db::folder_repository::FolderRepository;
 use crate::helpers::data_error::DataError;

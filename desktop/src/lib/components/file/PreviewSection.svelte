@@ -1,4 +1,5 @@
 <script lang="ts">
+    import {invoke} from "@tauri-apps/api/core";
     import type {FileView} from "$lib/types/models";
     import {formatBytes} from "$lib/components/helpers/file/formatBytes";
     import {getFileIcon} from "$lib/components/helpers/file/getFileIcon";
@@ -29,21 +30,37 @@
 
     let targetIsArchived = $derived(isFileArchived(selectedFile.name));
 
-    const handleDownload = () => {
-        const encodedName = encodeURIComponent(selectedFile.name);
+    // Preview bytes are fetched (with the auth token) through a Tauri command and
+    // returned as a data URL, since an <img> tag cannot send an Authorization header.
+    let previewSrc = $state<string | null>(null);
+    let previewFailed = $state(false);
 
-        const downloadUrl = `http://127.0.0.1:8080/api/files/${selectedFile.id}/download?name=${encodedName}`;
+    $effect(() => {
+        const id = selectedFile.id;
+        previewSrc = null;
+        previewFailed = false;
 
-        const a = document.createElement('a');
-        a.href = downloadUrl;
+        invoke<string>('get_file_preview', {fileId: id})
+            .then((dataUrl) => {
+                // Ignore a response for a file the user already navigated away from.
+                if (selectedFile.id === id) previewSrc = dataUrl;
+            })
+            .catch((e) => {
+                if (selectedFile.id === id) previewFailed = true;
+                console.error("Failed to load preview:", e);
+            });
+    });
 
-        a.download = selectedFile.name;
-
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-
-        notifications.notify("SUCCESS", "File downloaded", "You can find your fine in Downloaded folder on your system");
+    const handleDownload = async () => {
+        try {
+            await invoke('download_file', {
+                fileId: selectedFile.id,
+                fileName: selectedFile.name
+            });
+            notifications.notify("SUCCESS", "File downloaded", "You can find your file in the Downloads folder on your system");
+        } catch (e) {
+            notifications.notify("FAILURE", "Download failed", String(e));
+        }
     };
 </script>
 
@@ -54,15 +71,23 @@
     </div>
 
     <div class="preview-content">
-        <img
-                src={`http://127.0.0.1:8080/api/files/${selectedFile.id}/preview`}
-                alt={selectedFile.name}
-                class="preview-image"
-        />
-        <div class="no-preview-fallback hidden">
-            <span class="icon">{getFileIcon(selectedFile.file_type)}</span>
-            <p>No preview available</p>
-        </div>
+        {#if previewSrc}
+            <img
+                    src={previewSrc}
+                    alt={selectedFile.name}
+                    class="preview-image"
+            />
+        {:else if previewFailed}
+            <div class="no-preview-fallback">
+                <span class="icon">{getFileIcon(selectedFile.file_type)}</span>
+                <p>No preview available</p>
+            </div>
+        {:else}
+            <div class="no-preview-fallback">
+                <span class="icon">⏳</span>
+                <p>Loading preview…</p>
+            </div>
+        {/if}
     </div>
 
     <div class="preview-details">

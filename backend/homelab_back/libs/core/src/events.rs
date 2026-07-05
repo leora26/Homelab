@@ -2,7 +2,7 @@ use derive_new::new;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
-use crate::file::{FileType, UploadStatus};
+use crate::nas_domain::file::{FileType, UploadStatus};
 
 pub trait DomainEvent {
     fn routing_key (&self) -> &'static str;
@@ -44,7 +44,8 @@ pub struct WhiteListedUserCreatedEvent {
     pub user_id: Uuid,
     pub email: String,
     pub full_name: String,
-    pub created_at: OffsetDateTime
+    pub created_at: OffsetDateTime,
+    pub external_id: String,
 }
 
 impl DomainEvent for WhiteListedUserCreatedEvent {

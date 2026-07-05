@@ -5,7 +5,8 @@ use tonic::{Request, Response, Status};
 use homelab_proto::nas::{GetStorageProfileByIdRequest, StorageProfileResponse};
 use homelab_proto::nas::storage_profile_service_server::StorageProfileService;
 use crate::AppState;
-use crate::helpers::proto_mappers::{map_entity_id, map_storage_profile_to_proto};
+use crate::helpers::proto_mappers::map_storage_profile_to_proto;
+use homelab_core::auth::extractor::RequestIdentityExt;
 
 #[derive(new)]
 pub struct GrpcStorageProfileService {
@@ -16,9 +17,8 @@ pub struct GrpcStorageProfileService {
 #[async_trait]
 impl StorageProfileService for GrpcStorageProfileService {
     async fn get_by_id(&self, request: Request<GetStorageProfileByIdRequest>) -> Result<Response<StorageProfileResponse>, Status> {
-        let req = request.into_inner();
-
-        let id = map_entity_id(req.id)?;
+        // Resolve the caller from their token rather than a client-supplied id.
+        let id = request.get_internal_id(&self.app_state.cached_identity_resolver).await?;
 
         let sp = self.app_state
             .storage_profile_service

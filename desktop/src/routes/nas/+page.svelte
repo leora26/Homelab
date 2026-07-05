@@ -3,7 +3,6 @@
     import ContentSection from "$lib/components/file/ContentSection.svelte";
     import FormModal, {type FormField} from "$lib/components/common/FormModal.svelte";
 
-    import {userId} from "$lib/types/tempUserId";
     import type {FolderView} from "$lib/types/models";
     import NasToolbar from "$lib/components/NasToolbar.svelte";
     import {safeInvoke} from "$lib/components/helpers/safeInvoke";
@@ -53,7 +52,6 @@
 
         const newFolder = await safeInvoke<FolderView>('create_folder', {
             parentFolderId: targetParentFolderId,
-            userId: userId,
             name: String(data.folderName).trim()
         });
 

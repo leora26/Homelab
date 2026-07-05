@@ -17,55 +17,41 @@ pub struct User {
     pub id: Uuid,
     pub email: String,
     pub full_name: String,
-    #[serde(skip_serializing)]
-    pub password_hash: Option<String>,
 
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
 
     pub role: Role,
     pub is_blocked: bool,
+    pub external_id: String,
 }
 
 impl User {
-    pub fn new_complete(id: Uuid, email: String, full_name: String, password: String) -> User {
+    pub fn new_complete(id: Uuid, email: String, full_name: String, external_id: String) -> User {
         User {
             id,
             email,
             full_name,
-            //TODO: Implement bcrypt here or something
-            password_hash: Some(Self::hash_password(&password)),
             created_at: OffsetDateTime::now_utc(),
             role: Role::User,
-            is_blocked: false
+            is_blocked: false,
+            external_id,
         }
     }
 
-    pub fn new_pending(id: Uuid, email: String, full_name: String) -> User {
+    pub fn new_pending(id: Uuid, email: String, full_name: String, external_id: String) -> User {
         User {
             id,
             email,
             full_name,
-            password_hash: None,
             created_at: OffsetDateTime::now_utc(),
             role: Role::User,
-            is_blocked: false
+            is_blocked: false,
+            external_id,
         }
-    }
-
-    pub fn is_active(&self) -> bool {
-        self.password_hash.is_some()
-    }
-
-    pub fn set_password(&mut self, pass: &str) {
-        self.password_hash = Some(Self::hash_password(pass))
     }
     
     pub fn toggle_blocked (&mut self, is_blocked: bool ) {
         self.is_blocked = is_blocked
-    }
-
-    fn hash_password(password: &str) -> String {
-        format!("hashed_{}", password)
     }
 }

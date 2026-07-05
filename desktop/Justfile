@@ -1,2 +1,16 @@
 run:
     pnpm tauri dev
+
+# Register the development binary (useful while running 'pnpm tauri dev')
+register-dev:
+    @echo "Registering Dev build for: $(pwd)"
+    sed "s|__PATH__|$(pwd)/src-tauri/target/debug/pavuk-nas|g" pavuk.desktop.template > ~/.local/share/applications/pavuk.desktop
+    update-desktop-database ~/.local/share/applications/
+    xdg-mime default pavuk.desktop x-scheme-handler/pavuk
+
+# Register the production binary
+register-release:
+    @echo "Registering Release build for: $(pwd)"
+    sed "s|__PATH__|$(pwd)/src-tauri/target/release/pavuk-nas|g" pavuk.desktop.template > ~/.local/share/applications/pavuk.desktop
+    update-desktop-database ~/.local/share/applications/
+    xdg-mime default pavuk.desktop x-scheme-handler/pavuk

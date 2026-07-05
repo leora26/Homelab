@@ -11,5 +11,10 @@ time = { workspace = true }
 async-trait = {workspace = true}
 tonic = {workspace = true}
 lapin = {workspace = true}
+jsonwebtoken = {workspace = true}
+reqwest = {workspace = true}
+serde_json = {workspace = true}
 
 derive-new = {workspace = true}
+tokio = {workspace = true}
+moka = {workspace = true}

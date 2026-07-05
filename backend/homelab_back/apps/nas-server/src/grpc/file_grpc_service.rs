@@ -2,6 +2,7 @@ use crate::data::copy_file_command::CopyFileCommand;
 use crate::data::init_file_command::InitFileCommand;
 use crate::data::move_file_command::MoveFileCommand;
 use crate::data::update_file_name_command::UpdateFileNameCommand;
+use crate::grpc::ownership::{file_owned_by, folder_owned_by};
 use crate::helpers::proto_mappers::{map_entity_id, map_file_to_proto};
 use crate::AppState;
 use async_trait::async_trait;
@@ -13,6 +14,7 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 use tonic::{Request, Response, Status, Streaming};
 use uuid::Uuid;
+use homelab_core::auth::extractor::{resolve_internal_id, RequestIdentityExt};
 
 #[derive(new)]
 pub struct GrpcFileService {
@@ -25,6 +27,10 @@ impl FileService for GrpcFileService {
         &self,
         request: Request<GetFileRequest>,
     ) -> Result<Response<FileResponse>, Status> {
+        let user_id = request
+            .get_internal_id(&self.app_state.cached_identity_resolver)
+            .await?;
+
         let req = request.into_inner();
 
         let file_id = map_entity_id(req.id)?;
@@ -34,7 +40,8 @@ impl FileService for GrpcFileService {
             .file_read_service
             .get_by_id(file_id)
             .await?
-            .ok_or_else(|| Status::not_found(format!("No user found with email: {}", file_id)))?;
+            .filter(|f| f.owner_id == user_id)
+            .ok_or_else(|| Status::not_found("File not found"))?;
 
         Ok(Response::new(map_file_to_proto(file)))
     }
@@ -60,14 +67,12 @@ impl FileService for GrpcFileService {
         &self,
         request: Request<GetDeletedFilesRequest>,
     ) -> Result<Response<FileListResponse>, Status> {
-        let req = request.into_inner();
-
-        let user_id = map_entity_id(req.user_id)?;
+        let internal_user_id = request.get_internal_id(&self.app_state.cached_identity_resolver).await?;
 
         let files = self
             .app_state
             .file_read_service
-            .get_all_deleted_files(user_id)
+            .get_all_deleted_files(internal_user_id)
             .await?;
 
         let proto_files = files.into_iter().map(|f| map_file_to_proto(f)).collect();
@@ -79,14 +84,17 @@ impl FileService for GrpcFileService {
         &self,
         request: Request<InitFileRequest>,
     ) -> Result<Response<FileResponse>, Status> {
+        let internal_user_id = request.get_internal_id(&self.app_state.cached_identity_resolver).await?;
+
         let req = request.into_inner();
 
         let destination = map_entity_id(req.destination)?;
 
-        let owner_id = map_entity_id(req.owner_id)?;
+        // The destination folder must belong to the caller.
+        folder_owned_by(&self.app_state, destination, internal_user_id).await?;
 
         let command =
-            InitFileCommand::new(destination, owner_id, req.name, req.size, req.is_global);
+            InitFileCommand::new(destination, internal_user_id, req.name, req.size, req.is_global);
 
         let file = self.app_state.file_write_service.upload(command).await?;
         println!("{:#?}", file);
@@ -98,6 +106,15 @@ impl FileService for GrpcFileService {
         &self,
         request: Request<Streaming<FileChunk>>,
     ) -> Result<Response<()>, Status> {
+        // `Streaming<T>` is not `Sync`, so the `RequestIdentityExt` trait method is
+        // unavailable here; read the injected `sub` from extensions and resolve it.
+        let sub = request
+            .extensions()
+            .get::<String>()
+            .cloned()
+            .ok_or_else(|| Status::internal("Critical: Bouncer interceptor failed to inject external ID"))?;
+        let user_id = resolve_internal_id(&self.app_state.cached_identity_resolver, &sub).await?;
+
         let mut stream = request.into_inner();
 
         let first_msg = match stream.message().await? {
@@ -114,6 +131,10 @@ impl FileService for GrpcFileService {
             }
             None => return Err(Status::invalid_argument("First message empty")),
         };
+
+        // Only the owner may stream content into a file.
+        file_owned_by(&self.app_state, file_id, user_id).await?;
+
         let (tx, rx) = mpsc::channel(32);
 
         let app_state_clone = self.app_state.clone();
@@ -160,9 +181,15 @@ impl FileService for GrpcFileService {
         &self,
         request: Request<RenameFileRequest>,
     ) -> Result<Response<FileResponse>, Status> {
+        let user_id = request
+            .get_internal_id(&self.app_state.cached_identity_resolver)
+            .await?;
+
         let req = request.into_inner();
 
         let file_id = map_entity_id(req.id)?;
+
+        file_owned_by(&self.app_state, file_id, user_id).await?;
 
         let command = UpdateFileNameCommand::new(req.new_name);
 
@@ -179,9 +206,15 @@ impl FileService for GrpcFileService {
         &self,
         request: Request<UndeleteFileRequest>,
     ) -> Result<Response<FileResponse>, Status> {
+        let user_id = request
+            .get_internal_id(&self.app_state.cached_identity_resolver)
+            .await?;
+
         let req = request.into_inner();
 
         let file_id = map_entity_id(req.id)?;
+
+        file_owned_by(&self.app_state, file_id, user_id).await?;
 
         let file = self
             .app_state
@@ -196,6 +229,10 @@ impl FileService for GrpcFileService {
         &self,
         request: Request<DeleteChosenFilesRequest>,
     ) -> Result<Response<()>, Status> {
+        let user_id = request
+            .get_internal_id(&self.app_state.cached_identity_resolver)
+            .await?;
+
         let req = request.into_inner();
 
         let file_ids: Vec<Uuid> = req
@@ -203,6 +240,10 @@ impl FileService for GrpcFileService {
             .into_iter()
             .map(|id| map_entity_id(Some(id)))
             .collect::<Result<Vec<_>, _>>()?;
+
+        for file_id in &file_ids {
+            file_owned_by(&self.app_state, *file_id, user_id).await?;
+        }
 
         self.app_state
             .file_write_service
@@ -216,9 +257,15 @@ impl FileService for GrpcFileService {
         &self,
         request: Request<DeleteFileRequest>,
     ) -> Result<Response<()>, Status> {
+        let user_id = request
+            .get_internal_id(&self.app_state.cached_identity_resolver)
+            .await?;
+
         let req = request.into_inner();
 
         let file_id = map_entity_id(req.id)?;
+
+        file_owned_by(&self.app_state, file_id, user_id).await?;
 
         self.app_state.file_write_service.delete(file_id).await?;
 
@@ -229,13 +276,19 @@ impl FileService for GrpcFileService {
         &self,
         request: Request<MoveFileRequest>,
     ) -> Result<Response<FileResponse>, Status> {
+        let user_id = request
+            .get_internal_id(&self.app_state.cached_identity_resolver)
+            .await?;
+
         let req = request.into_inner();
 
         let file_id = map_entity_id(req.file_id)?;
 
         let folder_id = map_entity_id(req.folder_id)?;
 
-        println!("Received file_id and folder_id to move: {}, {}", file_id, folder_id);
+        // Both the file and the destination folder must belong to the caller.
+        file_owned_by(&self.app_state, file_id, user_id).await?;
+        folder_owned_by(&self.app_state, folder_id, user_id).await?;
 
         let command = MoveFileCommand::new(folder_id, file_id);
 
@@ -248,11 +301,19 @@ impl FileService for GrpcFileService {
         &self,
         request: Request<CopyFileRequest>,
     ) -> Result<Response<FileResponse>, Status> {
+        let user_id = request
+            .get_internal_id(&self.app_state.cached_identity_resolver)
+            .await?;
+
         let req = request.into_inner();
 
         let file_id = map_entity_id(req.file_id)?;
 
         let target_folder_id = map_entity_id(req.target_folder_id)?;
+
+        // Both the source file and the destination folder must belong to the caller.
+        file_owned_by(&self.app_state, file_id, user_id).await?;
+        folder_owned_by(&self.app_state, target_folder_id, user_id).await?;
 
         let command = CopyFileCommand::new(file_id, target_folder_id);
 
@@ -265,6 +326,15 @@ impl FileService for GrpcFileService {
         &self,
         request: Request<Streaming<FileChunk>>,
     ) -> Result<Response<()>, Status> {
+        // `Streaming<T>` is not `Sync`, so the `RequestIdentityExt` trait method is
+        // unavailable here; read the injected `sub` from extensions and resolve it.
+        let sub = request
+            .extensions()
+            .get::<String>()
+            .cloned()
+            .ok_or_else(|| Status::internal("Critical: Bouncer interceptor failed to inject external ID"))?;
+        let user_id = resolve_internal_id(&self.app_state.cached_identity_resolver, &sub).await?;
+
         let mut stream = request.into_inner();
 
         let first_msg = match stream.message().await? {
@@ -281,6 +351,10 @@ impl FileService for GrpcFileService {
             }
             None => return Err(Status::invalid_argument("First message empty")),
         };
+
+        // Only the owner may overwrite a file's content.
+        file_owned_by(&self.app_state, file_id, user_id).await?;
+
         let (tx, rx) = mpsc::channel(32);
 
         let app_state_clone = self.app_state.clone();
@@ -327,9 +401,15 @@ impl FileService for GrpcFileService {
         &self,
         request: Request<ArchiveFileRequest>,
     ) -> Result<Response<()>, Status> {
+        let user_id = request
+            .get_internal_id(&self.app_state.cached_identity_resolver)
+            .await?;
+
         let req = request.into_inner();
 
         let file_id = map_entity_id(req.file_id)?;
+
+        file_owned_by(&self.app_state, file_id, user_id).await?;
 
         self.app_state.file_write_service.archive_file(file_id).await?;
 
@@ -340,20 +420,32 @@ impl FileService for GrpcFileService {
         &self,
         request: Request<UnarchiveFileRequest>,
     ) -> Result<Response<()>, Status> {
+        let user_id = request
+            .get_internal_id(&self.app_state.cached_identity_resolver)
+            .await?;
+
         let req = request.into_inner();
 
         let file_id = map_entity_id(req.file_id)?;
+
+        file_owned_by(&self.app_state, file_id, user_id).await?;
 
         self.app_state.file_write_service.unarchive_file(file_id).await?;
 
         Ok(Response::new(()))
     }
-    
+
 
     async fn remove_delete_file(&self, request: Request<RemoveDeletedFileRequest>) -> Result<Response<()>, Status> {
+        let user_id = request
+            .get_internal_id(&self.app_state.cached_identity_resolver)
+            .await?;
+
         let req = request.into_inner();
 
         let file_id = map_entity_id(req.file_id)?;
+
+        file_owned_by(&self.app_state, file_id, user_id).await?;
 
         self.app_state.file_write_service.remove_deleted_file(file_id).await?;
 

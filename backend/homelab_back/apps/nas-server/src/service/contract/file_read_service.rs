@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use async_trait::async_trait;
 use uuid::Uuid;
-use homelab_core::file::File;
+use homelab_core::nas_domain::file::File;
 use crate::helpers::data_error::DataError;
 
 #[async_trait]

@@ -1,6 +1,5 @@
 <script lang="ts">
     import {safeInvoke} from "$lib/components/helpers/safeInvoke";
-    import {userId} from "$lib/types/tempUserId";
     import type {FolderView} from "$lib/types/models";
     import FolderTreeItem from "$lib/components/folder/FolderTreeItem.svelte";
 
@@ -38,7 +37,7 @@
 
     async function loadRootFolder() {
         isLoading = true;
-        const result = await safeInvoke<FolderView>('get_root_folder', {userId});
+        const result = await safeInvoke<FolderView>('get_root_folder');
         if (result.ok) {
             rootFolder = result.data;
             activeFolderId = rootFolder.id;

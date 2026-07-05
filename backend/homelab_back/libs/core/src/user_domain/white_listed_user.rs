@@ -10,4 +10,5 @@ pub struct WhiteListedUser {
     pub email: String,
     pub full_name: String,
     pub created_at: OffsetDateTime,
+    pub external_id: String,
 }

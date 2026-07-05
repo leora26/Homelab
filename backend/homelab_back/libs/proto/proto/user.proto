@@ -9,8 +9,7 @@ service UserService {
   rpc GetById (GetUserByIdRequest) returns (UserResponse);
   rpc GetByEmail (GetUserByEmailRequest) returns (UserResponse);
   rpc GetAll (google.protobuf.Empty) returns (UserList);
-  rpc Create (CreateUserRequest) returns (UserResponse);
-  rpc UpdatePassword (UpdatePasswordRequest) returns (google.protobuf.Empty);
+  rpc Finalize (FinalizeUserRequest) returns (google.protobuf.Empty);
   rpc ToggleBlockState (ToggleBlockStatusRequest) returns (google.protobuf.Empty);
 }
 
@@ -39,16 +38,11 @@ message GetUserByEmailRequest {
   string email = 1;
 }
 
-message CreateUserRequest {
+message FinalizeUserRequest {
   string email = 1;
   string full_name = 2;
-  string password = 3;
 }
 
-message UpdatePasswordRequest {
-  common.EntityId id = 1;
-  string password = 2;
-}
 
 message ToggleBlockStatusRequest {
   common.EntityId id = 1;

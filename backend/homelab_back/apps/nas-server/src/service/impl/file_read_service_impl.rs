@@ -3,7 +3,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use derive_new::new;
 use uuid::Uuid;
-use homelab_core::file::File;
+use homelab_core::nas_domain::file::File;
 use crate::db::file_repository::FileRepository;
 use crate::helpers::data_error::DataError;
 use crate::service::contract::file_read_service::FileReadService;

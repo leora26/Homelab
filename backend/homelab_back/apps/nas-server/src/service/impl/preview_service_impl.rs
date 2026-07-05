@@ -1,6 +1,6 @@
 use derive_new::new;
 use fast_image_resize::{FilterType, Image, PixelType, ResizeAlg, Resizer};
-use homelab_core::file::{File, FileType};
+use homelab_core::nas_domain::file::{File, FileType};
 use std::num::NonZeroU32;
 use std::path::PathBuf;
 use std::process::Stdio;

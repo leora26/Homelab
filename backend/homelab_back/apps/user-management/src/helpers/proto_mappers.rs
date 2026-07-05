@@ -1,5 +1,5 @@
-use homelab_core::user::{Role as DomainRole, User};
-use homelab_core::white_listed_user::WhiteListedUser;
+use homelab_core::user_domain::user::{Role as DomainRole, User};
+use homelab_core::user_domain::white_listed_user::WhiteListedUser;
 use homelab_proto::common::EntityId;
 use homelab_proto::user::{Role as ProtoRole, UserResponse, WhiteListedUserResponse};
 use tonic::Status;

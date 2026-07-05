@@ -1,6 +1,6 @@
 use crate::helpers::data_error::DataError;
 use async_trait::async_trait;
-use homelab_core::global_file::GlobalFile;
+use homelab_core::nas_domain::global_file::GlobalFile;
 use sqlx::PgPool;
 
 #[async_trait]

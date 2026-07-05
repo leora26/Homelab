@@ -1,7 +1,7 @@
 use crate::helpers::data_error::DataError;
 use async_trait::async_trait;
 use derive_new::new;
-use homelab_core::file_label::FileLabel;
+use homelab_core::nas_domain::file_label::FileLabel;
 use sqlx::PgPool;
 
 #[async_trait]
