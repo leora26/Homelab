@@ -83,7 +83,6 @@ pub fn map_label_to_proto(l: Label) -> LabelResponse {
         id: Option::from(map_id_to_proto(l.id)),
         name: l.name,
         color: l.color,
-        owner_id: Option::from(map_id_to_proto(l.owner_id)),
     }
 }
 
