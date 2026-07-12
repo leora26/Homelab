@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM file_labels WHERE file_id = $1 AND label_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "bdac93640bdc381372cfadcffc9d3d4611bfe8be49e61947439dd44568fcb085"
+}

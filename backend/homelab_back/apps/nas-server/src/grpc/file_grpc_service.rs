@@ -1,6 +1,7 @@
 use crate::data::copy_file_command::CopyFileCommand;
 use crate::data::init_file_command::InitFileCommand;
 use crate::data::move_file_command::MoveFileCommand;
+use crate::data::search_file_command::SearchFilesCommand;
 use crate::data::update_file_name_command::UpdateFileNameCommand;
 use crate::grpc::ownership::{file_owned_by, folder_owned_by};
 use crate::helpers::proto_mappers::{map_entity_id, map_file_to_proto};
@@ -14,6 +15,7 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 use tonic::{Request, Response, Status, Streaming};
 use uuid::Uuid;
+use sqlx::types::time::OffsetDateTime;
 use homelab_core::auth::extractor::{resolve_internal_id, RequestIdentityExt};
 
 #[derive(new)]
@@ -55,12 +57,40 @@ impl FileService for GrpcFileService {
         &self,
         request: Request<SearchFilesRequest>,
     ) -> Result<Response<FileListResponse>, Status> {
+        let user_id = request
+            .get_internal_id(&self.app_state.cached_identity_resolver)
+            .await?;
         let req = request.into_inner();
+
+        let label_ids = req
+            .label_ids
+            .into_iter()
+            .map(|id| map_entity_id(Some(id)))
+            .collect::<Result<Vec<Uuid>, Status>>()?;
+
+        let to_datetime = |ts: Option<prost_types::Timestamp>| -> Result<Option<OffsetDateTime>, Status> {
+            match ts {
+                Some(t) => OffsetDateTime::from_unix_timestamp_nanos(
+                    t.seconds as i128 * 1_000_000_000 + t.nanos as i128,
+                )
+                .map(Some)
+                .map_err(|_| Status::invalid_argument("Invalid timestamp")),
+                None => Ok(None),
+            }
+        };
+
+        let command = SearchFilesCommand {
+            owner_id: user_id,
+            name: req.name,
+            label_ids,
+            updated_after: to_datetime(req.updated_after)?,
+            updated_before: to_datetime(req.updated_before)?,
+        };
 
         let files = self
             .app_state
             .file_read_service
-            .search_file(req.file_name)
+            .search_files(command)
             .await?;
 
         let proto_files = files.into_iter().map(|f| map_file_to_proto(f)).collect();
@@ -95,7 +125,6 @@ impl FileService for GrpcFileService {
 
         let destination = map_entity_id(req.destination)?;
 
-        // The destination folder must belong to the caller.
         folder_owned_by(&self.app_state, destination, internal_user_id).await?;
 
         let command =
@@ -111,8 +140,6 @@ impl FileService for GrpcFileService {
         &self,
         request: Request<Streaming<FileChunk>>,
     ) -> Result<Response<()>, Status> {
-        // `Streaming<T>` is not `Sync`, so the `RequestIdentityExt` trait method is
-        // unavailable here; read the injected `sub` from extensions and resolve it.
         let sub = request
             .extensions()
             .get::<String>()

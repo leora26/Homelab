@@ -29,7 +29,7 @@ pub async fn get_labels(state: tauri::State<'_, AppState>) -> Result<Vec<LabelVi
         .map(|l| map_label_proto_to_view(l))
         .collect();
 
-    Ok(labels)
+    Ok(labels) 
 }
 
 #[tauri::command]

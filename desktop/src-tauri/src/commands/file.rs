@@ -3,7 +3,7 @@ use crate::helpers::mappings::map_file_proto_to_view;
 use crate::helpers::with_auth::with_auth;
 use crate::nas::file_chunk::Data;
 use crate::nas::file_service_client::FileServiceClient;
-use crate::nas::{ArchiveFileRequest, CopyFileRequest, DeleteChosenFilesRequest, DeleteFileRequest, FileChunk, GetDeletedFilesRequest, InitFileRequest, MoveFileRequest, RemoveDeletedFileRequest, RenameFileRequest, UnarchiveFileRequest, UndeleteFileRequest};
+use crate::nas::{ArchiveFileRequest, CopyFileRequest, DeleteChosenFilesRequest, DeleteFileRequest, FileChunk, GetDeletedFilesRequest, InitFileRequest, MoveFileRequest, RemoveDeletedFileRequest, RenameFileRequest, SearchFilesRequest, UnarchiveFileRequest, UndeleteFileRequest};
 use crate::types::model::FileView;
 use crate::AppState;
 use async_stream::stream;
@@ -358,4 +358,43 @@ pub async fn unarchive_file(
     let _ = response.into_inner();
 
     Ok(())
+}
+
+#[tauri::command]
+pub async fn search_files(
+    state: tauri::State<'_, AppState>,
+    name: Option<String>,
+    label_ids: Vec<String>,
+    updated_after: Option<i64>,
+    updated_before: Option<i64>,
+) -> Result<Vec<FileView>, String> {
+    let token = auth_token(&state).await?;
+    let mut client = FileServiceClient::with_interceptor(
+        state.nas_grpc_channel.clone(),
+        with_auth(token),
+    );
+
+    let request = Request::new(SearchFilesRequest {
+        name,
+        label_ids: label_ids
+            .into_iter()
+            .map(|value| EntityId { value })
+            .collect(),
+        updated_after: updated_after.map(|seconds| prost_types::Timestamp { seconds, nanos: 0 }),
+        updated_before: updated_before.map(|seconds| prost_types::Timestamp { seconds, nanos: 0 }),
+    });
+
+    let response = client
+        .search_files(request)
+        .await
+        .map_err(|e| format!("Search files failed: {}", e))?;
+
+    let files = response
+        .into_inner()
+        .files
+        .into_iter()
+        .map(map_file_proto_to_view)
+        .collect();
+
+    Ok(files)
 }

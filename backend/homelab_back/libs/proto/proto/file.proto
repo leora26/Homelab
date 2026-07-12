@@ -21,7 +21,6 @@ service FileService {
   rpc ArchiveFile (ArchiveFileRequest) returns (google.protobuf.Empty); // Done
   rpc UnarchiveFile (UnarchiveFileRequest) returns (google.protobuf.Empty); // Done
   rpc RemoveDeleteFile (RemoveDeletedFileRequest) returns (google.protobuf.Empty); // Done
-  // search file
 }
 
 enum FileType {
@@ -64,7 +63,10 @@ message GetFileRequest {
 }
 
 message SearchFilesRequest {
-  string file_name = 1;
+  optional string name = 1;
+  repeated common.EntityId label_ids = 2;
+  optional google.protobuf.Timestamp updated_after = 3;
+  optional google.protobuf.Timestamp updated_before = 4;
 }
 
 message InitFileRequest {
