@@ -2809,6 +2809,7 @@ dependencies = [
  "tonic",
  "tonic-build",
  "url",
+ "uuid",
  "webbrowser",
 ]
 

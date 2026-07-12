@@ -48,6 +48,12 @@
             </a>
         </li>
         <li>
+            <a href="/labels">
+                <span class="icon">🏷️</span>
+                <span class="label">Labels</span>
+            </a>
+        </li>
+        <li>
             <a href="/profile">
                 <span class="icon">👤</span>
                 <span class="label">Profile</span>

@@ -3,15 +3,10 @@ use base64::{engine::general_purpose::STANDARD, Engine as _};
 use futures_util::StreamExt;
 use tauri::{AppHandle, Manager, State};
 use tokio::io::AsyncWriteExt;
+use crate::helpers::access_token::access_token;
 
 // The nas-server actix REST server that streams file download/preview content.
 const NAS_REST_BASE: &str = "http://127.0.0.1:8080";
-
-async fn access_token(state: &State<'_, AppState>) -> Result<String, String> {
-    let lock = state.access_token.read().await;
-    lock.clone()
-        .ok_or_else(|| "User is not authenticated".to_string())
-}
 
 /// Downloads a file from the authenticated REST endpoint and saves it to the OS
 /// downloads directory. The bearer token lives in Rust state, so the request must

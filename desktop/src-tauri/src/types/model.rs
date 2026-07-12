@@ -46,3 +46,16 @@ pub struct GlobalFileView {
     pub original_id: String,
     pub file: FileView,
 }
+
+#[derive(Serialize, Debug)]
+pub struct LabelView {
+    pub id: String,
+    pub name: String,
+    pub color: String,
+}
+
+#[derive(Serialize, Debug)]
+pub struct FileLabelView {
+    pub file_id: String,
+    pub label_id: String,
+}

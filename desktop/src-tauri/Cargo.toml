@@ -43,3 +43,4 @@ sha2 = "0.10.8"
 base64 = "0.22.1"
 reqwest = { version = "0.12", features = ["json", "stream"] }
 futures-util = "0.3"
+uuid = { version = "1.20.0", features = ["v4"] }

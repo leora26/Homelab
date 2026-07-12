@@ -1,5 +1,5 @@
-use crate::nas::{FileResponse, FileType, FolderResponse, GlobalFileResponse, UploadStatus};
-use crate::types::model::{FileView, FolderView, GlobalFileView};
+use crate::nas::{FileLabelResponse, FileResponse, FileType, FolderResponse, GlobalFileResponse, LabelResponse, UploadStatus};
+use crate::types::model::{FileLabelView, FileView, FolderView, GlobalFileView, LabelView};
 use crate::utils::format_timestamp;
 
 pub fn map_file_proto_to_view(f: FileResponse) -> FileView {
@@ -63,6 +63,21 @@ pub fn map_global_file_proto_to_view(g: GlobalFileResponse) -> GlobalFileView {
         id: g.id.map(|i| i.value).unwrap_or_default(),
         original_id: g.original_id.map(|i| i.value).unwrap_or_default(),
         file,
+    }
+}
+
+pub fn map_label_proto_to_view(l: LabelResponse) -> LabelView {
+    LabelView {
+        id: l.id.map(|i| i.value).unwrap_or_default(),
+        name: l.name,
+        color: l.color,
+    }
+}
+
+pub fn map_file_label_proto_to_view(fl: FileLabelResponse) -> FileLabelView {
+    FileLabelView {
+        file_id: fl.file_id.map(|i| i.value).unwrap_or_default(),
+        label_id: fl.label_id.map(|i| i.value).unwrap_or_default(),
     }
 }
 

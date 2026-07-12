@@ -22,6 +22,13 @@
         />
 
         <Tile
+                url="/labels"
+                icon="🏷️"
+                name="Labels"
+                description="Create and manage labels to organize your files."
+        />
+
+        <Tile
                 url="/profile"
                 icon="👤"
                 name="User Profile"

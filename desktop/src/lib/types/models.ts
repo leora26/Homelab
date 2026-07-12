@@ -40,3 +40,14 @@ export interface GlobalFileView {
     original_id: string,
     file: FileView
 }
+
+export interface LabelView {
+    id: string,
+    name: string,
+    color: string
+}
+
+export interface FileLabelView {
+    file_id: string,
+    label_id: string
+}
