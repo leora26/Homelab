@@ -8,7 +8,7 @@ use uuid::Uuid;
 #[async_trait]
 pub trait LabelRepository: Send + Sync {
     async fn get_by_id(&self, id: Uuid) -> Result<Option<Label>, DataError>;
-    async fn get_all(&self) -> Result<Vec<Label>, DataError>;
+    async fn get_all(&self, owner_id: Uuid) -> Result<Vec<Label>, DataError>;
     async fn create(&self, label: Label) -> Result<Label, DataError>;
     async fn delete(&self, id: Uuid) -> Result<(), DataError>;
     async fn update(&self, label: Label) -> Result<Label, DataError>;
@@ -42,12 +42,14 @@ impl LabelRepository for LabelRepositoryImpl {
         Ok(label)
     }
 
-    async fn get_all(&self) -> Result<Vec<Label>, DataError> {
+    async fn get_all(&self, owner_id: Uuid) -> Result<Vec<Label>, DataError> {
         let labels = sqlx::query_as!(
             Label,
             r#"
             SELECT id, name, color, owner_id FROM labels
-            "#
+            WHERE owner_id = $1
+            "#,
+            owner_id
         )
         .fetch_all(&self.pool)
         .await

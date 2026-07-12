@@ -1,24 +1,22 @@
-use std::sync::Arc;
-use async_trait::async_trait;
-use derive_new::new;
-use uuid::Uuid;
-use homelab_core::nas_domain::file::File;
-use homelab_core::nas_domain::file_label::FileLabel;
-use homelab_core::nas_domain::label::Label;
 use crate::data::create_file_label_command::CreateFileLabelCommand;
 use crate::db::file_label_repository::FileLabelRepository;
 use crate::db::file_repository::FileRepository;
 use crate::db::label_repository::LabelRepository;
-use crate::db::storage_profile_repository::StorageProfileRepository;
 use crate::helpers::data_error::DataError;
 use crate::service::contract::file_label_service::FileLabelService;
+use async_trait::async_trait;
+use derive_new::new;
+use homelab_core::nas_domain::file::File;
+use homelab_core::nas_domain::file_label::FileLabel;
+use homelab_core::nas_domain::label::Label;
+use std::sync::Arc;
+use uuid::Uuid;
 
 #[derive(new)]
 pub struct FileLabelServiceImpl {
     label_repo: Arc<dyn LabelRepository>,
     file_repo: Arc<dyn FileRepository>,
     file_label_repo: Arc<dyn FileLabelRepository>,
-    storage_profile_repo: Arc<dyn StorageProfileRepository>,
 }
 
 #[async_trait]
@@ -43,15 +41,9 @@ impl FileLabelService for FileLabelServiceImpl {
             .await?
             .ok_or_else(|| DataError::EntityNotFoundException("Label".to_string()))?;
 
-        let sp = self
-            .storage_profile_repo
-            .get_by_id(owner_id)
-            .await?
-            .ok_or_else(|| DataError::EntityNotFoundException("User".to_string()))?;
-
         Ok(self
             .file_repo
-            .get_all_files_by_label(label.id, sp.user_id)
+            .get_all_files_by_label(label.id, owner_id)
             .await?)
     }
 
@@ -66,15 +58,15 @@ impl FileLabelService for FileLabelServiceImpl {
             .await?
             .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
 
-        let sp = self
-            .storage_profile_repo
-            .get_by_id(owner_id)
-            .await?
-            .ok_or_else(|| DataError::EntityNotFoundException("User".to_string()))?;
-
         Ok(self
             .label_repo
-            .get_labels_by_file(file.id, sp.user_id)
+            .get_labels_by_file(file.id, owner_id)
             .await?)
+    }
+
+    async fn delete_file_label(&self, file_id: Uuid, label_id: Uuid) -> Result<(), DataError> {
+        self.file_label_repo
+            .delete(FileLabel::new(file_id, label_id))
+            .await
     }
 }

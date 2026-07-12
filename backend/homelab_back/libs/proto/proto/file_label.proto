@@ -9,6 +9,7 @@ import "label.proto";
 
 service FileLabelService {
   rpc CreateFileLabel (CreateFileLabelRequest) returns (FileLabelResponse);
+  rpc DeleteFileLabel (DeleteFileLabelRequest) returns (google.protobuf.Empty);
   rpc GetLabelsForFile (GetLabelsForFileRequest) returns (LabelListResponse);
   rpc GetFilesForLabel (GetFilesForLabelRequest) returns (FileListResponse);
 }
@@ -20,15 +21,18 @@ message FileLabelResponse {
 
 message GetLabelsForFileRequest {
   common.EntityId file_id = 1;
-  common.EntityId owner_id = 2;
 }
 
 message GetFilesForLabelRequest {
   common.EntityId label_id = 1;
-  common.EntityId owner_id = 2;
 }
 
 message CreateFileLabelRequest {
+  common.EntityId file_id = 1;
+  common.EntityId label_id = 2;
+}
+
+message DeleteFileLabelRequest {
   common.EntityId file_id = 1;
   common.EntityId label_id = 2;
 }

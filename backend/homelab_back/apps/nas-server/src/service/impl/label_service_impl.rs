@@ -1,7 +1,6 @@
 use crate::data::change_label_command::ChangeLabelCommand;
 use crate::data::create_label_command::CreateLabelCommand;
 use crate::db::label_repository::LabelRepository;
-use crate::db::storage_profile_repository::StorageProfileRepository;
 use crate::helpers::data_error::DataError;
 use async_trait::async_trait;
 use derive_new::new;
@@ -13,23 +12,20 @@ use crate::service::contract::label_service::LabelService;
 #[derive(new)]
 pub struct LabelServiceImpl {
     label_repo: Arc<dyn LabelRepository>,
-    storage_profile_repo: Arc<dyn StorageProfileRepository>,
 }
 
 #[async_trait]
 impl LabelService for LabelServiceImpl {
-    async fn get_all(&self) -> Result<Vec<Label>, DataError> {
-        self.label_repo.get_all().await
+    async fn get_by_id(&self, id: Uuid) -> Result<Option<Label>, DataError> {
+        self.label_repo.get_by_id(id).await
+    }
+
+    async fn get_all(&self, owner_id: Uuid) -> Result<Vec<Label>, DataError> {
+        self.label_repo.get_all(owner_id).await
     }
 
     async fn create_label(&self, command: CreateLabelCommand) -> Result<Label, DataError> {
-        let sp = self
-            .storage_profile_repo
-            .get_by_id(command.owner_id)
-            .await?
-            .ok_or_else(|| DataError::EntityNotFoundException("User".to_string()))?;
-
-        let label = Label::new(Uuid::new_v4(), command.name, command.color, sp.user_id);
+        let label = Label::new(Uuid::new_v4(), command.name, command.color, command.owner_id);
 
         Ok(self.label_repo.create(label).await?)
     }
