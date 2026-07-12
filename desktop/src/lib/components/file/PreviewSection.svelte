@@ -1,10 +1,12 @@
 <script lang="ts">
     import {invoke} from "@tauri-apps/api/core";
-    import type {FileView} from "$lib/types/models";
+    import type {FileView, LabelView} from "$lib/types/models";
     import {formatBytes} from "$lib/components/helpers/file/formatBytes";
     import {getFileIcon} from "$lib/components/helpers/file/getFileIcon";
     import isFileArchived from "$lib/components/helpers/file/isFileArchived";
     import {notifications} from "$lib/stores/notificationStore";
+    import LabelChip from "$lib/components/label/LabelChip.svelte";
+    import FileLabelsModal from "$lib/components/file/FileLabelsModal.svelte";
 
     interface PreviewSectionProps {
         selectedFile: FileView;
@@ -18,6 +20,7 @@
         showManagementActions?: boolean;
         canToggleGlobal?: boolean;
         onGlobalChange?: (isGlobal: boolean) => void;
+        onLabelsChanged?: () => void;
     }
 
     const {
@@ -31,20 +34,34 @@
         triggerUnarchive,
         showManagementActions = true,
         canToggleGlobal = true,
-        onGlobalChange
+        onGlobalChange,
+        onLabelsChanged
     }: PreviewSectionProps = $props();
 
     let targetIsArchived = $derived(isFileArchived(selectedFile.name));
 
-    // Preview bytes are fetched (with the auth token) through a Tauri command and
-    // returned as a data URL, since an <img> tag cannot send an Authorization header.
     let previewSrc = $state<string | null>(null);
     let previewFailed = $state(false);
 
-    // Whether this file is currently shared with every user. `null` while we're still
-    // resolving it, so the button doesn't flash the wrong label.
     let isGlobal = $state<boolean | null>(null);
     let isTogglingGlobal = $state(false);
+
+    let fileLabels = $state<LabelView[]>([]);
+    let isLabelsModalOpen = $state(false);
+
+    const loadFileLabels = (id: string) => {
+        invoke<LabelView[]>('get_labels_for_file', {fileId: id})
+            .then((labels) => {
+                if (selectedFile.id === id) fileLabels = labels;
+            })
+            .catch((e) => console.error("Failed to load file labels:", e));
+    };
+
+    $effect(() => {
+        const id = selectedFile.id;
+        fileLabels = [];
+        loadFileLabels(id);
+    });
 
     $effect(() => {
         const id = selectedFile.id;
@@ -154,6 +171,14 @@
                 🔒 Private
             {/if}
         </span>
+
+        {#if fileLabels.length > 0}
+            <div class="file-labels">
+                {#each fileLabels as label (label.id)}
+                    <LabelChip name={label.name} color={label.color} />
+                {/each}
+            </div>
+        {/if}
     </div>
 
     <div class="preview-actions">
@@ -180,6 +205,9 @@
         {/if}
 
         {#if showManagementActions}
+        <button class="action-btn labels-action" onclick={() => (isLabelsModalOpen = true)}>
+            <span class="btn-icon">🏷️</span> Labels
+        </button>
         <button class="action-btn" onclick={triggerRename}>
             <span class="btn-icon">✏️</span> Rename
         </button>
@@ -206,6 +234,14 @@
         {/if}
     </div>
 </aside>
+
+<FileLabelsModal
+        isOpen={isLabelsModalOpen}
+        fileId={selectedFile.id}
+        fileName={selectedFile.name}
+        onClose={() => (isLabelsModalOpen = false)}
+        onChanged={() => { loadFileLabels(selectedFile.id); onLabelsChanged?.(); }}
+/>
 
 <style>
     .preview-pane {
@@ -307,6 +343,24 @@
     .global-status.shared {
         color: #0a6b3b;
         background: #e3f6ec;
+    }
+
+    .file-labels {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        margin-top: 0.75rem;
+    }
+
+    .action-btn.labels-action {
+        color: #5b3bc4;
+        border-color: #d9d0f5;
+        background: #f4f0fe;
+    }
+
+    .action-btn.labels-action:hover {
+        background: #ece4fd;
+        border-color: #c9bcf0;
     }
 
     .preview-actions {

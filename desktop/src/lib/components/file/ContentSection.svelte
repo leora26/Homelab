@@ -40,6 +40,7 @@
     let isDeleteModalOpen = $state(false);
     let fileToDelete = $state<string | null>(null);
     let selectedFile = $state<FileView | null>(null);
+    let labelsVersion = $state(0);
 
 
     const fetchFiles = async () => {
@@ -248,6 +249,7 @@
                         <ContentSectionItem
                                 file={file}
                                 isSelected={selectedFile?.id === file.id}
+                                labelsVersion={labelsVersion}
                                 onClick={handleFileClick}
                                 onContextMenu={handleContextMenu}
                         />
@@ -268,6 +270,7 @@
                 triggerDelete={() => triggerDelete(selectedFile!.id)}
                 triggerArchive={triggerArchive}
                 triggerUnarchive={triggerUnarchive}
+                onLabelsChanged={() => labelsVersion++}
         />
     {/if}
 </section>
