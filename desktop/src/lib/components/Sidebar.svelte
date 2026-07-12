@@ -1,8 +1,19 @@
 <script lang="ts">
+    import { invoke } from "@tauri-apps/api/core";
+    import { notifications } from "$lib/stores/notificationStore";
+
     let isExpanded = $state(true);
 
     function toggleSidebar () {
         isExpanded = !isExpanded;
+    }
+
+    async function handleLogout () {
+        try {
+            await invoke("logout");
+        } catch (e) {
+            notifications.notify("FAILURE", "Logout failed", String(e));
+        }
     }
 </script>
 
@@ -31,6 +42,18 @@
             </a>
         </li>
         <li>
+            <a href="/global">
+                <span class="icon">🌐</span>
+                <span class="label">Global Files</span>
+            </a>
+        </li>
+        <li>
+            <a href="/labels">
+                <span class="icon">🏷️</span>
+                <span class="label">Labels</span>
+            </a>
+        </li>
+        <li>
             <a href="/profile">
                 <span class="icon">👤</span>
                 <span class="label">Profile</span>
@@ -38,6 +61,10 @@
         </li>
     </ul>
 
+    <button class="logout-btn" onclick={handleLogout} title="Log out">
+        <span class="icon">🚪</span>
+        <span class="label">Log Out</span>
+    </button>
 </nav>
 
 <style>
@@ -129,5 +156,32 @@
     #dashboard a {
         font-size: 1.1rem;
         opacity: 1;
+    }
+
+    .logout-btn {
+        margin-top: auto;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        padding: 0.75rem 0.5rem;
+        background: none;
+        border: none;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        color: #cdcdcd;
+        font: inherit;
+        cursor: pointer;
+        opacity: 0.7;
+        border-radius: 6px;
+    }
+
+    .logout-btn:hover {
+        color: white;
+        background: rgba(255, 255, 255, 0.05);
+        opacity: 1;
+    }
+
+    .sidebar.collapsed .logout-btn {
+        justify-content: center;
     }
 </style>

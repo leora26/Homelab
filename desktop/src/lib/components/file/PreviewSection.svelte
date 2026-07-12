@@ -1,20 +1,26 @@
 <script lang="ts">
     import {invoke} from "@tauri-apps/api/core";
-    import type {FileView} from "$lib/types/models";
+    import type {FileView, LabelView} from "$lib/types/models";
     import {formatBytes} from "$lib/components/helpers/file/formatBytes";
     import {getFileIcon} from "$lib/components/helpers/file/getFileIcon";
     import isFileArchived from "$lib/components/helpers/file/isFileArchived";
     import {notifications} from "$lib/stores/notificationStore";
+    import LabelChip from "$lib/components/label/LabelChip.svelte";
+    import FileLabelsModal from "$lib/components/file/FileLabelsModal.svelte";
 
     interface PreviewSectionProps {
         selectedFile: FileView;
         closePreview: () => void;
-        triggerRename: () => void;
-        triggerCopy: () => void;
-        triggerDelete: () => void;
-        triggerMove: () => void;
-        triggerArchive: () => void;
-        triggerUnarchive: () => void;
+        triggerRename?: () => void;
+        triggerCopy?: () => void;
+        triggerDelete?: () => void;
+        triggerMove?: () => void;
+        triggerArchive?: () => void;
+        triggerUnarchive?: () => void;
+        showManagementActions?: boolean;
+        canToggleGlobal?: boolean;
+        onGlobalChange?: (isGlobal: boolean) => void;
+        onLabelsChanged?: () => void;
     }
 
     const {
@@ -25,15 +31,37 @@
         triggerDelete,
         triggerMove,
         triggerArchive,
-        triggerUnarchive
+        triggerUnarchive,
+        showManagementActions = true,
+        canToggleGlobal = true,
+        onGlobalChange,
+        onLabelsChanged
     }: PreviewSectionProps = $props();
 
     let targetIsArchived = $derived(isFileArchived(selectedFile.name));
 
-    // Preview bytes are fetched (with the auth token) through a Tauri command and
-    // returned as a data URL, since an <img> tag cannot send an Authorization header.
     let previewSrc = $state<string | null>(null);
     let previewFailed = $state(false);
+
+    let isGlobal = $state<boolean | null>(null);
+    let isTogglingGlobal = $state(false);
+
+    let fileLabels = $state<LabelView[]>([]);
+    let isLabelsModalOpen = $state(false);
+
+    const loadFileLabels = (id: string) => {
+        invoke<LabelView[]>('get_labels_for_file', {fileId: id})
+            .then((labels) => {
+                if (selectedFile.id === id) fileLabels = labels;
+            })
+            .catch((e) => console.error("Failed to load file labels:", e));
+    };
+
+    $effect(() => {
+        const id = selectedFile.id;
+        fileLabels = [];
+        loadFileLabels(id);
+    });
 
     $effect(() => {
         const id = selectedFile.id;
@@ -50,6 +78,45 @@
                 console.error("Failed to load preview:", e);
             });
     });
+
+    $effect(() => {
+        const id = selectedFile.id;
+        isGlobal = null;
+
+        invoke<boolean>('is_file_global', {fileId: id})
+            .then((result) => {
+                if (selectedFile.id === id) isGlobal = result;
+            })
+            .catch((e) => {
+                console.error("Failed to resolve global status:", e);
+            });
+    });
+
+    const toggleGlobal = async () => {
+        if (isGlobal === null) return;
+
+        isTogglingGlobal = true;
+        const makePrivate = isGlobal;
+
+        try {
+            await invoke(makePrivate ? 'make_file_private' : 'make_file_global', {
+                fileId: selectedFile.id
+            });
+            isGlobal = !makePrivate;
+
+            if (isGlobal) {
+                notifications.notify("SUCCESS", "File is now global", "Everyone can see and download this file.");
+            } else {
+                notifications.notify("SUCCESS", "File is now private", "This file is no longer shared with other users.");
+            }
+
+            onGlobalChange?.(isGlobal);
+        } catch (e) {
+            notifications.notify("FAILURE", makePrivate ? "Could not make private" : "Could not make global", String(e));
+        } finally {
+            isTogglingGlobal = false;
+        }
+    };
 
     const handleDownload = async () => {
         try {
@@ -94,11 +161,52 @@
         <h4>{selectedFile.name}</h4>
         <p>Size: {formatBytes(selectedFile.size)}</p>
         <p>Modified: {selectedFile.updated_at}</p>
+
+        <span class="global-status" class:shared={isGlobal === true}>
+            {#if isGlobal === null}
+                ⏳ Checking sharing…
+            {:else if isGlobal}
+                🌐 Shared with everyone
+            {:else}
+                🔒 Private
+            {/if}
+        </span>
+
+        {#if fileLabels.length > 0}
+            <div class="file-labels">
+                {#each fileLabels as label (label.id)}
+                    <LabelChip name={label.name} color={label.color} />
+                {/each}
+            </div>
+        {/if}
     </div>
 
     <div class="preview-actions">
         <button class="action-btn primary" onclick={handleDownload}>
             <span class="btn-icon">⬇️</span> Download File
+        </button>
+
+        {#if canToggleGlobal}
+            <button
+                    class="action-btn global-action"
+                    class:is-global={isGlobal === true}
+                    onclick={toggleGlobal}
+                    disabled={isGlobal === null || isTogglingGlobal}
+                    title={isGlobal ? "Stop sharing this file with other users" : "Share this file with every user"}
+            >
+                {#if isTogglingGlobal}
+                    <span class="btn-icon">⏳</span> Working…
+                {:else if isGlobal}
+                    <span class="btn-icon">🔒</span> Make Private
+                {:else}
+                    <span class="btn-icon">🌐</span> Make Global
+                {/if}
+            </button>
+        {/if}
+
+        {#if showManagementActions}
+        <button class="action-btn labels-action" onclick={() => (isLabelsModalOpen = true)}>
+            <span class="btn-icon">🏷️</span> Labels
         </button>
         <button class="action-btn" onclick={triggerRename}>
             <span class="btn-icon">✏️</span> Rename
@@ -123,8 +231,17 @@
         <button class="action-btn danger" onclick={triggerDelete}>
             <span class="btn-icon">🗑️</span> Delete
         </button>
+        {/if}
     </div>
 </aside>
+
+<FileLabelsModal
+        isOpen={isLabelsModalOpen}
+        fileId={selectedFile.id}
+        fileName={selectedFile.name}
+        onClose={() => (isLabelsModalOpen = false)}
+        onChanged={() => { loadFileLabels(selectedFile.id); onLabelsChanged?.(); }}
+/>
 
 <style>
     .preview-pane {
@@ -211,6 +328,41 @@
         color: #666;
     }
 
+    .global-status {
+        display: inline-flex;
+        align-items: center;
+        margin-top: 0.6rem;
+        padding: 0.2rem 0.6rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #555;
+        background: #eceff3;
+    }
+
+    .global-status.shared {
+        color: #0a6b3b;
+        background: #e3f6ec;
+    }
+
+    .file-labels {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        margin-top: 0.75rem;
+    }
+
+    .action-btn.labels-action {
+        color: #5b3bc4;
+        border-color: #d9d0f5;
+        background: #f4f0fe;
+    }
+
+    .action-btn.labels-action:hover {
+        background: #ece4fd;
+        border-color: #c9bcf0;
+    }
+
     .preview-actions {
         padding: 1rem 1.5rem 1.5rem;
         display: grid;
@@ -225,6 +377,34 @@
         color: white;
         border-color: #0069d9;
         grid-column: span 2;
+    }
+
+    .action-btn.global-action {
+        grid-column: span 2;
+        color: #5b3bc4;
+        border-color: #d9d0f5;
+        background: #f4f0fe;
+    }
+
+    .action-btn.global-action:hover:not(:disabled) {
+        background: #ece4fd;
+        border-color: #c9bcf0;
+    }
+
+    .action-btn.global-action.is-global {
+        color: #0a6b3b;
+        border-color: #bfe6cf;
+        background: #eafaf1;
+    }
+
+    .action-btn.global-action.is-global:hover:not(:disabled) {
+        background: #dcf5e7;
+        border-color: #a9dcbf;
+    }
+
+    .action-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
     }
 
     .action-btn {

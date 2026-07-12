@@ -39,3 +39,23 @@ pub struct FileView {
     pub created_at: String,
     pub updated_at: String,
 }
+
+#[derive(Serialize, Debug)]
+pub struct GlobalFileView {
+    pub id: String,
+    pub original_id: String,
+    pub file: FileView,
+}
+
+#[derive(Serialize, Debug)]
+pub struct LabelView {
+    pub id: String,
+    pub name: String,
+    pub color: String,
+}
+
+#[derive(Serialize, Debug)]
+pub struct FileLabelView {
+    pub file_id: String,
+    pub label_id: String,
+}

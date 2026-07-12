@@ -8,5 +8,4 @@ pub struct InitFileCommand {
     pub owner_id: Uuid,
     pub name: String,
     pub expected_size: i64,
-    pub is_global: bool,
 }

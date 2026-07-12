@@ -63,6 +63,7 @@ use std::sync::Arc;
 use tonic::service::Interceptor;
 use tonic::transport::Server;
 use tracing_subscriber::EnvFilter;
+use homelab_core::auth::init_auth_interceptor::init_auth_interceptor;
 
 pub struct AppState {
     pub file_write_service: Arc<dyn FileWriteService>,
@@ -218,22 +219,7 @@ fn handler_config(cfg: &mut web::ServiceConfig) {
     cfg.service(web::scope("/api").configure(handler::file_handler::config));
 }
 
-fn init_auth_interceptor(auth_state: AuthState) -> impl Interceptor + Clone {
-    move |mut req: tonic::Request<()>| match req.metadata().get("authorization") {
-        Some(token_header) => {
-            let token_str = token_header.to_str().unwrap_or("").replace("Bearer ", "");
 
-            let claims = auth_state.verify_token(&token_str)?;
-
-            req.extensions_mut().insert(claims.sub);
-
-            Ok(req)
-        }
-        None => Err(tonic::Status::unauthenticated(
-            "Missing authorization header",
-        )),
-    }
-}
 
 async fn init_app_state(
     pool: Pool<Postgres>,
@@ -261,7 +247,6 @@ async fn init_app_state(
         folder_repo.clone(),
         storage_profile_repo.clone(),
         root_path.to_path_buf(),
-        global_file_repo.clone(),
         publisher.clone(),
     ));
     let file_read_service = Arc::new(FileReadServiceImpl::new(
@@ -276,13 +261,11 @@ async fn init_app_state(
     let global_file_service = Arc::new(GlobalFileServiceImpl::new(global_file_repo.clone()));
     let label_service = Arc::new(LabelServiceImpl::new(
         label_repo.clone(),
-        storage_profile_repo.clone(),
     ));
     let file_label_service = Arc::new(FileLabelServiceImpl::new(
         label_repo.clone(),
         file_repo.clone(),
         file_label_repo.clone(),
-        storage_profile_repo.clone(),
     ));
     let storage_profile_service = Arc::new(StorageProfileServiceImpl::new(
         storage_profile_repo.clone(),

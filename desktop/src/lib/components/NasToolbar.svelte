@@ -39,8 +39,7 @@
             const fileView = await invoke<FileView>('init_file', {
                 name: fileName,
                 destination: activeFolderId,
-                localPath: selectedPath,
-                isGlobal: false
+                localPath: selectedPath
             });
 
             console.log("Initialization successful. Streaming content...");

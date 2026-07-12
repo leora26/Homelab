@@ -9,6 +9,7 @@ use homelab_core::nas_domain::file::File;
 use homelab_core::nas_domain::folder::Folder;
 use tonic::Status;
 use uuid::Uuid;
+use homelab_core::nas_domain::label::Label;
 
 /// Loads a folder and ensures it belongs to `user_id`.
 ///
@@ -43,4 +44,18 @@ pub async fn file_owned_by(
         .await?
         .filter(|file| file.owner_id == user_id)
         .ok_or_else(|| Status::not_found("File not found"))
+}
+
+
+pub async fn label_owned_by(
+    app_state: &AppState,
+    label_id: Uuid,
+    user_id: Uuid,
+) -> Result <Label, Status> {
+    app_state
+        .label_service
+        .get_by_id(label_id)
+        .await?
+        .filter(|l| l.owner_id == user_id)
+        .ok_or_else(|| Status::not_found("Label not found")) 
 }

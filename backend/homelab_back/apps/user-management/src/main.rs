@@ -16,6 +16,7 @@ use std::sync::Arc;
 use tonic::service::Interceptor;
 use tonic::transport::Server;
 use tracing_subscriber::EnvFilter;
+use homelab_core::auth::init_auth_interceptor::init_auth_interceptor;
 
 pub mod data;
 pub mod db;
@@ -104,16 +105,3 @@ async fn init_app_state(pool: Pool<Postgres>, publisher: Arc<RabbitMqPublisher>)
     })
 }
 
-fn init_auth_interceptor(auth_state: AuthState) -> impl Interceptor + Clone {
-    move |mut req: tonic::Request<()>| match req.metadata().get("authorization") {
-        Some(token_header) => {
-            let token_str = token_header.to_str().unwrap_or("").replace("Bearer ", "");
-            let claims = auth_state.verify_token(&token_str)?;
-            req.extensions_mut().insert(claims.sub);
-            Ok(req)
-        }
-        None => Err(tonic::Status::unauthenticated(
-            "Missing authorization header",
-        )),
-    }
-}

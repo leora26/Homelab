@@ -15,6 +15,20 @@
         />
 
         <Tile
+                url="/global"
+                icon="🌐"
+                name="Global Files"
+                description="View and download files shared with every user."
+        />
+
+        <Tile
+                url="/labels"
+                icon="🏷️"
+                name="Labels"
+                description="Create and manage labels to organize your files."
+        />
+
+        <Tile
                 url="/profile"
                 icon="👤"
                 name="User Profile"

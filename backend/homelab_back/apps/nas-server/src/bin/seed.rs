@@ -1,11 +1,14 @@
 use dotenvy::dotenv;
 use sqlx::postgres::PgPoolOptions;
+use sqlx::PgPool;
 use std::path::Path;
 use std::{env, fs};
 use uuid::Uuid;
 use serde_json::json;
 use reqwest::StatusCode;
 use homelab_core::auth::diplomat::ZitadelDiplomat;
+
+const ZITADEL_BASE: &str = "http://localhost:8085";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -33,24 +36,67 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Looking for key at: {}", key_path);
 
     let diplomat = ZitadelDiplomat::new(
-        "http://localhost:8085".to_string(),
+        ZITADEL_BASE.to_string(),
         &key_path
     ).await.expect("Failed to initialize Zitadel Diplomat");
 
     let access_token = diplomat.get_token().await?;
 
-    // --- 3. STEP ONE: CREATE USER ---
     // We borrow this client multiple times below to utilize connection pooling
     let client = reqwest::Client::new();
-    let email = "testUser@homelab.local";
-    let password = "PavukTestUser@2026!";
 
+    // --- 3. SEED TEST USERS ---
+    // Two users so cross-user features (like global files) can be exercised: one user
+    // publishes a file, the other logs in and confirms they can see and download it.
+    seed_user(
+        &client,
+        &pool,
+        &access_token,
+        "testUser@homelab.local",
+        "PavukTestUser@2026!",
+        "Test",
+        "User",
+    ).await?;
+
+    seed_user(
+        &client,
+        &pool,
+        &access_token,
+        "testUser2@homelab.local",
+        "PavukTestUser2@2026!",
+        "Test",
+        "User Two",
+    ).await?;
+
+    println!("🚀 Seeding Complete!");
+
+    Ok(())
+}
+
+/// Idempotently provisions a single test user: creates (or reuses) the Zitadel human
+/// user, locks a permanent password, syncs the user into the local DB, and ensures a
+/// root folder and storage profile exist. Safe to run repeatedly.
+async fn seed_user(
+    client: &reqwest::Client,
+    pool: &PgPool,
+    access_token: &str,
+    email: &str,
+    password: &str,
+    first_name: &str,
+    last_name: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let display_name = format!("{} {}", first_name, last_name);
+    let full_name = display_name.clone();
+
+    println!("\n👤 Seeding user {}...", email);
+
+    // --- STEP ONE: CREATE USER ---
     let zitadel_payload = json!({
         "userName": email,
         "profile": {
-            "firstName": "Test",
-            "lastName": "User",
-            "displayName": "Test User"
+            "firstName": first_name,
+            "lastName": last_name,
+            "displayName": display_name
         },
         "email": {
             "email": email,
@@ -60,7 +106,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "initialPassword": password
     });
 
-    let res = client.post("http://localhost:8085/management/v1/users/human")
+    let res = client.post(format!("{}/management/v1/users/human", ZITADEL_BASE))
         .header("Authorization", format!("Bearer {}", access_token))
         .json(&zitadel_payload)
         .send()
@@ -73,7 +119,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "queries": [{"userNameQuery": {"userName": email, "method": "TEXT_QUERY_METHOD_EQUALS"}}]
         });
 
-        let search_res = client.post("http://localhost:8085/management/v1/users/_search")
+        let search_res = client.post(format!("{}/management/v1/users/_search", ZITADEL_BASE))
             .header("Authorization", format!("Bearer {}", access_token))
             .json(&search_payload)
             .send()
@@ -98,13 +144,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("✅ Resolved Zitadel User ID: {}. Securing permanent password...", zitadel_id);
 
-    // --- 3.5 STEP TWO: LOCK THE PASSWORD (Bypass the setup screen) ---
+    // --- STEP TWO: LOCK THE PASSWORD (Bypass the setup screen) ---
     let password_payload = json!({
         "password": password,
         "noChangeRequired": true // This is the magic flag!
     });
 
-    let pw_res = client.post(format!("http://localhost:8085/management/v1/users/{}/password", zitadel_id))
+    let pw_res = client.post(format!("{}/management/v1/users/{}/password", ZITADEL_BASE, zitadel_id))
         .header("Authorization", format!("Bearer {}", access_token))
         .json(&password_payload)
         .send()
@@ -115,7 +161,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err(format!("Failed to lock permanent password: {}", err).into());
     }
 
-    // --- 4. CREATE OR UPDATE USER IN LOCAL DB ---
+    // --- STEP THREE: CREATE OR UPDATE USER IN LOCAL DB ---
     let user_record = sqlx::query!(
         r#"
         INSERT INTO users (id, external_id, email, full_name, role)
@@ -127,23 +173,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Uuid::new_v4(),
         zitadel_id,
         email,
-        "Test User"
+        full_name
     )
-        .fetch_one(&pool)
+        .fetch_one(pool)
         .await?;
 
     let local_user_id = user_record.id;
     println!("✅ Synced User into local DB with internal ID: {}", local_user_id);
 
-    // --- 5. CREATE FOLDER STRUCTURE & STORAGE PROFILE ---
-    sqlx::query!(
-        r#"
-        INSERT INTO folders (id, name, owner_id, parent_folder_id)
-        VALUES ($1, $2, $3, NULL)
-        ON CONFLICT DO NOTHING
-        "#,
-        Uuid::new_v4(), "Root", local_user_id
-    ).execute(&pool).await?;
+    // --- STEP FOUR: CREATE FOLDER STRUCTURE & STORAGE PROFILE ---
+    // Only create a Root folder if the user doesn't already have one, so re-runs don't
+    // pile up duplicate roots.
+    let existing_root = sqlx::query!(
+        r#"SELECT id FROM folders WHERE owner_id = $1 AND parent_folder_id IS NULL LIMIT 1"#,
+        local_user_id
+    ).fetch_optional(pool).await?;
+
+    if existing_root.is_none() {
+        sqlx::query!(
+            r#"
+            INSERT INTO folders (id, name, owner_id, parent_folder_id)
+            VALUES ($1, $2, $3, NULL)
+            "#,
+            Uuid::new_v4(), "Root", local_user_id
+        ).execute(pool).await?;
+    }
 
     let allowed_storage: i64 = 100 * 1024 * 1024;
     sqlx::query!(
@@ -156,10 +210,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         allowed_storage,
         0i64,
         zitadel_id
-    ).execute(&pool).await?;
+    ).execute(pool).await?;
 
     println!("✅ Ensured Storage Profile and Root Folder exist");
-    println!("🚀 Seeding Complete! You can now log into Tauri with {} / {}", email, password);
+    println!("🔑 Login: {} / {}", email, password);
 
     Ok(())
 }

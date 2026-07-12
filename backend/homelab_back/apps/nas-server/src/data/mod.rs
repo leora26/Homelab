@@ -10,6 +10,6 @@ pub mod filter_files_by_filetype_command;
 pub mod init_file_command;
 pub mod move_file_command;
 pub mod move_folder_command;
-pub mod search_query;
+pub mod search_file_command;
 pub mod update_file_name_command;
 pub mod update_folder_name_command;

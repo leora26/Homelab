@@ -1,26 +1,36 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                id, name, owner_id,\n                file_type as \"file_type: _\",\n                parent_folder_id, is_deleted,\n                ttl, size,\n                upload_status as \"upload_status: _\",\n                created_at, updated_at, hash\n            FROM files\n            WHERE LOWER(name) LIKE LOWER($1) AND is_deleted = FALSE\n            ",
+  "query": "\n            SELECT\n                g.id            AS \"global_id\",\n                f.id            AS \"id\",\n                f.name          AS \"name\",\n                f.owner_id      AS \"owner_id\",\n                f.parent_folder_id AS \"parent_folder_id\",\n                f.file_type     AS \"file_type: FileType\",\n                f.is_deleted    AS \"is_deleted\",\n                f.ttl           AS \"ttl\",\n                f.size          AS \"size\",\n                f.upload_status AS \"upload_status: UploadStatus\",\n                f.created_at    AS \"created_at\",\n                f.updated_at    AS \"updated_at\",\n                f.hash          AS \"hash\"\n            FROM global_files g\n            JOIN files f ON f.id = g.original_id\n            WHERE f.is_deleted = FALSE\n            ",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "id",
+        "name": "global_id",
         "type_info": "Uuid"
       },
       {
         "ordinal": 1,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
         "name": "name",
         "type_info": "Text"
       },
       {
-        "ordinal": 2,
+        "ordinal": 3,
         "name": "owner_id",
         "type_info": "Uuid"
       },
       {
-        "ordinal": 3,
-        "name": "file_type: _",
+        "ordinal": 4,
+        "name": "parent_folder_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "file_type: FileType",
         "type_info": {
           "Custom": {
             "name": "file_type",
@@ -39,28 +49,23 @@
         }
       },
       {
-        "ordinal": 4,
-        "name": "parent_folder_id",
-        "type_info": "Uuid"
-      },
-      {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "is_deleted",
         "type_info": "Bool"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "ttl",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "size",
         "type_info": "Int8"
       },
       {
-        "ordinal": 8,
-        "name": "upload_status: _",
+        "ordinal": 9,
+        "name": "upload_status: UploadStatus",
         "type_info": {
           "Custom": {
             "name": "upload_status",
@@ -75,27 +80,26 @@
         }
       },
       {
-        "ordinal": 9,
+        "ordinal": 10,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "updated_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 11,
+        "ordinal": 12,
         "name": "hash",
         "type_info": "Varchar"
       }
     ],
     "parameters": {
-      "Left": [
-        "Text"
-      ]
+      "Left": []
     },
     "nullable": [
+      false,
       false,
       false,
       false,
@@ -110,5 +114,5 @@
       true
     ]
   },
-  "hash": "08c9436aa44d4f285eb1b0ed916107076e33a81468f23589a54027ad9ef13529"
+  "hash": "158ca4445b01243e99e96dbd92b46db99fb83a095a275014c5dd0b87933e9fcf"
 }

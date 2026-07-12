@@ -2,6 +2,7 @@ use crate::helpers::data_error::DataError;
 use async_trait::async_trait;
 use derive_new::new;
 use homelab_core::nas_domain::file::File;
+use sqlx::types::time::OffsetDateTime;
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -11,7 +12,14 @@ pub trait FileRepository: Send + Sync {
     async fn get_all_deleted(&self, user_id: Uuid) -> Result<Vec<File>, DataError>;
     async fn get_deleted_by_id(&self, file_id: Uuid) -> Result<Option<File>, DataError>;
     async fn get_all_by_ids(&self, file_ids: &[Uuid]) -> Result<Vec<File>, DataError>;
-    async fn search_by_name(&self, search_query: String) -> Result<Vec<File>, DataError>;
+    async fn search_files(
+        &self,
+        owner_id: Uuid,
+        name: Option<String>,
+        label_ids: &[Uuid],
+        updated_after: Option<OffsetDateTime>,
+        updated_before: Option<OffsetDateTime>,
+    ) -> Result<Vec<File>, DataError>;
     async fn get_by_folder_and_file_name(
         &self,
         folder_id: Uuid,
@@ -139,21 +147,42 @@ impl FileRepository for FileRepositoryImpl {
         Ok(f)
     }
 
-    async fn search_by_name(&self, search_query: String) -> Result<Vec<File>, DataError> {
+    async fn search_files(
+        &self,
+        owner_id: Uuid,
+        name: Option<String>,
+        label_ids: &[Uuid],
+        updated_after: Option<OffsetDateTime>,
+        updated_before: Option<OffsetDateTime>,
+    ) -> Result<Vec<File>, DataError> {
+        // Every filter is optional: each clause is skipped when its parameter is absent
+        // (NULL name / date, or an empty label array). `cardinality` returns 0 for an
+        // empty array, which is how we detect "no label filter". `DISTINCT` collapses the
+        // row fan-out from the label join. Owner scoping keeps results private.
         let f: Vec<File> = sqlx::query_as!(
             File,
             r#"
-            SELECT
-                id, name, owner_id,
-                file_type as "file_type: _",
-                parent_folder_id, is_deleted,
-                ttl, size,
-                upload_status as "upload_status: _",
-                created_at, updated_at, hash
-            FROM files
-            WHERE LOWER(name) LIKE LOWER($1) AND is_deleted = FALSE
+            SELECT DISTINCT
+                f.id, f.name, f.owner_id,
+                f.file_type as "file_type: _",
+                f.parent_folder_id, f.is_deleted,
+                f.ttl, f.size,
+                f.upload_status as "upload_status: _",
+                f.created_at, f.updated_at, f.hash
+            FROM files f
+            LEFT JOIN file_labels fl ON fl.file_id = f.id
+            WHERE f.owner_id = $1
+              AND f.is_deleted = FALSE
+              AND ($2::text IS NULL OR f.name ILIKE '%' || $2 || '%')
+              AND ($3::timestamptz IS NULL OR f.updated_at >= $3)
+              AND ($4::timestamptz IS NULL OR f.updated_at <= $4)
+              AND (cardinality($5::uuid[]) = 0 OR fl.label_id = ANY($5::uuid[]))
             "#,
-            search_query
+            owner_id,
+            name,
+            updated_after,
+            updated_before,
+            label_ids
         )
             .fetch_all(&self.pool)
             .await

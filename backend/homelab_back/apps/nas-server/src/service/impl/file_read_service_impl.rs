@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use derive_new::new;
 use uuid::Uuid;
 use homelab_core::nas_domain::file::File;
+use crate::data::search_file_command::SearchFilesCommand;
 use crate::db::file_repository::FileRepository;
 use crate::helpers::data_error::DataError;
 use crate::service::contract::file_read_service::FileReadService;
@@ -24,9 +25,15 @@ impl FileReadService for FileReadServiceImpl {
         self.file_repo.get_all_deleted(user_id).await
     }
 
-    async fn search_file(&self, search_query: String) -> Result<Vec<File>, DataError> {
+    async fn search_files(&self, command: SearchFilesCommand) -> Result<Vec<File>, DataError> {
         self.file_repo
-            .search_by_name(format!("%{}%", search_query))
+            .search_files(
+                command.owner_id,
+                command.name,
+                &command.label_ids,
+                command.updated_after,
+                command.updated_before,
+            )
             .await
     }
 

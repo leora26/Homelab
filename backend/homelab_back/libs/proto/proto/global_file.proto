@@ -4,16 +4,29 @@ package nas;
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";
 import "types.proto";
+import "file.proto";
 
 service GlobalFileService {
   rpc GetAll (google.protobuf.Empty) returns (GlobalFileListResponse);
+  rpc MakeGlobal (GlobalFileCommand) returns (google.protobuf.Empty);
+  rpc MakePrivate (GlobalFileCommand) returns (google.protobuf.Empty);
+  rpc IsGlobal (GlobalFileCommand) returns (IsGlobalResponse);
 }
 
 message GlobalFileResponse {
   common.EntityId id = 1;
   common.EntityId original_id = 2;
+  FileResponse file = 3;
 }
 
 message GlobalFileListResponse {
   repeated GlobalFileResponse global_files = 1;
+}
+
+message GlobalFileCommand {
+  common.EntityId file_id = 1;
+}
+
+message IsGlobalResponse {
+  bool is_global = 1;
 }

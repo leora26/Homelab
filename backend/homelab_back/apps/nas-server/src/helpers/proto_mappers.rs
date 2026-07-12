@@ -1,7 +1,7 @@
 use homelab_core::nas_domain::file::{File, FileType as DomainFileType, UploadStatus as DomainUploadStatus};
 use homelab_core::nas_domain::file_label::FileLabel;
 use homelab_core::nas_domain::folder::Folder;
-use homelab_core::nas_domain::global_file::GlobalFile;
+use crate::db::global_file_repository::GlobalFileWithMeta;
 use homelab_core::nas_domain::label::Label;
 use homelab_proto::common::EntityId;
 use homelab_proto::nas::{FileLabelResponse, FileResponse, FileType as ProtoFileType, FolderResponse, GlobalFileResponse, LabelResponse, StorageProfileResponse, UploadStatus as ProtoUploadStatus};
@@ -56,10 +56,12 @@ pub fn map_file_to_proto(f: File) -> FileResponse {
     }
 }
 
-pub fn map_global_file_to_proto(g: GlobalFile) -> GlobalFileResponse {
+pub fn map_global_file_to_proto(g: GlobalFileWithMeta) -> GlobalFileResponse {
+    let original_id = g.file.id;
     GlobalFileResponse {
         id: Option::from(map_id_to_proto(g.id)),
-        original_id: Option::from(map_id_to_proto(g.original_id)),
+        original_id: Option::from(map_id_to_proto(original_id)),
+        file: Some(map_file_to_proto(g.file)),
     }
 }
 
@@ -81,7 +83,6 @@ pub fn map_label_to_proto(l: Label) -> LabelResponse {
         id: Option::from(map_id_to_proto(l.id)),
         name: l.name,
         color: l.color,
-        owner_id: Option::from(map_id_to_proto(l.owner_id)),
     }
 }
 

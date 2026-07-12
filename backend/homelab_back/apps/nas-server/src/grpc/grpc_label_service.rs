@@ -10,6 +10,7 @@ use homelab_proto::nas::{
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
 use homelab_core::auth::extractor::RequestIdentityExt;
+use crate::grpc::ownership::label_owned_by;
 
 #[derive(new)]
 pub struct GrpcLabelService {
@@ -18,8 +19,9 @@ pub struct GrpcLabelService {
 
 #[tonic::async_trait]
 impl LabelService for GrpcLabelService {
-    async fn get_labels(&self, _: Request<()>) -> Result<Response<LabelListResponse>, Status> {
-        let labels = self.app_state.label_service.get_all().await?;
+    async fn get_labels(&self, request: Request<()>) -> Result<Response<LabelListResponse>, Status> {
+        let internal_user_id = request.get_internal_id(&self.app_state.cached_identity_resolver).await?;
+        let labels = self.app_state.label_service.get_all(internal_user_id).await?;
 
         let proto_labels = labels.into_iter().map(|l| map_label_to_proto(l)).collect();
 
@@ -47,9 +49,12 @@ impl LabelService for GrpcLabelService {
         &self,
         request: Request<DeleteLabelRequest>,
     ) -> Result<Response<()>, Status> {
+        let internal_user_id = request.get_internal_id(&self.app_state.cached_identity_resolver).await?;
         let req = request.into_inner();
 
         let label_id = map_entity_id(req.id)?;
+
+        label_owned_by(&self.app_state, label_id, internal_user_id).await?;
 
         self.app_state.label_service.delete_label(label_id).await?;
 
@@ -60,9 +65,11 @@ impl LabelService for GrpcLabelService {
         &self,
         request: Request<ChangeLabelRequest>,
     ) -> Result<Response<LabelResponse>, Status> {
+        let internal_user_id = request.get_internal_id(&self.app_state.cached_identity_resolver).await?;
         let req = request.into_inner();
 
         let label_id = map_entity_id(req.id)?;
+        label_owned_by(&self.app_state, label_id, internal_user_id).await?;
 
         let command = ChangeLabelCommand::new(label_id, req.name, req.color);
 

@@ -1,10 +1,10 @@
+use crate::data::create_file_label_command::CreateFileLabelCommand;
+use crate::helpers::data_error::DataError;
 use async_trait::async_trait;
-use uuid::Uuid;
 use homelab_core::nas_domain::file::File;
 use homelab_core::nas_domain::file_label::FileLabel;
 use homelab_core::nas_domain::label::Label;
-use crate::data::create_file_label_command::CreateFileLabelCommand;
-use crate::helpers::data_error::DataError;
+use uuid::Uuid;
 
 #[async_trait]
 pub trait FileLabelService: Send + Sync {
@@ -22,4 +22,5 @@ pub trait FileLabelService: Send + Sync {
         file_id: Uuid,
         owner_id: Uuid,
     ) -> Result<Vec<Label>, DataError>;
+    async fn delete_file_label(&self, file_id: Uuid, label_id: Uuid) -> Result<(), DataError>;
 }

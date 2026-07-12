@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id, email, full_name, password_hash, created_at,  role as \"role: _\", is_blocked\n        FROM users\n        WHERE email = $1\n        ",
+  "query": "\n        SELECT id, email, full_name, external_id, created_at,  role as \"role: _\", is_blocked\n        FROM users\n        ",
   "describe": {
     "columns": [
       {
@@ -20,8 +20,8 @@
       },
       {
         "ordinal": 3,
-        "name": "password_hash",
-        "type_info": "Text"
+        "name": "external_id",
+        "type_info": "Varchar"
       },
       {
         "ordinal": 4,
@@ -50,9 +50,7 @@
       }
     ],
     "parameters": {
-      "Left": [
-        "Text"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
@@ -64,5 +62,5 @@
       false
     ]
   },
-  "hash": "faac09e650be40637829124107f8274c31a15885b92f3e7d0723373841412ea3"
+  "hash": "02ea4b0ba26114d8b0954ae918bc0acd0fd0600f4ff150b5f59d7406effacf00"
 }
