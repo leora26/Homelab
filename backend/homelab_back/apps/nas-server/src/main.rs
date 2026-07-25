@@ -118,23 +118,35 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     println!("🚀 Server started successfully at http://127.0.0.1:8080");
 
-    let mut root_path = PathBuf::new();
-    root_path.push(root_folder_path);
+    let zfs_pool = env::var("ZFS_POOL").unwrap_or_default();
+    let zfs_dataset = env::var("ZFS_DATASET").unwrap_or_default();
+    let zfs_headroom: i64 = env::var("ZFS_MIN_HEADROOM_BYTES")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(1024 * 1024 * 1024);
+    let volume_service: Arc<dyn VolumeService> =
+        Arc::new(VolumeServiceImpl::new(zfs_pool, zfs_dataset.clone(), zfs_headroom));
 
-    if !root_path.exists() {
-        if let Err(e) = std::fs::create_dir_all(&root_path) {
-            panic!("Failed to create root directory: {}", e);
-        } else {
+    let root_path: PathBuf = if !zfs_dataset.is_empty() {
+        volume_service
+            .ensure_mounted()
+            .await
+            .expect("ZFS dataset must be mounted before nas-server can start")
+    } else {
+        let p = PathBuf::from(&root_folder_path);
+        if !p.exists() {
+            std::fs::create_dir_all(&p).expect("Failed to create root directory");
             println!("Root folder was created.");
         }
-    }
-
+        p
+    };
+    println!("📁 Storage root: {}", root_path.display());
     let rabbit_url = env::var("RABBITMQ_URL")
         .unwrap_or_else(|_| "amqp://admin:password@localhost:5672".to_string());
 
     let publisher = Arc::new(RabbitMqPublisher::new(&rabbit_url).await?);
 
-    let app_state = init_app_state(pool, publisher, root_path.clone(), auth_state.clone()).await;
+    let app_state = init_app_state(pool, publisher, root_path.clone(), auth_state.clone(), volume_service).await;
 
     // ZFS volume smoke-check (STOR-1) — non-fatal so the server still boots without ZFS
     match app_state.volume_service.status().await {
@@ -220,9 +232,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .app_data(app_state.clone())
             .configure(handler_config)
     })
-    .bind(rest_addr)?
-    .run()
-    .await?;
+        .bind(rest_addr)?
+        .run()
+        .await?;
 
     Ok(())
 }
@@ -232,12 +244,12 @@ fn handler_config(cfg: &mut web::ServiceConfig) {
 }
 
 
-
 async fn init_app_state(
     pool: Pool<Postgres>,
     publisher: Arc<RabbitMqPublisher>,
     root_path: PathBuf,
     auth_state: AuthState,
+    volume_service: Arc<dyn VolumeService>
 ) -> Data<AppState> {
     let file_repo = Arc::new(FileRepositoryImpl::new(pool.clone()));
     let storage_profile_repo = Arc::new(StorageProfileRepositoryImpl::new(pool.clone()));

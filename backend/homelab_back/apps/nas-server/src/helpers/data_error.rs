@@ -34,6 +34,8 @@ pub enum DataError {
     MessageQueueError(String),
     #[error("Volume resize rejected: {0}")]
     VolumeResizeRejected(String),
+    #[error("{0}")]
+    VolumeNotMounted(String),
     #[error("ZFS operation failed: {0}")]
     ZfsCommandError(String),
 }

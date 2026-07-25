@@ -40,6 +40,19 @@ impl VolumeService for VolumeServiceImpl {
 
         Ok(ResizeOutcome::Resized { from: status.quota, to: requested_bytes })
     }
+
+    async fn ensure_mounted(&self) -> Result<PathBuf, DataError> {
+        let out = run("zfs", &["get", "-Hp", "-o", "property,value", "mounted,mountpoint", &self.dataset]).await?;
+        let m = parse_pairs(&out);
+        let mountpoint = PathBuf::from(field(&m, "mountpoint")?);
+        if field(&m, "mounted")? != "yes" {
+            return Err(DataError::VolumeNotMounted(format!(
+                "ZFS dataset '{}' is not mounted at {} — refusing to start so files are never written outside the volume",
+                self.dataset, mountpoint.display()
+            )));
+        }
+        Ok(mountpoint)
+    }
 }
 
 impl VolumeServiceImpl {
