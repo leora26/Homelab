@@ -43,3 +43,18 @@ run-nas:
 # Runs the user management service [cite: 47, 46]
 run-user:
      cargo run -p {{user_pkg}}
+
+# --- ZFS Storage Volume (STOR-1) ---
+# All logic lives in scripts/zfs.sh; config comes from apps/nas-server/.env or env overrides.
+
+# Provision (idempotent) the ZFS pool, dataset & delegation that back the NAS volume
+zfs-provision:
+    sudo scripts/zfs.sh provision
+
+# Show the managed dataset's usage / quota / reservation (no root needed)
+zfs-status:
+    scripts/zfs.sh status
+
+# DANGER: destroy the dev pool and delete its backing image
+zfs-destroy:
+    sudo scripts/zfs.sh destroy

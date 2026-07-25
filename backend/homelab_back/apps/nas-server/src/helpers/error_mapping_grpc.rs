@@ -25,6 +25,8 @@ impl From<DataError> for Status {
             DataError::FileIsNotArchivedError => {
                 Status::invalid_argument("You cannot unarchive file that is not an archive")
             }
+            DataError::VolumeResizeRejected(msg) => Status::failed_precondition(msg),
+            DataError::ZfsCommandError(msg) => Status::internal(msg),
             DataError::UnknownError(msg) => Status::internal(msg),
             _ => Status::internal("Internal server error"),
         }

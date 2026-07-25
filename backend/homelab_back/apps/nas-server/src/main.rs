@@ -32,6 +32,7 @@ use crate::service::contract::global_file_service::GlobalFileService;
 use crate::service::contract::label_service::LabelService;
 use crate::service::contract::shared_file_service::SharedFileService;
 use crate::service::contract::sp_service::StorageProfileService;
+use crate::service::contract::volume_service::VolumeService;
 use crate::service::r#impl::clean_up_service_impl::CleanUpServiceImpl;
 use crate::service::r#impl::file_label_service_impl::FileLabelServiceImpl;
 use crate::service::r#impl::file_read_service_impl::FileReadServiceImpl;
@@ -42,6 +43,7 @@ use crate::service::r#impl::global_file_service_impl::GlobalFileServiceImpl;
 use crate::service::r#impl::label_service_impl::LabelServiceImpl;
 use crate::service::r#impl::shared_file_service_impl::SharedFileServiceImpl;
 use crate::service::r#impl::sp_service_impl::StorageProfileServiceImpl;
+use crate::service::r#impl::volume_service_impl::VolumeServiceImpl;
 use actix_web::web::Data;
 use actix_web::{web, App, HttpServer};
 use dotenvy::dotenv;
@@ -75,6 +77,7 @@ pub struct AppState {
     pub label_service: Arc<dyn LabelService>,
     pub file_label_service: Arc<dyn FileLabelService>,
     pub storage_profile_service: Arc<dyn StorageProfileService>,
+    pub volume_service: Arc<dyn VolumeService>,
     pub folder_read_service: Arc<dyn FolderReadService>,
     pub file_read_service: Arc<dyn FileReadService>,
     pub cached_identity_resolver: Arc<CacheIdentityResolver<StorageProfileRepositoryImpl>>,
@@ -132,6 +135,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let publisher = Arc::new(RabbitMqPublisher::new(&rabbit_url).await?);
 
     let app_state = init_app_state(pool, publisher, root_path.clone(), auth_state.clone()).await;
+
+    // ZFS volume smoke-check (STOR-1) — non-fatal so the server still boots without ZFS
+    match app_state.volume_service.status().await {
+        Ok(s) => println!(
+            "✅ ZFS volume '{}' ready — used={} available={} quota={:?} reservation={:?}",
+            s.dataset, s.used, s.available, s.quota, s.reservation
+        ),
+        Err(e) => eprintln!("⚠️  ZFS volume check failed (STOR-1): {e}"),
+    }
 
     let rest_addr = ("0.0.0.0", 8080);
     let grpc_addr: std::net::SocketAddr = "[::1]:50051".parse()?;
@@ -272,6 +284,15 @@ async fn init_app_state(
         publisher.clone(),
     ));
 
+    // ZFS storage volume (STOR-1)
+    let zfs_pool = env::var("ZFS_POOL").unwrap_or_default();
+    let zfs_dataset = env::var("ZFS_DATASET").unwrap_or_default();
+    let zfs_headroom: i64 = env::var("ZFS_MIN_HEADROOM_BYTES")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(1024 * 1024 * 1024); // 1 GiB default
+    let volume_service = Arc::new(VolumeServiceImpl::new(zfs_pool, zfs_dataset, zfs_headroom));
+
     let cached_identity_resolver =
         Arc::new(CacheIdentityResolver::new((*storage_profile_repo).clone()));
 
@@ -285,6 +306,7 @@ async fn init_app_state(
         label_service,
         file_label_service,
         storage_profile_service,
+        volume_service,
         file_read_service,
         folder_read_service,
         cached_identity_resolver,
