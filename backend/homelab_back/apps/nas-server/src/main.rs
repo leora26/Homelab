@@ -296,15 +296,6 @@ async fn init_app_state(
         publisher.clone(),
     ));
 
-    // ZFS storage volume (STOR-1)
-    let zfs_pool = env::var("ZFS_POOL").unwrap_or_default();
-    let zfs_dataset = env::var("ZFS_DATASET").unwrap_or_default();
-    let zfs_headroom: i64 = env::var("ZFS_MIN_HEADROOM_BYTES")
-        .ok()
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(1024 * 1024 * 1024); // 1 GiB default
-    let volume_service = Arc::new(VolumeServiceImpl::new(zfs_pool, zfs_dataset, zfs_headroom));
-
     let cached_identity_resolver =
         Arc::new(CacheIdentityResolver::new((*storage_profile_repo).clone()));
 
