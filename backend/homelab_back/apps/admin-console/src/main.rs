@@ -9,14 +9,17 @@ use tracing_subscriber::EnvFilter;
 use homelab_core::helpers::rabbitmq_consumer::RabbitMqConsumer;
 use homelab_proto::admin::console_user_service_server::ConsoleUserServiceServer;
 use homelab_proto::admin::console_wlu_service_server::ConsoleWluServiceServer;
+use homelab_proto::admin::storage_admin_service_server::StorageAdminServiceServer;
 use crate::db::file_repo::FileRepoImpl;
 use crate::db::user_repo::UserRepoImpl;
 use crate::db::wlu_repo::WluRepoImpl;
 use crate::events::homelab_event_handler::HomelabEventHandler;
 use crate::grpc::clients::user_grpc_client::{UserRemoteClient, UserRemoteClientImpl};
 use crate::grpc::clients::wlu_grpc_client::{WluRemoteClient, WluRemoteClientImpl};
+use crate::grpc::clients::volume_grpc_client::{VolumeRemoteClient, VolumeRemoteClientImpl};
 use crate::grpc::user_grpc_service::GrpcUserService;
 use crate::grpc::wlu_grpc_service::GrpcWluService;
+use crate::grpc::storage_admin_service::GrpcStorageAdminService;
 use crate::service::file_service::{FileService, FileServiceImpl};
 use crate::service::user_service::{UserService, UserServiceImpl};
 use crate::service::wlu_service::{WluService, WluServiceImpl};
@@ -34,6 +37,7 @@ pub struct AppState {
     file_service: Arc<dyn FileService>,
     wlu_client: Arc<dyn WluRemoteClient>,
     user_client: Arc<dyn UserRemoteClient>,
+    volume_client: Arc<dyn VolumeRemoteClient>,
 }
 
 #[actix_web::main]
@@ -93,12 +97,18 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let wlu_client_impl = WluRemoteClientImpl::connect(user_client_url.clone()).await?;
     let user_client_impl = UserRemoteClientImpl::connect(user_client_url.clone()).await?;
 
+    let nas_service_url = env::var("NAS_SERVICE_URL")
+        .unwrap_or_else(|_| "http://localhost:50051".to_string());
+    println!("Connecting to NAS Service at {}...", nas_service_url);
+    let volume_client_impl = VolumeRemoteClientImpl::connect(nas_service_url).await?;
+
     let app_state = web::Data::new(AppState {
         user_service,
         wlu_service,
         file_service,
         wlu_client: Arc::new(wlu_client_impl),
         user_client: Arc::new(user_client_impl),
+        volume_client: Arc::new(volume_client_impl),
     });
 
     let grpc_addr: std::net::SocketAddr = "[::1]:50053".parse().unwrap();
@@ -115,10 +125,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
             let user_grpc_impl = GrpcUserService::new(app_state_arc.clone());
             let wlu_grpc_impl = GrpcWluService::new(app_state_arc.clone());
+            let storage_admin_impl = GrpcStorageAdminService::new(app_state_arc.clone());
 
             Server::builder()
                 .add_service(ConsoleUserServiceServer::new(user_grpc_impl))
                 .add_service(ConsoleWluServiceServer::new(wlu_grpc_impl))
+                .add_service(StorageAdminServiceServer::new(storage_admin_impl))
                 .serve(grpc_addr)
                 .await?;
         }

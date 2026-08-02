@@ -66,6 +66,8 @@ use tonic::service::Interceptor;
 use tonic::transport::Server;
 use tracing_subscriber::EnvFilter;
 use homelab_core::auth::init_auth_interceptor::init_auth_interceptor;
+use homelab_proto::nas::volume_service_server::VolumeServiceServer;
+use crate::grpc::volume_grpc_service::GrpcVolumeService;
 
 pub struct AppState {
     pub file_write_service: Arc<dyn FileWriteService>,
@@ -191,6 +193,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let global_file_impl = GrpcGlobalFileService::new(app_state_arc.clone());
     let label_impl = GrpcLabelService::new(app_state_arc.clone());
     let storage_profile_impl = GrpcStorageProfileService::new(app_state_arc.clone());
+    let volume_impl = GrpcVolumeService::new(app_state_arc.clone());
 
     let auth_interceptor = init_auth_interceptor(auth_state);
 
@@ -219,6 +222,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             storage_profile_impl,
             auth_interceptor.clone(),
         ))
+        .add_service(VolumeServiceServer::new(volume_impl)) // Add security later
         .serve(grpc_addr);
 
     tokio::spawn(async move {

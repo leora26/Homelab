@@ -8,6 +8,19 @@ use homelab_proto::nas::{FileLabelResponse, FileResponse, FileType as ProtoFileT
 use tonic::Status;
 use uuid::Uuid;
 use homelab_core::nas_domain::storage_profile::StorageProfile;
+use homelab_core::nas_domain::volume::VolumeStatus;
+use homelab_proto::nas::VolumeStatusResponse;
+
+pub fn map_volume_to_proto (s: VolumeStatus) -> VolumeStatusResponse {
+    VolumeStatusResponse {
+        dataset: s.dataset,
+        mountpoint: s.mountpoint.to_string_lossy().into_owned(),
+        used: s.used, available: s.available,
+        quota: s.quota, reservation: s.reservation,
+        referenced: s.referenced, used_by_snapshots: s.used_by_snapshots,
+        pool_free: s.pool_free,
+    }
+}
 
 pub fn map_storage_profile_to_proto(sp: StorageProfile) -> StorageProfileResponse {
     StorageProfileResponse {
