@@ -4,8 +4,8 @@ members = [
     "apps/user-management",
     "apps/admin-console",
     "libs/core",
-    "libs/proto"
-]
+    "libs/proto",
+    "apps/cli"]
 resolver = "2"
 
 [workspace.dependencies]

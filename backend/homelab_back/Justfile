@@ -1,6 +1,7 @@
 # Variables for easy maintenance
 nas_pkg := "nas-server"
 user_pkg := "user-management"
+cli_pkg := "cli"
 
 # --- Database Management ---
 
@@ -58,3 +59,10 @@ zfs-status:
 # DANGER: destroy the dev pool and delete its backing image
 zfs-destroy:
     sudo scripts/zfs.sh destroy
+
+# --- Admin CLI (pvk) ---
+
+# Run the pvk admin CLI in dev (compiles + runs, no PATH install).
+# Usage: `just pvk volume status`   |   `just pvk volume status --output json`
+pvk *args:
+    cargo run -q -p {{cli_pkg}} --bin pvk -- {{args}}
