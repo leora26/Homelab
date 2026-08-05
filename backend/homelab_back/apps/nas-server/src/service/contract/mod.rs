@@ -9,3 +9,4 @@ pub mod label_service;
 pub mod preview_service;
 pub mod shared_file_service;
 pub mod sp_service;
+pub mod volume_service;

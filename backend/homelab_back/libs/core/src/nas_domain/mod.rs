@@ -5,3 +5,4 @@ pub mod global_file;
 pub mod label;
 pub mod shared_file;
 pub mod storage_profile;
+pub mod volume;

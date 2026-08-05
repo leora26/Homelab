@@ -9,3 +9,4 @@ pub mod label_service_impl;
 pub mod preview_service_impl;
 pub mod shared_file_service_impl;
 pub mod sp_service_impl;
+pub mod volume_service_impl;

@@ -32,6 +32,7 @@ use crate::service::contract::global_file_service::GlobalFileService;
 use crate::service::contract::label_service::LabelService;
 use crate::service::contract::shared_file_service::SharedFileService;
 use crate::service::contract::sp_service::StorageProfileService;
+use crate::service::contract::volume_service::VolumeService;
 use crate::service::r#impl::clean_up_service_impl::CleanUpServiceImpl;
 use crate::service::r#impl::file_label_service_impl::FileLabelServiceImpl;
 use crate::service::r#impl::file_read_service_impl::FileReadServiceImpl;
@@ -42,6 +43,7 @@ use crate::service::r#impl::global_file_service_impl::GlobalFileServiceImpl;
 use crate::service::r#impl::label_service_impl::LabelServiceImpl;
 use crate::service::r#impl::shared_file_service_impl::SharedFileServiceImpl;
 use crate::service::r#impl::sp_service_impl::StorageProfileServiceImpl;
+use crate::service::r#impl::volume_service_impl::VolumeServiceImpl;
 use actix_web::web::Data;
 use actix_web::{web, App, HttpServer};
 use dotenvy::dotenv;
@@ -64,6 +66,8 @@ use tonic::service::Interceptor;
 use tonic::transport::Server;
 use tracing_subscriber::EnvFilter;
 use homelab_core::auth::init_auth_interceptor::init_auth_interceptor;
+use homelab_proto::nas::volume_service_server::VolumeServiceServer;
+use crate::grpc::volume_grpc_service::GrpcVolumeService;
 
 pub struct AppState {
     pub file_write_service: Arc<dyn FileWriteService>,
@@ -75,6 +79,7 @@ pub struct AppState {
     pub label_service: Arc<dyn LabelService>,
     pub file_label_service: Arc<dyn FileLabelService>,
     pub storage_profile_service: Arc<dyn StorageProfileService>,
+    pub volume_service: Arc<dyn VolumeService>,
     pub folder_read_service: Arc<dyn FolderReadService>,
     pub file_read_service: Arc<dyn FileReadService>,
     pub cached_identity_resolver: Arc<CacheIdentityResolver<StorageProfileRepositoryImpl>>,
@@ -115,23 +120,44 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     println!("🚀 Server started successfully at http://127.0.0.1:8080");
 
-    let mut root_path = PathBuf::new();
-    root_path.push(root_folder_path);
+    let zfs_pool = env::var("ZFS_POOL").unwrap_or_default();
+    let zfs_dataset = env::var("ZFS_DATASET").unwrap_or_default();
+    let zfs_headroom: i64 = env::var("ZFS_MIN_HEADROOM_BYTES")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(1024 * 1024 * 1024);
+    let volume_service: Arc<dyn VolumeService> =
+        Arc::new(VolumeServiceImpl::new(zfs_pool, zfs_dataset.clone(), zfs_headroom));
 
-    if !root_path.exists() {
-        if let Err(e) = std::fs::create_dir_all(&root_path) {
-            panic!("Failed to create root directory: {}", e);
-        } else {
+    let root_path: PathBuf = if !zfs_dataset.is_empty() {
+        volume_service
+            .ensure_mounted()
+            .await
+            .expect("ZFS dataset must be mounted before nas-server can start")
+    } else {
+        let p = PathBuf::from(&root_folder_path);
+        if !p.exists() {
+            std::fs::create_dir_all(&p).expect("Failed to create root directory");
             println!("Root folder was created.");
         }
-    }
-
+        p
+    };
+    println!("📁 Storage root: {}", root_path.display());
     let rabbit_url = env::var("RABBITMQ_URL")
         .unwrap_or_else(|_| "amqp://admin:password@localhost:5672".to_string());
 
     let publisher = Arc::new(RabbitMqPublisher::new(&rabbit_url).await?);
 
-    let app_state = init_app_state(pool, publisher, root_path.clone(), auth_state.clone()).await;
+    let app_state = init_app_state(pool, publisher, root_path.clone(), auth_state.clone(), volume_service).await;
+
+    // ZFS volume smoke-check (STOR-1) — non-fatal so the server still boots without ZFS
+    match app_state.volume_service.status().await {
+        Ok(s) => println!(
+            "✅ ZFS volume '{}' ready — used={} available={} quota={:?} reservation={:?}",
+            s.dataset, s.used, s.available, s.quota, s.reservation
+        ),
+        Err(e) => eprintln!("⚠️  ZFS volume check failed (STOR-1): {e}"),
+    }
 
     let rest_addr = ("0.0.0.0", 8080);
     let grpc_addr: std::net::SocketAddr = "[::1]:50051".parse()?;
@@ -167,6 +193,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let global_file_impl = GrpcGlobalFileService::new(app_state_arc.clone());
     let label_impl = GrpcLabelService::new(app_state_arc.clone());
     let storage_profile_impl = GrpcStorageProfileService::new(app_state_arc.clone());
+    let volume_impl = GrpcVolumeService::new(app_state_arc.clone());
 
     let auth_interceptor = init_auth_interceptor(auth_state);
 
@@ -195,6 +222,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             storage_profile_impl,
             auth_interceptor.clone(),
         ))
+        .add_service(VolumeServiceServer::new(volume_impl)) // Add security later
         .serve(grpc_addr);
 
     tokio::spawn(async move {
@@ -208,9 +236,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .app_data(app_state.clone())
             .configure(handler_config)
     })
-    .bind(rest_addr)?
-    .run()
-    .await?;
+        .bind(rest_addr)?
+        .run()
+        .await?;
 
     Ok(())
 }
@@ -220,12 +248,12 @@ fn handler_config(cfg: &mut web::ServiceConfig) {
 }
 
 
-
 async fn init_app_state(
     pool: Pool<Postgres>,
     publisher: Arc<RabbitMqPublisher>,
     root_path: PathBuf,
     auth_state: AuthState,
+    volume_service: Arc<dyn VolumeService>
 ) -> Data<AppState> {
     let file_repo = Arc::new(FileRepositoryImpl::new(pool.clone()));
     let storage_profile_repo = Arc::new(StorageProfileRepositoryImpl::new(pool.clone()));
@@ -285,6 +313,7 @@ async fn init_app_state(
         label_service,
         file_label_service,
         storage_profile_service,
+        volume_service,
         file_read_service,
         folder_read_service,
         cached_identity_resolver,

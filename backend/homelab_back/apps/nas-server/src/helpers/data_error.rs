@@ -32,4 +32,10 @@ pub enum DataError {
     InvalidDataError(String),
     #[error("Failed to publish message: {0}")]
     MessageQueueError(String),
+    #[error("Volume resize rejected: {0}")]
+    VolumeResizeRejected(String),
+    #[error("{0}")]
+    VolumeNotMounted(String),
+    #[error("ZFS operation failed: {0}")]
+    ZfsCommandError(String),
 }

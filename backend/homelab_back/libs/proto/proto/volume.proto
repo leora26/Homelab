@@ -1,0 +1,33 @@
+syntax = "proto3";
+package nas;
+
+import "google/protobuf/empty.proto";
+
+service VolumeService {
+  rpc GetStatus (google.protobuf.Empty) returns (VolumeStatusResponse);
+  rpc Resize (ResizeVolumeRequest) returns (ResizeVolumeResponse);
+}
+
+message VolumeStatusResponse {
+  string dataset = 1;
+  string mountpoint = 2;
+  int64 used = 3;
+  int64 available = 4;
+  optional int64 quota = 5;
+  optional int64 reservation = 6;
+  int64 referenced = 7;
+  int64 used_by_snapshots = 8;
+  int64 pool_free = 9;
+}
+
+message ResizeVolumeRequest {
+  int64 requested_bytes = 1;
+  bool force_shrink = 2;
+}
+
+message ResizeVolumeResponse {
+  bool changed = 1;
+  optional int64 previous_bytes = 2;
+  int64 current_bytes = 3;
+  VolumeStatusResponse status = 4;
+}
