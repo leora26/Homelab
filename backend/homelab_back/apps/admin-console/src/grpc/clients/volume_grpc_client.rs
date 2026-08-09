@@ -4,16 +4,16 @@ use homelab_proto::nas::volume_service_client::VolumeServiceClient;
 use homelab_proto::nas::{ResizeVolumeRequest, ResizeVolumeResponse, VolumeStatusResponse};
 use std::error::Error;
 use tonic::transport::Channel;
-use tonic::Request;
+use tonic::{Request, Status};
 
 #[async_trait]
 pub trait VolumeRemoteClient: Send + Sync {
-    async fn get_status(&self) -> Result<VolumeStatusResponse, String>;
+    async fn get_status(&self) -> Result<VolumeStatusResponse, Status>;
     async fn resize(
         &self,
         requested_bytes: i64,
         force_shrink: bool,
-    ) -> Result<ResizeVolumeResponse, String>;
+    ) -> Result<ResizeVolumeResponse, Status>;
 }
 
 #[derive(new)]
@@ -30,22 +30,18 @@ impl VolumeRemoteClientImpl {
 
 #[async_trait]
 impl VolumeRemoteClient for VolumeRemoteClientImpl {
-    async fn get_status(&self) -> Result<VolumeStatusResponse, String> {
+    async fn get_status(&self) -> Result<VolumeStatusResponse, Status> {
         let mut client = self.client.clone();
 
-        let request = Request::new(());
-
-        match client.get_status(request).await {
-            Ok(response) => Ok(response.into_inner()),
-            Err(error) => Err(error.to_string()),
-        }
+        let response = client.get_status(Request::new(())).await?;
+        Ok(response.into_inner())
     }
 
     async fn resize(
         &self,
         requested_bytes: i64,
         force_shrink: bool,
-    ) -> Result<ResizeVolumeResponse, String> {
+    ) -> Result<ResizeVolumeResponse, Status> {
         let mut client = self.client.clone();
 
         let request = Request::new(ResizeVolumeRequest {
@@ -53,9 +49,7 @@ impl VolumeRemoteClient for VolumeRemoteClientImpl {
             force_shrink,
         });
 
-        match client.resize(request).await {
-            Ok(response) => Ok(response.into_inner()),
-            Err(error) => Err(error.to_string()),
-        }
+        let response = client.resize(request).await?;
+        Ok(response.into_inner())
     }
 }

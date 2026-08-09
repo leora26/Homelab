@@ -19,3 +19,4 @@ uuid = { workspace = true }
 clap = { version = "4.6.5", features = ["derive", "env"] }
 anyhow = "1.0.104"
 tabled = "0.21.0"
+derive-new = {workspace = true}

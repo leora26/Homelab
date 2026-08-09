@@ -1043,6 +1043,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
+ "derive-new",
  "homelab-proto",
  "serde",
  "serde_json",

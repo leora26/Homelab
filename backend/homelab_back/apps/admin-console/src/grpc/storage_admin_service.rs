@@ -13,12 +13,7 @@ pub struct GrpcStorageAdminService {
 #[tonic::async_trait]
 impl StorageAdminService for GrpcStorageAdminService {
     async fn get_volume_status(&self, _request: Request<()>) -> Result<Response<VolumeStatusResponse>, Status> {
-        let status = self
-            .app_state
-            .volume_client
-            .get_status()
-            .await
-            .map_err(Status::internal)?;
+        let status = self.app_state.volume_client.get_status().await?;
 
         Ok(Response::new(map_status(status)))
     }
@@ -30,8 +25,7 @@ impl StorageAdminService for GrpcStorageAdminService {
             .app_state
             .volume_client
             .resize(req.requested_bytes, req.force_shrink)
-            .await
-            .map_err(Status::internal)?;
+            .await?;
 
         Ok(Response::new(map_resize(resize)))
     }

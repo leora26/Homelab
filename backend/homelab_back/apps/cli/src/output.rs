@@ -1,10 +1,10 @@
-use homelab_proto::admin::VolumeStatusResponse;
+use homelab_proto::admin::{SetVolumeSizeResponse, VolumeStatusResponse};
 
 fn human_bytes(n: i64) -> String {
     const UNITS: [&str; 5] = ["B", "KiB", "MiB", "GiB", "TiB"];
     let mut size = n as f64;
     let mut unit = 0;
-    while size >= 1024.0 && unit < UNITS.len() {
+    while size >= 1024.0 && unit < UNITS.len() - 1 {
         size /= 1024.0;
         unit += 1;
     }
@@ -30,8 +30,7 @@ fn usage_bar(used: i64, quota: Option<i64>) -> String {
     }
 }
 
-
-pub fn print_volume_human (s: &VolumeStatusResponse) {
+pub fn print_volume_status_human(s: &VolumeStatusResponse) {
     let quota = s.quota.map(human_bytes).unwrap_or_else(|| "∞".to_string());
 
     println!("{}  →  {}", s.dataset, s.mountpoint);
@@ -42,7 +41,9 @@ pub fn print_volume_human (s: &VolumeStatusResponse) {
     println!("  Available     {}", human_bytes(s.available));
     println!(
         "  Reservation   {}   (guaranteed floor)",
-        s.reservation.map(human_bytes).unwrap_or_else(|| "none".to_string())
+        s.reservation
+            .map(human_bytes)
+            .unwrap_or_else(|| "none".to_string())
     );
     println!("  Snapshots     {}", human_bytes(s.used_by_snapshots));
     println!("  Pool free     {}", human_bytes(s.pool_free));
@@ -69,4 +70,21 @@ pub fn print_volume_json(s: &VolumeStatusResponse) -> anyhow::Result<()> {
 
     println!("{}", serde_json::to_string_pretty(&value)?);
     Ok(())
+}
+
+pub fn print_resize(r: &SetVolumeSizeResponse) {
+    if r.changed {
+        let previous = r
+            .previous_bytes
+            .map(human_bytes)
+            .unwrap_or_else(|| "unset".to_string());
+        println!("Resized: {} → {}", previous, human_bytes(r.current_bytes));
+    } else {
+        println!("No change: already {}", human_bytes(r.current_bytes));
+    }
+
+    if let Some(status) = &r.status {
+        println!();
+        print_volume_status_human(status);
+    }
 }

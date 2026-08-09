@@ -1,7 +1,9 @@
-use anyhow::{Context, Result};
-use homelab_proto::admin::VolumeStatusResponse;
+use anyhow::{anyhow, Context, Result};
+use homelab_proto::admin::{SetVolumeSizeRequest, SetVolumeSizeResponse, VolumeStatusResponse};
 use homelab_proto::admin::storage_admin_service_client::StorageAdminServiceClient;
 use tonic::transport::Channel;
+use crate::commands::ResizeCommand;
+use crate::helpers::friendly_grpc_error;
 
 pub struct Client {
     volume: StorageAdminServiceClient<Channel>,
@@ -26,7 +28,21 @@ impl Client {
             .clone()
             .get_volume_status(())
             .await
-            .context("get_volume_status failed")?;
+            .map_err(|s| anyhow!(friendly_grpc_error(&s)))?;
+
+        Ok(resp.into_inner())
+    }
+
+    pub async fn resize (&self, command: ResizeCommand) -> Result<SetVolumeSizeResponse> {
+        let resp = self
+            .volume
+            .clone()
+            .set_volume_size(SetVolumeSizeRequest {
+                requested_bytes: command.requested_bytes,
+                force_shrink: command.force_shrink,
+            })
+            .await
+            .map_err(|s| anyhow!(friendly_grpc_error(&s)))?;
 
         Ok(resp.into_inner())
     }
