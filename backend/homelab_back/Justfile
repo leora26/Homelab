@@ -1,6 +1,7 @@
 # Variables for easy maintenance
 nas_pkg := "nas-server"
 user_pkg := "user-management"
+admin_pkg := "admin-console"
 cli_pkg := "cli"
 
 # --- Database Management ---
@@ -44,6 +45,9 @@ run-nas:
 # Runs the user management service [cite: 47, 46]
 run-user:
      cargo run -p {{user_pkg}}
+
+run-admin:
+     cargo run -p {{admin_pkg}}
 
 # --- ZFS Storage Volume (STOR-1) ---
 # All logic lives in scripts/zfs.sh; config comes from apps/nas-server/.env or env overrides.
