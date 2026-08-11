@@ -30,24 +30,28 @@ impl FileRepo for FileRepoImpl {
             INSERT INTO console_file (
                                       id,
                                       file_id,
+                                      folder_id,
                                       file_type,
                                       is_deleted,
                                       ttl,
                                       size,
                                       upload_status,
+                                      is_archived,
                                       created_at,
                                       updated_at,
                                       version
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
             "#,
             file.id,
             file.file_id,
+            file.folder_id,
             file.file_type as _,
             file.is_deleted,
             file.ttl,
             file.size,
             file.upload_status as _,
+            file.is_archived,
             file.created_at,
             file.updated_at,
             file.version
@@ -66,11 +70,13 @@ impl FileRepo for FileRepoImpl {
                 SELECT
                     id,
                     file_id,
+                    folder_id,
                     file_type as "file_type: _",
                     is_deleted,
                     ttl,
                     size,
                     upload_status as "upload_status: _",
+                    is_archived,
                     created_at,
                     updated_at,
                     version
@@ -93,12 +99,12 @@ impl FileRepo for FileRepoImpl {
         let files = sqlx::query_as!(
                 ConsoleFile,
                 r#"
-                SELECT latest.id, latest.file_id,
+                SELECT latest.id, latest.file_id, latest.folder_id,
                         latest.file_type as "file_type: _", latest.is_deleted, latest.ttl, latest.size,
-                       latest.upload_status as "upload_status: _", latest.created_at, latest.updated_at, latest.version
+                       latest.upload_status as "upload_status: _", latest.is_archived, latest.created_at, latest.updated_at, latest.version
                 FROM (
-                  SELECT DISTINCT ON (file_id) id, file_id, file_type, is_deleted, ttl, size,
-                         upload_status, created_at, updated_at, version
+                  SELECT DISTINCT ON (file_id) id, file_id, folder_id, file_type, is_deleted, ttl, size,
+                         upload_status, is_archived, created_at, updated_at, version
                   FROM console_file
                   WHERE ($1::file_type IS NULL OR file_type = $1)
                   ORDER BY file_id, version DESC
@@ -120,20 +126,18 @@ impl FileRepo for FileRepoImpl {
             let files = sqlx::query_as!(
                 ConsoleFile,
                 r#"
-                SELECT
-                    id,
-                    file_id,
-                    file_type as "file_type: _",
-                    is_deleted,
-                    ttl,
-                    size,
-                    upload_status as "upload_status: _",
-                    created_at,
-                    updated_at,
-                    version
+                SELECT latest.id, latest.file_id, latest.folder_id,
+                    latest.file_type as "file_type: _", latest.is_deleted, latest.ttl, latest.size,
+                    latest.upload_status as "upload_status: _", latest.is_archived, latest.created_at, latest.updated_at, latest.version
+                FROM (
+                SELECT DISTINCT ON (file_id) id, file_id, folder_id, file_type, is_deleted, ttl, size,
+                        upload_status, is_archived, created_at, updated_at, version
                 FROM console_file
-                WHERE lower(file_id::text) like lower($1) || '%'
-                ORDER BY version DESC
+                WHERE lower(file_id::text) LIKE lower($1) || '%'
+                ORDER BY file_id, version DESC
+                ) latest
+                ORDER BY latest.updated_at DESC
+
                 "#,
                 prefix
             )
@@ -151,11 +155,13 @@ impl FileRepo for FileRepoImpl {
                 SELECT
                     id,
                     file_id,
+                    folder_id,
                     file_type as "file_type: _",
                     is_deleted,
                     ttl,
                     size,
                     upload_status as "upload_status: _",
+                    is_archived,
                     created_at,
                     updated_at,
                     version
@@ -181,11 +187,13 @@ impl FileRepo for FileRepoImpl {
             SELECT
                 id,
                 file_id,
+                folder_id,
                 file_type as "file_type: _",
                 is_deleted,
                 ttl,
                 size,
                 upload_status as "upload_status: _",
+                is_archived,
                 created_at,
                 updated_at,
                 version

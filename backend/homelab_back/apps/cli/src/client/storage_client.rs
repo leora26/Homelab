@@ -5,11 +5,11 @@ use tonic::transport::Channel;
 use crate::commands::ResizeCommand;
 use crate::helpers::friendly_grpc_error;
 
-pub struct Client {
-    volume: StorageAdminServiceClient<Channel>,
+pub struct StorageClient {
+    storage: StorageAdminServiceClient<Channel>,
 }
 
-impl Client {
+impl StorageClient {
     pub async fn connect(addr: String) -> Result<Self> {
         let channel = Channel::from_shared(addr.clone())
             .with_context(|| format!("invalid server address: {addr}"))?
@@ -18,13 +18,13 @@ impl Client {
             .with_context(|| format!("could not reach admin-console at {addr}"))?;
 
         Ok(Self {
-            volume: StorageAdminServiceClient::new(channel),
+            storage: StorageAdminServiceClient::new(channel),
         })
     }
 
     pub async fn get_status(&self) -> Result<VolumeStatusResponse> {
         let resp = self
-            .volume
+            .storage
             .clone()
             .get_volume_status(())
             .await
@@ -35,7 +35,7 @@ impl Client {
 
     pub async fn resize (&self, command: ResizeCommand) -> Result<SetVolumeSizeResponse> {
         let resp = self
-            .volume
+            .storage
             .clone()
             .set_volume_size(SetVolumeSizeRequest {
                 requested_bytes: command.requested_bytes,

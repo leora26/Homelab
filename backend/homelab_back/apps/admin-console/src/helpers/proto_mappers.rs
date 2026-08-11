@@ -15,6 +15,7 @@ pub fn map_console_file(f: ConsoleFile) -> ConsoleFileResponse {
     ConsoleFileResponse {
         id: Option::from(map_id_to_proto(f.id)),
         file_id: Option::from(map_id_to_proto(f.file_id)),
+        folder_id: Option::from(map_id_to_proto(f.folder_id)),
         file_type: match f.file_type {
             DomainFileType::Image => ProtoFileType::Image,
             DomainFileType::Text => ProtoFileType::Text,
@@ -35,6 +36,7 @@ pub fn map_console_file(f: ConsoleFile) -> ConsoleFileResponse {
             DomainUploadStatus::Completed => ProtoUploadStatus::Completed,
             DomainUploadStatus::Pending => ProtoUploadStatus::Pending,
         } as i32,
+        is_archived: f.is_archived,
         created_at: Some(prost_types::Timestamp {
             seconds: f.created_at.unix_timestamp(),
             nanos: f.created_at.nanosecond() as i32,

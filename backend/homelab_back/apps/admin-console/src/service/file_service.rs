@@ -34,11 +34,13 @@ impl FileService for FileServiceImpl {
         let logged_file = ConsoleFile::new(
             Uuid::new_v4(),
             event.file_id,
+            event.folder_id,
             event.file_type,
             event.is_deleted,
             event.ttl,
             event.size,
             event.upload_status,
+            event.is_archived,
             event.created_at,
             OffsetDateTime::now_utc(),
             1
@@ -55,11 +57,13 @@ impl FileService for FileServiceImpl {
         let new_logged_file = ConsoleFile::new(
             Uuid::new_v4(),
             logged_file.file_id,
+            event.folder_id,
             logged_file.file_type,
             event.is_deleted,
             event.ttl,
             event.size,
             event.upload_status,
+            event.is_archived,
             logged_file.created_at,
             OffsetDateTime::now_utc(),
             logged_file.version + 1
