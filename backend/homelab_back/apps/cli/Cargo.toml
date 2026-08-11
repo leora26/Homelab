@@ -5,10 +5,10 @@ edition = "2024"
 
 [[bin]]
 name = "pvk"
-path = "../main.rs"
+path = "src/main.rs"
 
 [dependencies]
-homelab-proto = { path = "../../../../libs/proto" }
+homelab-proto = { path = "../../libs/proto" }
 
 tokio = { workspace = true }
 tonic = { workspace = true }

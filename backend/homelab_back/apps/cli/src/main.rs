@@ -1,14 +1,18 @@
+mod args;
+mod client;
 mod commands;
 mod helpers;
 mod output;
-mod storage_client;
 
-use crate::commands::ResizeCommand;
+use crate::args::FileTypeArg;
+use crate::client::config::connect;
+use crate::client::file_client::FileClient;
+use crate::commands::{FindFileCommand, GetVersionsCommand, ListFileCommand, ResizeCommand};
 use crate::helpers::parse_size;
-use crate::output::{print_volume_status_human, print_volume_json, print_resize};
+use crate::output::{print_file_table, print_resize, print_volume_json, print_volume_status_human};
 use anyhow::Result;
 use clap::{Parser, Subcommand, ValueEnum};
-use storage_client::Client;
+use client::storage_client::StorageClient;
 
 #[derive(Parser)]
 #[command(name = "pvk", version, about = "Pavuk admin CLI")]
@@ -43,6 +47,49 @@ enum Command {
         #[command(subcommand)]
         action: VolumeAction,
     },
+    /// Inspect the files tracked by the system (log, current state, history)
+    File {
+        #[command(subcommand)]
+        action: FileAction,
+    },
+}
+
+#[derive(Subcommand)]
+enum FileAction {
+    /// Show the raw file event log, newest first
+    Log {
+        /// Max number of records to return
+        #[arg(long, short = 'm', default_value = "10")]
+        max: i64,
+        /// Only show files of this type
+        #[arg(long = "type", value_enum)]
+        file_type: Option<FileTypeArg>,
+    },
+
+    /// List the latest state of each file
+    List {
+        /// Max number of files to return
+        #[arg(long, short = 'm', default_value = "10")]
+        max: i64,
+        /// Only show files of this type
+        #[arg(long = "type", value_enum)]
+        file_type: Option<FileTypeArg>,
+    },
+
+    /// Show details for a single file by id (or id prefix)
+    Show {
+        /// Full file id, or a leading prefix (e.g. the first few chars)
+        id: String,
+    },
+
+    /// Show the version history of a single file (by id prefix)
+    Versions {
+        /// Full file id, or a leading prefix (e.g. the first few chars)
+        id: String,
+        /// Max number of versions to return
+        #[arg(long, short = 'm', default_value = "10")]
+        max: i64,
+    },
 }
 
 #[derive(Subcommand)]
@@ -75,12 +122,14 @@ async fn main() -> std::process::ExitCode {
 
 async fn run(cli: Cli) -> Result<()> {
     let format = cli.output;
-    let client = Client::connect(cli.server).await?;
+    let channel = connect(cli.server).await?;
+    let storage_client = StorageClient::new(channel.clone());
+    let file_client = FileClient::new(channel);
 
     match cli.command {
         Command::Volume { action } => match action {
             VolumeAction::Status => {
-                let status = client.get_status().await?;
+                let status = storage_client.get_status().await?;
                 match format {
                     OutputFormat::Human => print_volume_status_human(&status),
                     OutputFormat::Json => print_volume_json(&status)?,
@@ -94,11 +143,48 @@ async fn run(cli: Cli) -> Result<()> {
                     force_shrink: force,
                 };
 
-                let resize_response = client
-                    .resize(command)
-                    .await?;
+                let resize_response = storage_client.resize(command).await?;
 
                 print_resize(&resize_response);
+                Ok(())
+            }
+        },
+        Command::File { action } => match action {
+            FileAction::Log { max, file_type } => {
+                let req = ListFileCommand {
+                    limit: max,
+                    file_type: file_type.map(FileTypeArg::to_proto),
+                };
+
+                let res = file_client.get_log(req).await?;
+                print_file_table(&res);
+                Ok(())
+            }
+            FileAction::List { max, file_type } => {
+                let req = ListFileCommand {
+                    limit: max,
+                    file_type: file_type.map(FileTypeArg::to_proto),
+                };
+
+                let res = file_client.get_latest(req).await?;
+                print_file_table(&res);
+                Ok(())
+            }
+            FileAction::Show { id } => {
+                let req = FindFileCommand { prefix: id };
+
+                let res = file_client.find_files(req).await?;
+                print_file_table(&res);
+                Ok(())
+            }
+            FileAction::Versions { max, id } => {
+                let req = GetVersionsCommand {
+                    prefix: id,
+                    limit: max,
+                };
+
+                let res = file_client.get_versions(req).await?;
+                print_file_table(&res);
                 Ok(())
             }
         },

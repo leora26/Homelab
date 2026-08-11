@@ -29,11 +29,13 @@ message GetVersionsRequest {
 message ConsoleFileResponse {
   common.EntityId id = 1;
   common.EntityId file_id = 2;
+  common.EntityId folder_id = 11;
   nas.FileType file_type = 3;
   bool is_deleted = 4;
   google.protobuf.Timestamp ttl = 5;
   int64 size = 6;
   nas.UploadStatus upload_status = 7;
+  bool is_archived = 12;
   google.protobuf.Timestamp created_at = 8;
   google.protobuf.Timestamp updated_at = 9;
   int32 version = 10;

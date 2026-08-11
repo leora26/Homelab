@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Result};
 use homelab_proto::admin::{SetVolumeSizeRequest, SetVolumeSizeResponse, VolumeStatusResponse};
 use homelab_proto::admin::storage_admin_service_client::StorageAdminServiceClient;
 use tonic::transport::Channel;
@@ -10,16 +10,8 @@ pub struct StorageClient {
 }
 
 impl StorageClient {
-    pub async fn connect(addr: String) -> Result<Self> {
-        let channel = Channel::from_shared(addr.clone())
-            .with_context(|| format!("invalid server address: {addr}"))?
-            .connect()
-            .await
-            .with_context(|| format!("could not reach admin-console at {addr}"))?;
-
-        Ok(Self {
-            storage: StorageAdminServiceClient::new(channel),
-        })
+    pub fn new(channel: Channel) -> Self {
+        Self { storage: StorageAdminServiceClient::new(channel) }
     }
 
     pub async fn get_status(&self) -> Result<VolumeStatusResponse> {

@@ -1,4 +1,7 @@
-use homelab_proto::admin::{SetVolumeSizeResponse, VolumeStatusResponse};
+use homelab_proto::admin::{ConsoleFileListResponse, SetVolumeSizeResponse, VolumeStatusResponse};
+use homelab_proto::common::EntityId;
+use tabled::settings::Style;
+use tabled::{Table, Tabled};
 
 fn human_bytes(n: i64) -> String {
     const UNITS: [&str; 5] = ["B", "KiB", "MiB", "GiB", "TiB"];
@@ -87,4 +90,117 @@ pub fn print_resize(r: &SetVolumeSizeResponse) {
         println!();
         print_volume_status_human(status);
     }
+}
+
+// ---- file table -------------------------------------------------------------
+
+#[derive(Tabled)]
+struct FileRow {
+    #[tabled(rename = "FILE ID")]
+    file_id: String,
+    #[tabled(rename = "TYPE")]
+    file_type: String,
+    #[tabled(rename = "STATUS")]
+    status: String,
+    #[tabled(rename = "SIZE")]
+    size: String,
+    #[tabled(rename = "DEL")]
+    deleted: String,
+    #[tabled(rename = "ARCH")]
+    archived: String,
+    #[tabled(rename = "VER")]
+    version: String,
+    #[tabled(rename = "UPDATED")]
+    updated: String,
+}
+
+/// Render any file list (log / latest / matches / versions) as a table.
+pub fn print_file_table(list: &ConsoleFileListResponse) {
+    if list.files.is_empty() {
+        println!("No files.");
+        return;
+    }
+
+    let rows: Vec<FileRow> = list
+        .files
+        .iter()
+        .map(|f| FileRow {
+            file_id: short_id(&f.file_id),
+            file_type: file_type_name(f.file_type),
+            status: upload_status_name(f.upload_status),
+            size: human_bytes(f.size),
+            deleted: flag(f.is_deleted),
+            archived: flag(f.is_archived),
+            version: f.version.to_string(),
+            updated: relative_time(f.updated_at.as_ref().map(|t| t.seconds)),
+        })
+        .collect();
+
+    let mut table = Table::new(rows);
+    table.with(Style::psql());
+    println!("{table}");
+}
+
+fn short_id(id: &Option<EntityId>) -> String {
+    match id {
+        Some(e) => e.value.chars().take(12).collect(),
+        None => "-".to_string(),
+    }
+}
+
+fn flag(on: bool) -> String {
+    if on { "✓".to_string() } else { String::new() }
+}
+
+fn file_type_name(v: i32) -> String {
+    use homelab_proto::nas::FileType;
+    match FileType::try_from(v) {
+        Ok(FileType::Image) => "image",
+        Ok(FileType::Text) => "text",
+        Ok(FileType::Video) => "video",
+        Ok(FileType::Audio) => "audio",
+        Ok(FileType::Pdf) => "pdf",
+        Ok(FileType::Zip) => "zip",
+        Ok(FileType::Unknown) => "unknown",
+        Err(_) => "?",
+    }
+    .to_string()
+}
+
+fn upload_status_name(v: i32) -> String {
+    use homelab_proto::nas::UploadStatus;
+    match UploadStatus::try_from(v) {
+        Ok(UploadStatus::Pending) => "pending",
+        Ok(UploadStatus::Completed) => "completed",
+        Ok(UploadStatus::Failed) => "failed",
+        Err(_) => "?",
+    }
+    .to_string()
+}
+
+/// Human-friendly "3m ago" from a unix-seconds timestamp.
+fn relative_time(seconds: Option<i64>) -> String {
+    let Some(ts) = seconds else {
+        return "-".to_string();
+    };
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0);
+    let diff = now - ts;
+    if diff < 0 {
+        return "just now".to_string();
+    }
+    if diff < 60 {
+        return format!("{diff}s ago");
+    }
+    let mins = diff / 60;
+    if mins < 60 {
+        return format!("{mins}m ago");
+    }
+    let hours = mins / 60;
+    if hours < 24 {
+        return format!("{hours}h ago");
+    }
+    format!("{}d ago", hours / 24)
 }
