@@ -25,9 +25,9 @@ pub fn map_console_file(f: ConsoleFile) -> ConsoleFileResponse {
             DomainFileType::Unknown => ProtoFileType::Unknown,
         } as i32,
         is_deleted: f.is_deleted,
-        ttl: Some(prost_types::Timestamp {
-            seconds: f.ttl.unwrap().unix_timestamp(),
-            nanos: f.ttl.unwrap().nanosecond() as i32,
+        ttl: f.ttl.map(|t| prost_types::Timestamp {
+            seconds: t.unix_timestamp(),
+            nanos: t.nanosecond() as i32,
         }),
         size: f.size,
         upload_status: match f.upload_status {
@@ -45,6 +45,19 @@ pub fn map_console_file(f: ConsoleFile) -> ConsoleFileResponse {
         }),
         version: f.version as i32
     }
+}
+
+pub fn map_file_type_filter(value: Option<i32>) -> Option<DomainFileType> {
+    let proto = ProtoFileType::try_from(value?).ok()?;
+    Some(match proto {
+        ProtoFileType::Image => DomainFileType::Image,
+        ProtoFileType::Text => DomainFileType::Text,
+        ProtoFileType::Video => DomainFileType::Video,
+        ProtoFileType::Audio => DomainFileType::Audio,
+        ProtoFileType::Pdf => DomainFileType::Pdf,
+        ProtoFileType::Zip => DomainFileType::Zip,
+        ProtoFileType::Unknown => DomainFileType::Unknown,
+    })
 }
 
 pub fn map_console_user(u: ConsoleUser) -> ConsoleUserResponse {

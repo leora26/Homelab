@@ -5,6 +5,7 @@ use sqlx::types::time::OffsetDateTime;
 use uuid::Uuid;
 use homelab_core::admin_domain::console_file::ConsoleFile;
 use homelab_core::events::{FileUpdatedEvent, FileUploadedEvent};
+use homelab_core::nas_domain::file::FileType;
 use crate::db::file_repo::FileRepo;
 use crate::helpers::data_error::DataError;
 
@@ -12,9 +13,14 @@ use crate::helpers::data_error::DataError;
 pub trait FileService: Send + Sync {
     async fn log_new_file(&self, event: FileUploadedEvent) -> Result<(), DataError>;
     async fn log_updated_file(&self, event: FileUpdatedEvent) -> Result<(), DataError>;
-    async fn get_all_files (&self) -> Result<Vec<ConsoleFile>, DataError>;
-    async fn get_latest (&self, file_id: Uuid) -> Result<ConsoleFile, DataError>;
-    async fn get_versions (&self, file_id: Uuid) -> Result<Vec<ConsoleFile>, DataError>;
+
+    async fn get_log(&self, limit: i64, file_type: Option<FileType>) -> Result<Vec<ConsoleFile>, DataError>;
+
+    async fn get_latest_files(&self, limit: i64, file_type: Option<FileType>) -> Result<Vec<ConsoleFile>, DataError>;
+
+    async fn find_files(&self, prefix: &str) -> Result<Vec<ConsoleFile>, DataError>;
+
+    async fn get_file_versions(&self, prefix: &str, limit: i64) -> Result<Vec<ConsoleFile>, DataError>;
 }
 
 #[derive(new)]
@@ -62,15 +68,19 @@ impl FileService for FileServiceImpl {
         self.file_repo.log_file(new_logged_file).await
     }
 
-    async fn get_all_files(&self) -> Result<Vec<ConsoleFile>, DataError> {
-        self.file_repo.get_files().await
+    async fn get_log(&self, limit: i64, file_type: Option<FileType>) -> Result<Vec<ConsoleFile>, DataError> {
+        self.file_repo.get_log(limit, file_type).await
     }
 
-    async fn get_latest(&self, file_id: Uuid) -> Result<ConsoleFile, DataError> {
-        self.file_repo.get_latest_file(file_id).await
+    async fn get_latest_files(&self, limit: i64, file_type: Option<FileType>) -> Result<Vec<ConsoleFile>, DataError> {
+        self.file_repo.get_latest(limit, file_type).await
     }
 
-    async fn get_versions(&self, file_id: Uuid) -> Result<Vec<ConsoleFile>, DataError> {
-        self.file_repo.get_all_file_versions(file_id).await
+    async fn find_files(&self, prefix: &str) -> Result<Vec<ConsoleFile>, DataError> {
+        self.file_repo.find_by_prefix(prefix).await
+    }
+
+    async fn get_file_versions(&self, prefix: &str, limit: i64) -> Result<Vec<ConsoleFile>, DataError> {
+        self.file_repo.get_versions(prefix, limit).await
     }
 }

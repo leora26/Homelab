@@ -7,6 +7,7 @@ use sqlx::postgres::PgPoolOptions;
 use tonic::transport::Server;
 use tracing_subscriber::EnvFilter;
 use homelab_core::helpers::rabbitmq_consumer::RabbitMqConsumer;
+use homelab_proto::admin::console_file_service_server::ConsoleFileServiceServer;
 use homelab_proto::admin::console_user_service_server::ConsoleUserServiceServer;
 use homelab_proto::admin::console_wlu_service_server::ConsoleWluServiceServer;
 use homelab_proto::admin::storage_admin_service_server::StorageAdminServiceServer;
@@ -17,6 +18,7 @@ use crate::events::homelab_event_handler::HomelabEventHandler;
 use crate::grpc::clients::user_grpc_client::{UserRemoteClient, UserRemoteClientImpl};
 use crate::grpc::clients::wlu_grpc_client::{WluRemoteClient, WluRemoteClientImpl};
 use crate::grpc::clients::volume_grpc_client::{VolumeRemoteClient, VolumeRemoteClientImpl};
+use crate::grpc::file_grpc_service::GrpcFileService;
 use crate::grpc::user_grpc_service::GrpcUserService;
 use crate::grpc::wlu_grpc_service::GrpcWluService;
 use crate::grpc::storage_admin_service::GrpcStorageAdminService;
@@ -126,11 +128,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
             let user_grpc_impl = GrpcUserService::new(app_state_arc.clone());
             let wlu_grpc_impl = GrpcWluService::new(app_state_arc.clone());
             let storage_admin_impl = GrpcStorageAdminService::new(app_state_arc.clone());
+            let file_grpc_impl = GrpcFileService::new(app_state_arc.clone());
 
             Server::builder()
                 .add_service(ConsoleUserServiceServer::new(user_grpc_impl))
                 .add_service(ConsoleWluServiceServer::new(wlu_grpc_impl))
                 .add_service(StorageAdminServiceServer::new(storage_admin_impl))
+                .add_service(ConsoleFileServiceServer::new(file_grpc_impl))
                 .serve(grpc_addr)
                 .await?;
         }
