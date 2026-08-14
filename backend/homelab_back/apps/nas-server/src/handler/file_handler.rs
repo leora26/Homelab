@@ -28,7 +28,7 @@ async fn authenticate(req: &HttpRequest, app_state: &AppState) -> actix_web::Res
             let msg = e.message();
             match e {
                 AuthError::MissingToken | AuthError::InvalidToken => error::ErrorUnauthorized(msg),
-                AuthError::NotProvisioned => error::ErrorForbidden(msg),
+                AuthError::NotProvisioned | AuthError::Blocked => error::ErrorForbidden(msg),
                 AuthError::MalformedInternalId => error::ErrorInternalServerError(msg),
             }
         })

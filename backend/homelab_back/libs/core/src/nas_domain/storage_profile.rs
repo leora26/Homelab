@@ -29,4 +29,8 @@ impl StorageProfile {
     pub fn increase_storage_size(&mut self, size: i64) {
         self.taken_storage += size;
     }
+    pub fn update_sp (&mut self, allowed_storage: i64, is_blocked: bool) {
+        self.allowed_storage = allowed_storage;
+        self.is_blocked = is_blocked;
+    }
 }

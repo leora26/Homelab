@@ -11,11 +11,6 @@ pub trait StorageProfileRepository: Send + Sync {
     async fn create(&self, storage_profile: StorageProfile) -> Result<StorageProfile, DataError>;
     async fn get_by_id(&self, id: Uuid) -> Result<Option<StorageProfile>, DataError>;
     async fn save(&self, storage_profile: StorageProfile) -> Result<(), DataError>;
-    async fn toggle_blocked(
-        &self,
-        profile: StorageProfile,
-        is_deleted: bool,
-    ) -> Result<(), DataError>;
 }
 
 #[derive(Clone)]
@@ -40,6 +35,17 @@ impl ExternalIdResolver for StorageProfileRepositoryImpl {
             .await?;
 
         Ok(record.user_id.to_string())
+    }
+
+    async fn is_blocked(&self, internal_id: Uuid) -> Result<bool, Box<dyn Error>> {
+        let record = sqlx::query!(
+            "SELECT is_blocked FROM storage_profiles WHERE user_id = $1",
+            internal_id
+        )
+            .fetch_one(&self.pool)
+            .await?;
+
+        Ok(record.is_blocked)
     }
 }
 
@@ -85,33 +91,13 @@ impl StorageProfileRepository for StorageProfileRepositoryImpl {
         sqlx::query!(
             r#"
             UPDATE storage_profiles
-            SET allowed_storage = $1, taken_storage = $2
-            WHERE user_id = $3
+            SET allowed_storage = $1, taken_storage = $2, is_blocked = $3
+            WHERE user_id = $4
             "#,
             storage_profile.allowed_storage,
             storage_profile.taken_storage,
+            storage_profile.is_blocked,
             storage_profile.user_id
-        )
-        .execute(&self.pool)
-        .await
-        .map_err(|e| DataError::DatabaseError(e))?;
-
-        Ok(())
-    }
-
-    async fn toggle_blocked(
-        &self,
-        profile: StorageProfile,
-        is_deleted: bool,
-    ) -> Result<(), DataError> {
-        sqlx::query!(
-            r#"
-            UPDATE storage_profiles
-            SET is_blocked = $1
-            WHERE user_id = $2
-            "#,
-            is_deleted,
-            profile.user_id
         )
         .execute(&self.pool)
         .await

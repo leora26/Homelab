@@ -4,13 +4,14 @@ use derive_new::new;
 use tonic::Request;
 use tonic::transport::Channel;
 use uuid::Uuid;
-use homelab_proto::user::ToggleBlockStatusRequest;
+use homelab_proto::user::{SetStorageQuotaRequest, ToggleBlockStatusRequest};
 use homelab_proto::user::user_service_client::UserServiceClient;
 use crate::helpers::proto_mappers::map_id_to_proto;
 
 #[async_trait]
 pub trait UserRemoteClient: Send + Sync {
     async fn toggle_blocked (&self, user_id: Uuid, is_blocked: bool) -> Result<(), String>;
+    async fn set_quota (&self, user_id: Uuid, allowed_storage: i64) -> Result<(), String>;
 }
 
 
@@ -37,7 +38,21 @@ impl UserRemoteClient for UserRemoteClientImpl {
             is_blocked
         });
         
-        match client.toggle_block_state(request).await { 
+        match client.toggle_block_state(request).await {
+            Ok(_) => Ok(()),
+            Err(e) => Err(e.to_string())
+        }
+    }
+
+    async fn set_quota(&self, user_id: Uuid, allowed_storage: i64) -> Result<(), String> {
+        let mut client = self.client.clone();
+
+        let request = Request::new(SetStorageQuotaRequest {
+            id: Option::from(map_id_to_proto(user_id)),
+            allowed_storage,
+        });
+
+        match client.set_storage_quota(request).await {
             Ok(_) => Ok(()),
             Err(e) => Err(e.to_string())
         }

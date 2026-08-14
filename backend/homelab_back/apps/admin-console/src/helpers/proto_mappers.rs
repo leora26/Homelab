@@ -70,6 +70,7 @@ pub fn map_console_user(u: ConsoleUser) -> ConsoleUserResponse {
         full_name: u.full_name,
         allowed_storage: u.allowed_storage,
         taken_storage: u.taken_storage,
+        is_blocked: u.is_blocked,
         created_at: Some(prost_types::Timestamp {
             seconds: u.created_at.unix_timestamp(),
             nanos: u.created_at.nanosecond() as i32,

@@ -1,5 +1,6 @@
 use std::time::Duration;
 use moka::future::Cache;
+use uuid::Uuid;
 use crate::auth::resolver::ExternalIdResolver;
 
 pub struct CacheIdentityResolver<R: ExternalIdResolver> {
@@ -27,6 +28,12 @@ impl<R: ExternalIdResolver> CacheIdentityResolver<R> {
         self.cache.insert(external_id.to_string(), internal_id.clone()).await;
 
         Ok(internal_id)
+    }
+
+    /// Live block-state check for the resolved user. Deliberately bypasses the cache:
+    /// a block must take effect on the next request, so this always hits the resolver.
+    pub async fn is_blocked (&self, internal_id: Uuid) -> Result<bool, Box<dyn std::error::Error>> {
+        self.resolver.is_blocked(internal_id).await
     }
 
     pub async fn invalidate_cache (&self, external_id: &str) {
