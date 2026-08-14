@@ -1,0 +1,114 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT latest.id, latest.file_id, latest.folder_id,\n                    latest.file_type as \"file_type: _\", latest.is_deleted, latest.ttl, latest.size,\n                    latest.upload_status as \"upload_status: _\", latest.is_archived, latest.created_at, latest.updated_at, latest.version\n                FROM (\n                SELECT DISTINCT ON (file_id) id, file_id, folder_id, file_type, is_deleted, ttl, size,\n                        upload_status, is_archived, created_at, updated_at, version\n                FROM console_file\n                WHERE lower(file_id::text) LIKE lower($1) || '%'\n                ORDER BY file_id, version DESC\n                ) latest\n                ORDER BY latest.updated_at DESC\n\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "file_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "folder_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "file_type: _",
+        "type_info": {
+          "Custom": {
+            "name": "file_type",
+            "kind": {
+              "Enum": [
+                "text",
+                "image",
+                "video",
+                "audio",
+                "pdf",
+                "unknown",
+                "zip"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "is_deleted",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 5,
+        "name": "ttl",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "size",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 7,
+        "name": "upload_status: _",
+        "type_info": {
+          "Custom": {
+            "name": "upload_status",
+            "kind": {
+              "Enum": [
+                "pending",
+                "completed",
+                "failed"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "is_archived",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "version",
+        "type_info": "Int2"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "640b00b49d27ef182361f987db9b10c045d8a359a3ccb4cb8537059ce55ce2dd"
+}

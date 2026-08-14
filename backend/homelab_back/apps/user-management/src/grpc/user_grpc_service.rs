@@ -3,7 +3,7 @@ use crate::helpers::proto_mappers::{map_entity_id, map_user_to_proto};
 use crate::AppState;
 use derive_new::new;
 use homelab_proto::user::user_service_server::UserService;
-use homelab_proto::user::{FinalizeUserRequest, GetUserByEmailRequest, GetUserByIdRequest, ToggleBlockStatusRequest, UserList, UserResponse};
+use homelab_proto::user::{FinalizeUserRequest, GetUserByEmailRequest, GetUserByIdRequest, SetStorageQuotaRequest, ToggleBlockStatusRequest, UserList, UserResponse};
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
 use homelab_core::auth::extractor::RequestIdentityExt;
@@ -81,6 +81,22 @@ impl UserService for GrpcUserService {
         self.app_state
             .user_service
             .toggle_blocked(user_id, req.is_blocked)
+            .await?;
+
+        Ok(Response::new(()))
+    }
+
+    async fn set_storage_quota(
+        &self,
+        request: Request<SetStorageQuotaRequest>,
+    ) -> Result<Response<()>, Status> {
+        let req = request.into_inner();
+
+        let user_id = map_entity_id(req.id)?;
+
+        self.app_state
+            .user_service
+            .set_storage_quota(user_id, req.allowed_storage)
             .await?;
 
         Ok(Response::new(()))

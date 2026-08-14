@@ -8,9 +8,11 @@ use uuid::Uuid;
 #[async_trait]
 pub trait UserRepo: Send + Sync {
     async fn log_user(&self, user: ConsoleUser) -> Result<(), DataError>;
-    async fn get_users(&self) -> Result<Vec<ConsoleUser>, DataError>;
+    async fn get_latest(&self, limit: i64, blocked: Option<bool>) -> Result<Vec<ConsoleUser>, DataError>;
+    async fn get_log(&self, limit: i64, blocked: Option<bool>) -> Result<Vec<ConsoleUser>, DataError>;
+    async fn find_by_query(&self, query: &str) -> Result<Vec<ConsoleUser>, DataError>;
+    async fn get_version(&self, query: &str, limit: i64) -> Result<Vec<ConsoleUser>, DataError>;
     async fn get_latest_user(&self, user_id: Uuid) -> Result<ConsoleUser, DataError>;
-    async fn get_all_user_versions(&self, user_id: Uuid) -> Result<Vec<ConsoleUser>, DataError>;
 }
 
 #[derive(new)]
@@ -31,10 +33,11 @@ impl UserRepo for UserRepoImpl {
                                        full_name,
                                        allowed_storage,
                                        taken_storage,
+                                       is_blocked,
                                        created_at,
                                        version
                                        )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             "#,
             user.id,
             user.user_id,
@@ -42,6 +45,7 @@ impl UserRepo for UserRepoImpl {
             user.full_name,
             user.allowed_storage,
             user.taken_storage,
+            user.is_blocked,
             user.created_at,
             user.version
         )
@@ -52,26 +56,121 @@ impl UserRepo for UserRepoImpl {
         Ok(())
     }
 
-    async fn get_users(&self) -> Result<Vec<ConsoleUser>, DataError> {
+    async fn get_latest(&self, limit: i64, blocked: Option<bool>) -> Result<Vec<ConsoleUser>, DataError> {
+        let users = sqlx::query_as!(
+            ConsoleUser,
+            r#"
+            SELECT
+                latest.id, latest.user_id,
+                latest.email, latest.full_name,
+                latest.allowed_storage, latest.taken_storage, latest.is_blocked,
+                latest.created_at, latest.updated_at, latest.version
+            FROM (
+                SELECT DISTINCT ON (user_id) id, user_id, email,
+                        full_name, allowed_storage, taken_storage,
+                        is_blocked, created_at, updated_at, version
+                FROM console_users
+                WHERE ($1::bool IS NULL OR is_blocked = $1)
+                ORDER BY user_id, version DESC
+            ) latest
+            ORDER BY latest.updated_at DESC
+            LIMIT $2
+
+            "#,
+            blocked,
+            limit
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| DataError::DatabaseError(e))?;
+
+        Ok(users)
+    }
+
+    async fn get_log(&self, limit: i64, blocked: Option<bool>) -> Result<Vec<ConsoleUser>, DataError> {
         let users = sqlx::query_as!(
             ConsoleUser,
             r#"
             SELECT
                 id,
                 user_id,
-                email, 
-                full_name, 
-                allowed_storage, 
-                taken_storage, 
-                created_at, 
-                updated_at, 
+                email,
+                full_name,
+                allowed_storage,
+                taken_storage,
+                is_blocked,
+                created_at,
+                updated_at,
                 version
             FROM console_users
-            "#
+            WHERE ($1::bool IS NULL OR is_blocked = $1)
+            ORDER BY updated_at DESC
+            LIMIT $2
+            "#,
+            blocked,
+            limit
         )
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| DataError::DatabaseError(e))?;
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| DataError::DatabaseError(e))?;
+
+        Ok(users)
+    }
+
+    async fn find_by_query(&self, query: &str) -> Result<Vec<ConsoleUser>, DataError> {
+        let users = sqlx::query_as!(
+            ConsoleUser,
+            r#"
+            SELECT
+                latest.id, latest.user_id,
+                latest.email, latest.full_name,
+                latest.allowed_storage, latest.taken_storage, latest.is_blocked,
+                latest.created_at, latest.updated_at, latest.version
+            FROM (
+                SELECT DISTINCT ON (user_id) id, user_id, email,
+                        full_name, allowed_storage, taken_storage,
+                        is_blocked, created_at, updated_at, version
+                FROM console_users
+                WHERE user_id::text LIKE lower($1) || '%' OR email ILIKE '%' || $1 || '%'
+                ORDER BY user_id, version DESC
+            ) latest
+            ORDER BY latest.updated_at DESC
+            "#,
+            query
+        )
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| DataError::DatabaseError(e))?;
+
+        Ok(users)
+    }
+
+    async fn get_version(&self, query: &str, limit: i64) -> Result<Vec<ConsoleUser>, DataError> {
+        let users = sqlx::query_as!(
+            ConsoleUser,
+            r#"
+            SELECT
+                id,
+                user_id,
+                email,
+                full_name,
+                allowed_storage,
+                taken_storage,
+                is_blocked,
+                created_at,
+                updated_at,
+                version
+            FROM console_users
+            WHERE user_id::text LIKE lower($1) || '%' OR email ILIKE '%' || $1 || '%'
+            ORDER BY version DESC
+            LIMIT $2
+            "#,
+            query,
+            limit
+        )
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(users)
     }
@@ -87,6 +186,7 @@ impl UserRepo for UserRepoImpl {
                 full_name,
                 allowed_storage,
                 taken_storage,
+                is_blocked,
                 created_at,
                 updated_at,
                 version
@@ -97,37 +197,10 @@ impl UserRepo for UserRepoImpl {
             "#,
             user_id
         )
-        .fetch_one(&self.pool)
-        .await
-        .map_err(|e| DataError::DatabaseError(e))?;
-
-        Ok(user)
-    }
-
-    async fn get_all_user_versions(&self, user_id: Uuid) -> Result<Vec<ConsoleUser>, DataError> {
-        let users = sqlx::query_as!(
-            ConsoleUser,
-            r#"
-            SELECT
-                id,
-                user_id,
-                email,
-                full_name,
-                allowed_storage,
-                taken_storage,
-                created_at,
-                updated_at,
-                version
-            FROM console_users
-            WHERE user_id = $1
-            ORDER BY version DESC
-            "#,
-            user_id
-        )
-            .fetch_all(&self.pool)
+            .fetch_one(&self.pool)
             .await
             .map_err(|e| DataError::DatabaseError(e))?;
 
-        Ok(users)
+        Ok(user)
     }
 }

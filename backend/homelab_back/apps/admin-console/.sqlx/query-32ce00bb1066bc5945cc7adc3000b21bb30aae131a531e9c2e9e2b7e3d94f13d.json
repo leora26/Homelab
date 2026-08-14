@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                latest.id, latest.user_id,\n                latest.email, latest.full_name,\n                latest.allowed_storage, latest.taken_storage, latest.is_blocked,\n                latest.created_at, latest.updated_at, latest.version\n            FROM (\n                SELECT DISTINCT ON (user_id) id, user_id, email,\n                        full_name, allowed_storage, taken_storage,\n                        is_blocked, created_at, updated_at, version\n                FROM console_users\n                WHERE user_id::text LIKE lower($1) || '%' OR email ILIKE '%' || $1 || '%'\n                ORDER BY user_id, version DESC\n            ) latest\n            ORDER BY latest.updated_at DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "full_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "allowed_storage",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "taken_storage",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 6,
+        "name": "is_blocked",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "version",
+        "type_info": "Int2"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "32ce00bb1066bc5945cc7adc3000b21bb30aae131a531e9c2e9e2b7e3d94f13d"
+}

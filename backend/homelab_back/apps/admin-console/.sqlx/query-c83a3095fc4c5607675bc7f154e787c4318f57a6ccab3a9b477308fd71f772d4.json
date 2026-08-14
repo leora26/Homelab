@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                id,\n                user_id,\n                email, \n                full_name, \n                allowed_storage, \n                taken_storage, \n                created_at, \n                updated_at, \n                version\n            FROM console_users\n            ",
+  "query": "\n            SELECT\n                latest.id, latest.user_id,\n                latest.email, latest.full_name,\n                latest.allowed_storage, latest.taken_storage, latest.is_blocked,\n                latest.created_at, latest.updated_at, latest.version\n            FROM (\n                SELECT DISTINCT ON (user_id) id, user_id, email,\n                        full_name, allowed_storage, taken_storage,\n                        is_blocked, created_at, updated_at, version\n                FROM console_users\n                WHERE ($1::bool IS NULL OR is_blocked = $1)\n                ORDER BY user_id, version DESC\n            ) latest\n            ORDER BY latest.updated_at DESC\n            LIMIT $2\n\n            ",
   "describe": {
     "columns": [
       {
@@ -35,24 +35,33 @@
       },
       {
         "ordinal": 6,
+        "name": "is_blocked",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "updated_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "version",
         "type_info": "Int2"
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Bool",
+        "Int8"
+      ]
     },
     "nullable": [
+      false,
       false,
       false,
       false,
@@ -64,5 +73,5 @@
       false
     ]
   },
-  "hash": "7a1fdf08a3c374080dc3c5c8af3bf226b8d565564b0189ab88f191ca978f4d81"
+  "hash": "c83a3095fc4c5607675bc7f154e787c4318f57a6ccab3a9b477308fd71f772d4"
 }

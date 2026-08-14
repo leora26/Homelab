@@ -73,11 +73,13 @@ impl FileWriteService for FileWriteServiceImpl {
 
             let file_event: FileUploadedEvent = FileUploadedEvent::new(
                 f.id.clone(),
+                f.parent_folder_id.clone(),
                 f.file_type.clone(),
                 f.is_deleted.clone(),
                 f.ttl.clone(),
                 f.size.clone(),
                 f.upload_status.clone(),
+                f.is_archived(&self.storage_path),
                 f.created_at.clone(),
             );
 
@@ -160,8 +162,23 @@ impl FileWriteService for FileWriteServiceImpl {
         // we need to remove file from the disk since the file was probably corrupted
         if !f.validate_size(total_bytes) {
             f.update_status(UploadStatus::Failed);
-            self.file_repo.update(f).await?;
+            self.file_repo.update(f.clone()).await?;
             let _ = tokio::fs::remove_file(&file_path).await;
+
+            let event: FileUpdatedEvent = FileUpdatedEvent::new(
+                f.id.clone(),
+                f.parent_folder_id.clone(),
+                f.is_deleted.clone(),
+                f.ttl.clone(),
+                f.size.clone(),
+                f.upload_status.clone(),
+                f.is_archived(&self.storage_path),
+            );
+
+            if let Err(e) = self.publisher.publish(&event).await {
+                eprintln!("Failed to publish event: {:?}", e);
+            }
+
             return Err(DataError::NotMatchingByteSizeError);
         }
 
@@ -183,10 +200,12 @@ impl FileWriteService for FileWriteServiceImpl {
 
         let event: FileUpdatedEvent = FileUpdatedEvent::new(
             f.id.clone(),
+            f.parent_folder_id.clone(),
             f.is_deleted.clone(),
             f.ttl.clone(),
             f.size.clone(),
             f.upload_status.clone(),
+            f.is_archived(&self.storage_path),
         );
 
         if let Err(e) = self.publisher.publish(&event).await {
@@ -233,10 +252,12 @@ impl FileWriteService for FileWriteServiceImpl {
 
         let event: FileUpdatedEvent = FileUpdatedEvent::new(
             file.id.clone(),
+            file.parent_folder_id.clone(),
             file.is_deleted.clone(),
             file.ttl.clone(),
             file.size.clone(),
             file.upload_status.clone(),
+            file.is_archived(&self.storage_path),
         );
 
         if let Err(e) = self.publisher.publish(&event).await {
@@ -251,7 +272,22 @@ impl FileWriteService for FileWriteServiceImpl {
 
         for mut file in files {
             file.set_as_deleted();
-            self.file_repo.update(file).await.map_err(|e| e)?;
+
+            let event: FileUpdatedEvent = FileUpdatedEvent::new(
+                file.id.clone(),
+                file.parent_folder_id.clone(),
+                file.is_deleted.clone(),
+                file.ttl.clone(),
+                file.size.clone(),
+                file.upload_status.clone(),
+                file.is_archived(&self.storage_path),
+            );
+
+            self.file_repo.update(file).await?;
+
+            if let Err(e) = self.publisher.publish(&event).await {
+                eprintln!("Failed to publish event: {:?}", e);
+            }
         }
 
         Ok(())
@@ -268,10 +304,12 @@ impl FileWriteService for FileWriteServiceImpl {
 
         let event: FileUpdatedEvent = FileUpdatedEvent::new(
             file.id.clone(),
+            file.parent_folder_id.clone(),
             file.is_deleted.clone(),
             file.ttl.clone(),
             file.size.clone(),
             file.upload_status.clone(),
+            file.is_archived(&self.storage_path),
         );
 
         if let Err(e) = self.publisher.publish(&event).await {
@@ -297,6 +335,20 @@ impl FileWriteService for FileWriteServiceImpl {
         }
 
         file.update_parent_folder(command.folder_id);
+
+        let event: FileUpdatedEvent = FileUpdatedEvent::new(
+            file.id.clone(),
+            file.parent_folder_id.clone(),
+            file.is_deleted.clone(),
+            file.ttl.clone(),
+            file.size.clone(),
+            file.upload_status.clone(),
+            file.is_archived(&self.storage_path),
+        );
+
+        if let Err(e) = self.publisher.publish(&event).await {
+            eprintln!("Failed to publish event: {:?}", e);
+        }
 
         Ok(self.file_repo.update(file).await?)
     }
@@ -379,6 +431,23 @@ impl FileWriteService for FileWriteServiceImpl {
             Ok(uploaded_file) => {
                 sp.increase_storage_size(new_file.size);
                 self.sp_repo.save(sp).await?;
+
+                let file_event: FileUploadedEvent = FileUploadedEvent::new(
+                    new_file.id.clone(),
+                    new_file.parent_folder_id.clone(),
+                    new_file.file_type.clone(),
+                    new_file.is_deleted.clone(),
+                    new_file.ttl.clone(),
+                    new_file.size.clone(),
+                    new_file.upload_status.clone(),
+                    new_file.is_archived(&self.storage_path),
+                    new_file.created_at.clone(),
+                );
+
+                if let Err(e) = self.publisher.publish(&file_event).await {
+                    eprintln!("Failed to publish event: {:?}", e);
+                }
+
                 Ok(uploaded_file)
             }
             Err(err) => {
@@ -481,10 +550,12 @@ impl FileWriteService for FileWriteServiceImpl {
 
         let event: FileUpdatedEvent = FileUpdatedEvent::new(
             f.id.clone(),
+            f.parent_folder_id.clone(),
             f.is_deleted.clone(),
             f.ttl.clone(),
             f.size.clone(),
             f.upload_status.clone(),
+            f.is_archived(&self.storage_path),
         );
 
         if let Err(e) = self.publisher.publish(&event).await {
@@ -570,7 +641,22 @@ impl FileWriteService for FileWriteServiceImpl {
         file.rename(format!("{}.gz", file.name));
         file.size = archived_size;
         file.update_type(FileType::Zip);
+
+        let event: FileUpdatedEvent = FileUpdatedEvent::new(
+            file.id.clone(),
+            file.parent_folder_id.clone(),
+            file.is_deleted.clone(),
+            file.ttl.clone(),
+            file.size.clone(),
+            file.upload_status.clone(),
+            file.is_archived(&self.storage_path),
+        );
+
         self.file_repo.update(file).await?;
+
+        if let Err(e) = self.publisher.publish(&event).await {
+            eprintln!("Failed to publish event: {:?}", e);
+        }
 
         Ok(())
     }
@@ -588,8 +674,20 @@ impl FileWriteService for FileWriteServiceImpl {
 
         let compressed_path = file.build_file_path(&self.storage_path);
 
+        // The restored file keeps its ORIGINAL extension (e.g. foo.txt.gz -> foo.txt),
+        // so the decompressed bytes must land at that path. Stripping the extension
+        // entirely would orphan the file, since build_file_path expects `{id}.<ext>`.
+        let restored_name = file
+            .name
+            .strip_suffix(".gz")
+            .unwrap_or(&file.name)
+            .to_string();
+
         let mut output_path = compressed_path.clone();
-        output_path.set_extension("");
+        match Path::new(&restored_name).extension().and_then(|e| e.to_str()) {
+            Some(ext) => output_path.set_extension(ext),
+            None => output_path.set_extension(""),
+        };
 
         let source_file = fs::File::open(&compressed_path)
             .await
@@ -657,17 +755,26 @@ impl FileWriteService for FileWriteServiceImpl {
             .await
             .map_err(|e| DataError::IOError(e.to_string()))?;
 
-        let new_name = file
-            .name
-            .strip_suffix(".gz")
-            .unwrap_or(&file.name)
-            .to_string();
-        file.rename(new_name);
+        file.rename(restored_name);
         file.size = unarchived_size;
         let file_type = FileType::from_filename(&file.name);
         file.update_type(file_type);
 
+        let event: FileUpdatedEvent = FileUpdatedEvent::new(
+            file.id.clone(),
+            file.parent_folder_id.clone(),
+            file.is_deleted.clone(),
+            file.ttl.clone(),
+            file.size.clone(),
+            file.upload_status.clone(),
+            file.is_archived(&self.storage_path),
+        );
+
         self.file_repo.update(file).await?;
+
+        if let Err(e) = self.publisher.publish(&event).await {
+            eprintln!("Failed to publish event: {:?}", e);
+        }
 
         Ok(())
     }

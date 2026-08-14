@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                id,\n                file_id,\n                file_type as \"file_type: _\",\n                is_deleted,\n                ttl,\n                size,\n                upload_status as \"upload_status: _\",\n                created_at,\n                updated_at,\n                version\n            FROM console_file\n            WHERE file_id = $1\n            ORDER BY version DESC\n            LIMIT 1\n            ",
+  "query": "\n                SELECT latest.id, latest.file_id, latest.folder_id,\n                        latest.file_type as \"file_type: _\", latest.is_deleted, latest.ttl, latest.size,\n                       latest.upload_status as \"upload_status: _\", latest.is_archived, latest.created_at, latest.updated_at, latest.version\n                FROM (\n                  SELECT DISTINCT ON (file_id) id, file_id, folder_id, file_type, is_deleted, ttl, size,\n                         upload_status, is_archived, created_at, updated_at, version\n                  FROM console_file\n                  WHERE ($1::file_type IS NULL OR file_type = $1)\n                  ORDER BY file_id, version DESC\n                ) latest\n                ORDER BY latest.updated_at DESC\n                LIMIT $2\n                ",
   "describe": {
     "columns": [
       {
@@ -15,6 +15,11 @@
       },
       {
         "ordinal": 2,
+        "name": "folder_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
         "name": "file_type: _",
         "type_info": {
           "Custom": {
@@ -34,22 +39,22 @@
         }
       },
       {
-        "ordinal": 3,
+        "ordinal": 4,
         "name": "is_deleted",
         "type_info": "Bool"
       },
       {
-        "ordinal": 4,
+        "ordinal": 5,
         "name": "ttl",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "size",
         "type_info": "Int8"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "upload_status: _",
         "type_info": {
           "Custom": {
@@ -65,27 +70,49 @@
         }
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
+        "name": "is_archived",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 9,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 8,
+        "ordinal": 10,
         "name": "updated_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 9,
+        "ordinal": 11,
         "name": "version",
         "type_info": "Int2"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        {
+          "Custom": {
+            "name": "file_type",
+            "kind": {
+              "Enum": [
+                "text",
+                "image",
+                "video",
+                "audio",
+                "pdf",
+                "unknown",
+                "zip"
+              ]
+            }
+          }
+        },
+        "Int8"
       ]
     },
     "nullable": [
+      false,
       false,
       false,
       false,
@@ -95,8 +122,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "fc85b1cb11885c4358d0615a81a4d107e14bebd6eac4341a0e6cb6b7c866be94"
+  "hash": "7acc1f062952394974fd4ba71c65037745c453a1f7cf51715c121cff29a2f0d9"
 }

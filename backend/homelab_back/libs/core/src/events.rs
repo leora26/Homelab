@@ -71,11 +71,13 @@ impl DomainEvent for WhiteListedUserUpdatedEvent {
 #[derive(Deserialize, Serialize, Debug, Clone, new)]
 pub struct FileUploadedEvent {
     pub file_id: Uuid,
+    pub folder_id: Uuid,
     pub file_type: FileType,
     pub is_deleted: bool,
     pub ttl: Option<OffsetDateTime>,
     pub size: i64,
     pub upload_status: UploadStatus,
+    pub is_archived: bool,
     pub created_at: OffsetDateTime
 }
 
@@ -88,27 +90,17 @@ impl DomainEvent for FileUploadedEvent {
 #[derive(Deserialize, Serialize, Debug, Clone, new)]
 pub struct FileUpdatedEvent {
     pub file_id: Uuid,
+    pub folder_id: Uuid,
     pub is_deleted: bool,
     pub ttl: Option<OffsetDateTime>,
     pub size: i64,
     pub upload_status: UploadStatus,
+    pub is_archived: bool,
 }
 
 impl DomainEvent for FileUpdatedEvent {
     fn routing_key(&self) -> &'static str {
         "file.updated"
-    }
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, new)]
-pub struct UserBlockedEvent {
-    pub user_id: Uuid,
-    pub is_deleted: bool,
-}
-
-impl DomainEvent for UserBlockedEvent {
-    fn routing_key(&self) -> &'static str {
-        "blocked.blocked"
     }
 }
 

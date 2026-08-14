@@ -12,9 +12,10 @@ use crate::helpers::data_error::DataError;
 pub trait UserService: Send + Sync {
     async fn log_new_user(&self, event: UserCreatedEvent) -> Result<(), DataError>;
     async fn log_updated_user(&self, event: UserUpdatedEvent) -> Result<(), DataError>;
-    async fn get_all_users(&self) -> Result<Vec<ConsoleUser>, DataError>;
-    async fn get_latest(&self, user_id: Uuid) -> Result<ConsoleUser, DataError>;
-    async fn get_versions(&self, user_id: Uuid) -> Result<Vec<ConsoleUser>, DataError>;
+    async fn get_log(&self, limit: i64, is_blocked: Option<bool>) -> Result<Vec<ConsoleUser>, DataError>;
+    async fn get_latest(&self, limit: i64, is_blocked: Option<bool>) -> Result<Vec<ConsoleUser>, DataError>;
+    async fn find_users(&self, query: String) -> Result<Vec<ConsoleUser>, DataError>;
+    async fn get_versions(&self, query: String, limit: i64) -> Result<Vec<ConsoleUser>, DataError>;
 }
 
 #[derive(new)]
@@ -32,6 +33,7 @@ impl UserService for UserServiceImpl {
             event.full_name,
             event.default_storage,
             0i64,
+            false,
             event.created_at,
             OffsetDateTime::now_utc(),
             1
@@ -50,8 +52,9 @@ impl UserService for UserServiceImpl {
             logged_user.user_id,
             logged_user.email,
             logged_user.full_name,
-            event.allowed_storage.unwrap(),
-            event.taken_storage.unwrap(),
+            event.allowed_storage.unwrap_or(logged_user.allowed_storage),
+            event.taken_storage.unwrap_or(logged_user.taken_storage),
+            event.is_blocked,
             logged_user.created_at,
             OffsetDateTime::now_utc(),
             logged_user.version + 1
@@ -60,15 +63,19 @@ impl UserService for UserServiceImpl {
         self.user_repo.log_user(new_logged_user).await
     }
 
-    async fn get_all_users(&self) -> Result<Vec<ConsoleUser>, DataError> {
-        self.user_repo.get_users().await
+    async fn get_log(&self, limit: i64, is_blocked: Option<bool>) -> Result<Vec<ConsoleUser>, DataError> {
+        self.user_repo.get_log(limit, is_blocked).await
     }
 
-    async fn get_latest(&self, user_id: Uuid) -> Result<ConsoleUser, DataError> {
-        self.user_repo.get_latest_user(user_id).await
+    async fn get_latest(&self, limit: i64, is_blocked: Option<bool>) -> Result<Vec<ConsoleUser>, DataError> {
+        self.user_repo.get_latest(limit, is_blocked).await
     }
 
-    async fn get_versions(&self, user_id: Uuid) -> Result<Vec<ConsoleUser>, DataError> {
-        self.user_repo.get_all_user_versions(user_id).await
+    async fn find_users(&self, query: String) -> Result<Vec<ConsoleUser>, DataError> {
+        self.user_repo.find_by_query(&query).await
+    }
+
+    async fn get_versions(&self, query: String, limit: i64) -> Result<Vec<ConsoleUser>, DataError> {
+        self.user_repo.get_version(&query, limit).await
     }
 }

@@ -5,7 +5,7 @@ use crate::helpers::data_error::DataError;
 use crate::helpers::user_email::UserEmail;
 use async_trait::async_trait;
 use derive_new::new;
-use homelab_core::events::{UserBlockedEvent, UserCreatedEvent, UserUpdatedEvent};
+use homelab_core::events::{UserCreatedEvent, UserUpdatedEvent};
 use homelab_core::user_domain::user::User;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -17,6 +17,7 @@ pub trait UserService: Send + Sync {
     async fn finalize(&self, command: CreateUserCommand) -> Result<(), DataError>;
     async fn get_by_id(&self, id: Uuid) -> Result<Option<User>, DataError>;
     async fn toggle_blocked(&self, id: Uuid, blocked: bool) -> Result<(), DataError>;
+    async fn set_storage_quota(&self, id: Uuid, allowed_storage: i64) -> Result<(), DataError>;
 }
 
 #[derive(new)]
@@ -93,16 +94,29 @@ impl UserService for UserServiceImpl {
             eprintln!("Failed to publish event: {:?}", e);
         }
 
-        let blocked_event: UserBlockedEvent = UserBlockedEvent::new(
-            user.id.clone(),
-            user.is_blocked.clone(),
-        );
-
-        if let Err(e) = self.publisher.publish(&blocked_event).await {
-            eprintln!("Failed to publish event: {:?}", e);
-        }
 
         self.user_repo.toggle_blocked(user).await?;
+
+        Ok(())
+    }
+
+    async fn set_storage_quota(&self, id: Uuid, allowed_storage: i64) -> Result<(), DataError> {
+        let user = self.user_repo.get_by_id(id)
+            .await?
+            .ok_or_else(|| DataError::EntityNotFoundException("User".to_string()))?;
+
+        let event = UserUpdatedEvent::new(
+          id,
+          None,
+          None,
+          Some(allowed_storage),
+          None,
+          user.is_blocked.clone(),
+        );
+
+        if let Err(e) = self.publisher.publish(&event).await {
+            eprintln!("Failed to publish event: {:?}", e);
+        };
 
         Ok(())
     }

@@ -40,6 +40,17 @@ impl ExternalIdResolver for UserRepositoryImpl {
 
         Ok(record.id.to_string())
     }
+
+    async fn is_blocked(&self, internal_id: Uuid) -> Result<bool, Box<dyn Error>> {
+        let record = sqlx::query!(
+            "SELECT is_blocked FROM users WHERE id = $1",
+            internal_id
+        )
+            .fetch_one(&self.pool)
+            .await?;
+
+        Ok(record.is_blocked)
+    }
 }
 
 #[async_trait]

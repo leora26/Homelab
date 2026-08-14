@@ -36,7 +36,20 @@ pub async fn resolve_internal_id<R: ExternalIdResolver + Send + Sync>(
         Status::permission_denied(format!("User profile not mapped in NAS: {}", e))
     })?;
 
-    Uuid::parse_str(&internal_id_str).map_err(|e| {
+    let internal_id = Uuid::parse_str(&internal_id_str).map_err(|e| {
         Status::internal(format!("Critical Data Error: Stored internal ID is not a valid UUID. {}", e))
-    })
+    })?;
+
+    // Block guard: an admin can block a user, after which they may perform no operations.
+    // Checked live (uncached) so the block takes effect on the next request; a lookup
+    // failure fails closed (the request is denied with an internal error).
+    let blocked = resolver.is_blocked(internal_id).await.map_err(|e| {
+        eprintln!("Block-state check failed for {}: {}", internal_id, e);
+        Status::internal("Failed to verify account status")
+    })?;
+    if blocked {
+        return Err(Status::permission_denied("Account is blocked"));
+    }
+
+    Ok(internal_id)
 }

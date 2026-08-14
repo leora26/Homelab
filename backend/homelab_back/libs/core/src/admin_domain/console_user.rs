@@ -12,6 +12,7 @@ pub struct ConsoleUser {
     pub full_name: String,
     pub allowed_storage: i64,
     pub taken_storage: i64,
+    pub is_blocked: bool,
     pub created_at: OffsetDateTime,
     pub updated_at: OffsetDateTime,
     pub version: i16

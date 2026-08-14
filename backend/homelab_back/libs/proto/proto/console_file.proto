@@ -2,24 +2,40 @@ syntax = "proto3";
 package admin;
 
 import "google/protobuf/timestamp.proto";
-import "google/protobuf/empty.proto";
 import "types.proto";
 import "file.proto";
 
 service ConsoleFileService {
-  rpc GetAll(google.protobuf.Empty) returns (ConsoleFileListResponse);
-  rpc GetLatestVersion (GetLatestFileVersionRequest) returns (ConsoleFileResponse);
-  rpc GetAllFileVersions (GetAllFileVersionsRequest) returns (ConsoleFileListResponse);
+  rpc GetLog (ListFilesRequest) returns (ConsoleFileListResponse);
+  rpc GetLatest (ListFilesRequest) returns (ConsoleFileListResponse);
+  rpc FindFiles (FindFilesRequest) returns (ConsoleFileListResponse);
+  rpc GetVersions (GetVersionsRequest) returns (ConsoleFileListResponse);
+}
+
+message ListFilesRequest {
+  int32 limit = 1;
+  optional nas.FileType file_type = 2;
+}
+
+message FindFilesRequest {
+  string id_prefix = 1;
+}
+
+message GetVersionsRequest {
+  string id_prefix = 1;
+  int32 limit = 2;                    
 }
 
 message ConsoleFileResponse {
   common.EntityId id = 1;
   common.EntityId file_id = 2;
+  common.EntityId folder_id = 11;
   nas.FileType file_type = 3;
   bool is_deleted = 4;
   google.protobuf.Timestamp ttl = 5;
   int64 size = 6;
   nas.UploadStatus upload_status = 7;
+  bool is_archived = 12;
   google.protobuf.Timestamp created_at = 8;
   google.protobuf.Timestamp updated_at = 9;
   int32 version = 10;
@@ -27,12 +43,4 @@ message ConsoleFileResponse {
 
 message ConsoleFileListResponse {
   repeated ConsoleFileResponse files = 1;
-}
-
-message GetLatestFileVersionRequest {
-  common.EntityId file_id = 1;
-}
-
-message GetAllFileVersionsRequest {
-  common.EntityId file_id = 1;
 }

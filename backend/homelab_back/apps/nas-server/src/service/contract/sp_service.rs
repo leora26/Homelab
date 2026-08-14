@@ -1,13 +1,16 @@
 use async_trait::async_trait;
 use uuid::Uuid;
-use homelab_core::events::{UserBlockedEvent, UserCreatedEvent};
+use homelab_core::events::{UserCreatedEvent, UserUpdatedEvent};
 use homelab_core::nas_domain::storage_profile::StorageProfile;
 use crate::helpers::data_error::DataError;
 
 #[async_trait]
 pub trait StorageProfileService: Send + Sync {
     async fn save_storage_profile (&self, event: UserCreatedEvent) -> Result<StorageProfile, DataError>;
-    async fn toggle_storage_profile(&self, event: UserBlockedEvent) -> Result<(), DataError>;
+    /// Apply an admin-driven user update to the storage profile: set `allowed_storage`
+    /// when the event carries it, and always sync `is_blocked`. Ignores `taken_storage`
+    /// (nas owns that). Idempotent — safe to re-apply nas's own emitted updates.
+    async fn apply_user_update(&self, event: UserUpdatedEvent) -> Result<(), DataError>;
     async fn get_by_id(&self, id: Uuid) -> Result<Option<StorageProfile>, DataError>;
     async fn reduce_taken_storage(&self, id: Uuid, size: i64) -> Result<(), DataError>;
 }

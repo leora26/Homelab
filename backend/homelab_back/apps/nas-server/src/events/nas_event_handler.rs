@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use async_trait::async_trait;
 use derive_new::new;
-use homelab_core::events::{TrashCleanUpTriggeredEvent, UserCreatedEvent};
+use homelab_core::events::{TrashCleanUpTriggeredEvent, UserCreatedEvent, UserUpdatedEvent};
 use homelab_core::helpers::event_handler::EventHandler;
 use crate::service::contract::clean_up_service::CleanUpService;
 use crate::service::contract::sp_service::StorageProfileService;
@@ -30,6 +30,17 @@ impl EventHandler for NasEventHandler {
                           profile.allowed_storage,
                           profile.taken_storage
                 );
+
+                Ok(())
+            },
+            "user.updated" => {
+                let event: UserUpdatedEvent = serde_json::from_slice(data)
+                    .map_err(|e| format!("Json Error: {}", e))?;
+
+                println!("👤 Handling User Update: {} (blocked={})", event.user_id, event.is_blocked);
+
+                self.storage_profile_service.apply_user_update(event).await
+                    .map_err(|e| format!("DB Error: {}", e))?;
 
                 Ok(())
             },

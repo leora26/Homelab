@@ -17,6 +17,8 @@ pub enum AuthError {
     NotProvisioned,
     /// The stored internal id is not a valid UUID (data corruption).
     MalformedInternalId,
+    /// Token is valid and mapped, but the account has been blocked by an admin.
+    Blocked,
 }
 
 impl AuthError {
@@ -26,6 +28,7 @@ impl AuthError {
             AuthError::InvalidToken => "Invalid or expired token",
             AuthError::NotProvisioned => "User profile not mapped",
             AuthError::MalformedInternalId => "Stored internal id is not a valid UUID",
+            AuthError::Blocked => "Account is blocked",
         }
     }
 }
@@ -64,5 +67,17 @@ pub async fn resolve_caller_id<R: ExternalIdResolver + Send + Sync>(
         .await
         .map_err(|_| AuthError::NotProvisioned)?;
 
-    Uuid::parse_str(&internal_id).map_err(|_| AuthError::MalformedInternalId)
+    let internal_id = Uuid::parse_str(&internal_id).map_err(|_| AuthError::MalformedInternalId)?;
+
+    // Block guard (mirrors resolve_internal_id for the gRPC path). Live check; a lookup
+    // failure fails closed by denying the request.
+    if resolver
+        .is_blocked(internal_id)
+        .await
+        .map_err(|_| AuthError::NotProvisioned)?
+    {
+        return Err(AuthError::Blocked);
+    }
+
+    Ok(internal_id)
 }

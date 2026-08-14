@@ -15,6 +15,7 @@ pub fn map_console_file(f: ConsoleFile) -> ConsoleFileResponse {
     ConsoleFileResponse {
         id: Option::from(map_id_to_proto(f.id)),
         file_id: Option::from(map_id_to_proto(f.file_id)),
+        folder_id: Option::from(map_id_to_proto(f.folder_id)),
         file_type: match f.file_type {
             DomainFileType::Image => ProtoFileType::Image,
             DomainFileType::Text => ProtoFileType::Text,
@@ -25,9 +26,9 @@ pub fn map_console_file(f: ConsoleFile) -> ConsoleFileResponse {
             DomainFileType::Unknown => ProtoFileType::Unknown,
         } as i32,
         is_deleted: f.is_deleted,
-        ttl: Some(prost_types::Timestamp {
-            seconds: f.ttl.unwrap().unix_timestamp(),
-            nanos: f.ttl.unwrap().nanosecond() as i32,
+        ttl: f.ttl.map(|t| prost_types::Timestamp {
+            seconds: t.unix_timestamp(),
+            nanos: t.nanosecond() as i32,
         }),
         size: f.size,
         upload_status: match f.upload_status {
@@ -35,6 +36,7 @@ pub fn map_console_file(f: ConsoleFile) -> ConsoleFileResponse {
             DomainUploadStatus::Completed => ProtoUploadStatus::Completed,
             DomainUploadStatus::Pending => ProtoUploadStatus::Pending,
         } as i32,
+        is_archived: f.is_archived,
         created_at: Some(prost_types::Timestamp {
             seconds: f.created_at.unix_timestamp(),
             nanos: f.created_at.nanosecond() as i32,
@@ -47,6 +49,19 @@ pub fn map_console_file(f: ConsoleFile) -> ConsoleFileResponse {
     }
 }
 
+pub fn map_file_type_filter(value: Option<i32>) -> Option<DomainFileType> {
+    let proto = ProtoFileType::try_from(value?).ok()?;
+    Some(match proto {
+        ProtoFileType::Image => DomainFileType::Image,
+        ProtoFileType::Text => DomainFileType::Text,
+        ProtoFileType::Video => DomainFileType::Video,
+        ProtoFileType::Audio => DomainFileType::Audio,
+        ProtoFileType::Pdf => DomainFileType::Pdf,
+        ProtoFileType::Zip => DomainFileType::Zip,
+        ProtoFileType::Unknown => DomainFileType::Unknown,
+    })
+}
+
 pub fn map_console_user(u: ConsoleUser) -> ConsoleUserResponse {
     ConsoleUserResponse {
         id: Option::from(map_id_to_proto(u.id)),
@@ -55,6 +70,7 @@ pub fn map_console_user(u: ConsoleUser) -> ConsoleUserResponse {
         full_name: u.full_name,
         allowed_storage: u.allowed_storage,
         taken_storage: u.taken_storage,
+        is_blocked: u.is_blocked,
         created_at: Some(prost_types::Timestamp {
             seconds: u.created_at.unix_timestamp(),
             nanos: u.created_at.nanosecond() as i32,

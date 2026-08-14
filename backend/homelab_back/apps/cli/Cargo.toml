@@ -1,0 +1,22 @@
+[package]
+name = "cli"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "pvk"
+path = "src/main.rs"
+
+[dependencies]
+homelab-proto = { path = "../../libs/proto" }
+
+tokio = { workspace = true }
+tonic = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+
+clap = { version = "4.6.5", features = ["derive", "env"] }
+anyhow = "1.0.104"
+tabled = "0.21.0"
+derive-new = {workspace = true}
