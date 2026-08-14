@@ -7,9 +7,15 @@ mod output;
 use crate::args::FileTypeArg;
 use crate::client::config::connect;
 use crate::client::file_client::FileClient;
-use crate::commands::{FindFileCommand, GetVersionsCommand, ListFileCommand, ResizeCommand};
+use crate::client::user_client::UserClient;
+use crate::commands::{
+    FindFileCommand, FindUserCommand, GetUserVersionCommand, GetVersionsCommand, ListFileCommand,
+    ListUserCommand, ResizeCommand, SetQuotaCommand, ToggleBlockCommand,
+};
 use crate::helpers::parse_size;
-use crate::output::{print_file_table, print_resize, print_volume_json, print_volume_status_human};
+use crate::output::{
+    print_file_table, print_resize, print_user_table, print_volume_json, print_volume_status_human,
+};
 use anyhow::Result;
 use clap::{Parser, Subcommand, ValueEnum};
 use client::storage_client::StorageClient;
@@ -51,6 +57,65 @@ enum Command {
     File {
         #[command(subcommand)]
         action: FileAction,
+    },
+    /// Manage users: audit their state and history, block access, and set storage quotas
+    User {
+        #[command(subcommand)]
+        action: UserAction,
+    },
+}
+
+#[derive(Subcommand)]
+enum UserAction {
+    /// Show the raw user event log, newest first
+    Log {
+        /// Max number of records to return
+        #[arg(long, short = 'm', default_value = "10")]
+        max: i64,
+        /// Only show blocked users
+        #[arg(long)]
+        blocked: bool,
+    },
+
+    /// List the latest state of each user
+    List {
+        /// Max number of users to return
+        #[arg(long, short = 'm', default_value = "10")]
+        max: i64,
+        /// Only show blocked users
+        #[arg(long)]
+        blocked: bool,
+    },
+
+    /// Show a single user by id prefix or email
+    Show {
+        /// Full user id, a leading prefix, or an email substring
+        query: String,
+    },
+
+    /// Show the version history of a single user (by id prefix or email)
+    Versions {
+        /// Full user id, a leading prefix, or an email substring
+        query: String,
+        /// Max number of versions to return
+        #[arg(long, short = 'm', default_value = "10")]
+        max: i64,
+    },
+
+    /// Block or unblock a user (true = blocked, false = active)
+    Toggle {
+        /// Full user id
+        user_id: String,
+        /// Whether the user should be blocked
+        blocked: bool,
+    },
+
+    /// Set a user's storage quota, in bytes
+    Quota {
+        /// Full user id
+        user_id: String,
+        /// New quota in bytes
+        storage: i64,
     },
 }
 
@@ -124,7 +189,8 @@ async fn run(cli: Cli) -> Result<()> {
     let format = cli.output;
     let channel = connect(cli.server).await?;
     let storage_client = StorageClient::new(channel.clone());
-    let file_client = FileClient::new(channel);
+    let file_client = FileClient::new(channel.clone());
+    let user_client = UserClient::new(channel.clone());
 
     match cli.command {
         Command::Volume { action } => match action {
@@ -185,6 +251,66 @@ async fn run(cli: Cli) -> Result<()> {
 
                 let res = file_client.get_versions(req).await?;
                 print_file_table(&res);
+                Ok(())
+            }
+        },
+        Command::User { action } => match action {
+            UserAction::Log { max, blocked } => {
+                let req = ListUserCommand {
+                    limit: max,
+                    is_blocked: blocked.then_some(true),
+                };
+
+                let res = user_client.get_log(req).await?;
+                print_user_table(&res);
+                Ok(())
+            }
+            UserAction::List { max, blocked } => {
+                let req = ListUserCommand {
+                    limit: max,
+                    is_blocked: blocked.then_some(true),
+                };
+
+                let res = user_client.get_latest(req).await?;
+                print_user_table(&res);
+                Ok(())
+            }
+            UserAction::Show { query } => {
+                let req = FindUserCommand { query };
+
+                let res = user_client.find_users(req).await?;
+                print_user_table(&res);
+                Ok(())
+            }
+            UserAction::Versions { query, max } => {
+                let req = GetUserVersionCommand { query, limit: max };
+
+                let res = user_client.get_versions(req).await?;
+                print_user_table(&res);
+                Ok(())
+            }
+            UserAction::Toggle { user_id, blocked } => {
+                let req = ToggleBlockCommand {
+                    user_id: user_id.clone(),
+                    is_blocked: blocked,
+                };
+
+                user_client.toggle_blocked(req).await?;
+                println!(
+                    "{} user {}",
+                    if blocked { "Blocked" } else { "Unblocked" },
+                    user_id
+                );
+                Ok(())
+            }
+            UserAction::Quota { user_id, storage } => {
+                let req = SetQuotaCommand {
+                    user_id: user_id.clone(),
+                    allowed_storage: storage,
+                };
+
+                user_client.set_quota(req).await?;
+                println!("Set quota for user {} to {} bytes", user_id, storage);
                 Ok(())
             }
         },

@@ -1,4 +1,6 @@
-use homelab_proto::admin::{ConsoleFileListResponse, SetVolumeSizeResponse, VolumeStatusResponse};
+use homelab_proto::admin::{
+    ConsoleFileListResponse, ConsoleUserListResponse, SetVolumeSizeResponse, VolumeStatusResponse,
+};
 use homelab_proto::common::EntityId;
 use tabled::settings::Style;
 use tabled::{Table, Tabled};
@@ -139,6 +141,66 @@ pub fn print_file_table(list: &ConsoleFileListResponse) {
     let mut table = Table::new(rows);
     table.with(Style::psql());
     println!("{table}");
+}
+
+// ---- user table -------------------------------------------------------------
+
+#[derive(Tabled)]
+struct UserRow {
+    #[tabled(rename = "USER ID")]
+    user_id: String,
+    #[tabled(rename = "EMAIL")]
+    email: String,
+    #[tabled(rename = "NAME")]
+    name: String,
+    #[tabled(rename = "QUOTA")]
+    quota: String,
+    #[tabled(rename = "USED")]
+    used: String,
+    #[tabled(rename = "USE%")]
+    use_pct: String,
+    #[tabled(rename = "BLK")]
+    blocked: String,
+    #[tabled(rename = "VER")]
+    version: String,
+    #[tabled(rename = "UPDATED")]
+    updated: String,
+}
+
+/// Render any user list (log / latest / matches / versions) as a table.
+pub fn print_user_table(list: &ConsoleUserListResponse) {
+    if list.users.is_empty() {
+        println!("No users.");
+        return;
+    }
+
+    let rows: Vec<UserRow> = list
+        .users
+        .iter()
+        .map(|u| UserRow {
+            user_id: short_id(&u.user_id),
+            email: u.email.clone(),
+            name: u.full_name.clone(),
+            quota: human_bytes(u.allowed_storage),
+            used: human_bytes(u.taken_storage),
+            use_pct: usage_percent(u.taken_storage, u.allowed_storage),
+            blocked: flag(u.is_blocked),
+            version: u.version.to_string(),
+            updated: relative_time(u.updated_at.as_ref().map(|t| t.seconds)),
+        })
+        .collect();
+
+    let mut table = Table::new(rows);
+    table.with(Style::psql());
+    println!("{table}");
+}
+
+/// "42%" from used/quota, guarding against a zero or negative quota.
+fn usage_percent(used: i64, quota: i64) -> String {
+    if quota <= 0 {
+        return "-".to_string();
+    }
+    format!("{:.0}%", (used as f64 / quota as f64) * 100.0)
 }
 
 fn short_id(id: &Option<EntityId>) -> String {

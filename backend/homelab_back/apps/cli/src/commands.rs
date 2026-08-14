@@ -22,3 +22,32 @@ pub struct GetVersionsCommand {
     pub prefix: String,
     pub limit: i64,
 }
+
+#[derive(new)]
+pub struct ListUserCommand {
+    pub limit: i64,
+    pub is_blocked: Option<bool>
+}
+
+#[derive(new)]
+pub struct FindUserCommand {
+    pub query: String
+}
+
+#[derive(new)]
+pub struct GetUserVersionCommand {
+    pub query: String,
+    pub limit: i64
+}
+
+#[derive(new)]
+pub struct ToggleBlockCommand {
+    pub user_id: String,
+    pub is_blocked: bool
+}
+
+#[derive(new)]
+pub struct SetQuotaCommand {
+    pub user_id: String,
+    pub allowed_storage: i64
+}
