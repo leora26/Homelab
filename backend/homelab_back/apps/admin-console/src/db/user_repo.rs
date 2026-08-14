@@ -63,14 +63,14 @@ impl UserRepo for UserRepoImpl {
             SELECT
                 latest.id, latest.user_id,
                 latest.email, latest.full_name,
-                latest.allowed_storage, latest.taken_storage,
+                latest.allowed_storage, latest.taken_storage, latest.is_blocked,
                 latest.created_at, latest.updated_at, latest.version
             FROM (
                 SELECT DISTINCT ON (user_id) id, user_id, email,
                         full_name, allowed_storage, taken_storage,
-                        created_at, updated_at, version
+                        is_blocked, created_at, updated_at, version
                 FROM console_users
-                WHERE ($1::bool IS NULL OR is_blocked $1)
+                WHERE ($1::bool IS NULL OR is_blocked = $1)
                 ORDER BY user_id, version DESC
             ) latest
             ORDER BY latest.updated_at DESC
@@ -103,7 +103,7 @@ impl UserRepo for UserRepoImpl {
                 updated_at,
                 version
             FROM console_users
-            WHERE ($1::bool IS NULL OR is_blocked $1)
+            WHERE ($1::bool IS NULL OR is_blocked = $1)
             ORDER BY updated_at DESC
             LIMIT $2
             "#,

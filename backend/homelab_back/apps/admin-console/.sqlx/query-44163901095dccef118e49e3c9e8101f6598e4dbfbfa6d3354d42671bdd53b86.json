@@ -1,10 +1,11 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            INSERT INTO console_file (\n                                      id,\n                                      file_id,\n                                      file_type,\n                                      is_deleted,\n                                      ttl,\n                                      size,\n                                      upload_status,\n                                      created_at,\n                                      updated_at,\n                                      version\n            )\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)\n            ",
+  "query": "\n            INSERT INTO console_file (\n                                      id,\n                                      file_id,\n                                      folder_id,\n                                      file_type,\n                                      is_deleted,\n                                      ttl,\n                                      size,\n                                      upload_status,\n                                      is_archived,\n                                      created_at,\n                                      updated_at,\n                                      version\n            )\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)\n            ",
   "describe": {
     "columns": [],
     "parameters": {
       "Left": [
+        "Uuid",
         "Uuid",
         "Uuid",
         {
@@ -38,6 +39,7 @@
             }
           }
         },
+        "Bool",
         "Timestamptz",
         "Timestamptz",
         "Int2"
@@ -45,5 +47,5 @@
     },
     "nullable": []
   },
-  "hash": "7f47639cb9e1074dae1523ba2e18bdbbf5f9f9bc92f16a913d09f58ffeb8b77a"
+  "hash": "44163901095dccef118e49e3c9e8101f6598e4dbfbfa6d3354d42671bdd53b86"
 }

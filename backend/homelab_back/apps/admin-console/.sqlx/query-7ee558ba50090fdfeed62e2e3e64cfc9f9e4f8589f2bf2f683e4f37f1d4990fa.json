@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                id,\n                file_id,\n                file_type as \"file_type: _\",\n                is_deleted,\n                ttl,\n                size,\n                upload_status as \"upload_status: _\",\n                created_at,\n                updated_at,\n                version\n            FROM console_file\n            ",
+  "query": "\n                SELECT\n                    id,\n                    file_id,\n                    folder_id,\n                    file_type as \"file_type: _\",\n                    is_deleted,\n                    ttl,\n                    size,\n                    upload_status as \"upload_status: _\",\n                    is_archived,\n                    created_at,\n                    updated_at,\n                    version\n                FROM console_file\n                WHERE lower(file_id::text) like lower($1) || '%'\n                ORDER BY version DESC\n                LIMIT $2\n                ",
   "describe": {
     "columns": [
       {
@@ -15,6 +15,11 @@
       },
       {
         "ordinal": 2,
+        "name": "folder_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
         "name": "file_type: _",
         "type_info": {
           "Custom": {
@@ -34,22 +39,22 @@
         }
       },
       {
-        "ordinal": 3,
+        "ordinal": 4,
         "name": "is_deleted",
         "type_info": "Bool"
       },
       {
-        "ordinal": 4,
+        "ordinal": 5,
         "name": "ttl",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "size",
         "type_info": "Int8"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "upload_status: _",
         "type_info": {
           "Custom": {
@@ -65,25 +70,34 @@
         }
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
+        "name": "is_archived",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 9,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 8,
+        "ordinal": 10,
         "name": "updated_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 9,
+        "ordinal": 11,
         "name": "version",
         "type_info": "Int2"
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Text",
+        "Int8"
+      ]
     },
     "nullable": [
+      false,
       false,
       false,
       false,
@@ -93,8 +107,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "62d0a3884c046a80958f5608f29f459de74a47f16d70c5ea2f9e3c7222cc21a3"
+  "hash": "7ee558ba50090fdfeed62e2e3e64cfc9f9e4f8589f2bf2f683e4f37f1d4990fa"
 }

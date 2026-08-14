@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE storage_profiles\n            SET allowed_storage = $1, taken_storage = $2, is_blocked = $3\n            WHERE user_id = $4\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Bool",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9868e6021250d42e465704e8e9580d2dea2c4836df4211edc6446c97bb3f56d3"
+}
