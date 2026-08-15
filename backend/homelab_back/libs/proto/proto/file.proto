@@ -4,6 +4,7 @@ package nas;
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";
 import "types.proto";
+import "label.proto";
 
 service FileService {
   rpc GetFile (GetFileRequest) returns (FileResponse); // Done
@@ -52,6 +53,7 @@ message FileResponse {
   google.protobuf.Timestamp created_at = 10;
   google.protobuf.Timestamp updated_at = 11;
   optional string hash = 12;
+  repeated LabelResponse labels = 13;
 }
 
 message FileListResponse {

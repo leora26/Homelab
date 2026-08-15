@@ -7,6 +7,7 @@ import "types.proto";
 
 service StorageProfileService {
   rpc GetById (GetStorageProfileByIdRequest) returns (StorageProfileResponse);
+  rpc GetStorageStats (google.protobuf.Empty) returns (StorageStatsResponse);
 }
 
 message StorageProfileResponse {
@@ -18,4 +19,15 @@ message StorageProfileResponse {
 
 message GetStorageProfileByIdRequest {
   common.EntityId id = 1;
+}
+
+message StorageStatsResponse {
+  int64 file_count = 1;
+  int64 folder_count = 2;
+  int64 trashed_item_count = 3;
+  int64 trashed_bytes = 4;
+  int64 labelled_file_count = 5;
+  int64 unlabelled_file_count = 6;
+  int64 shared_file_count = 7;
+  int64 shared_bytes = 8;
 }

@@ -2,14 +2,20 @@ use crate::helpers::data_error::DataError;
 use async_trait::async_trait;
 use homelab_core::nas_domain::file::{File, FileType, UploadStatus};
 use homelab_core::nas_domain::global_file::GlobalFile;
+use sqlx::types::time::OffsetDateTime;
 use sqlx::PgPool;
 use uuid::Uuid;
 
 /// A published global file joined with the full metadata of its underlying original
 /// file, so the list endpoint can be rendered without a second lookup per entry.
+///
+/// `owner_name` is `users.full_name` of the file's owner and `shared_at` is
+/// `global_files.created_at`; both come from the same join as the file itself.
 pub struct GlobalFileWithMeta {
     pub id: Uuid,
     pub file: File,
+    pub owner_name: String,
+    pub shared_at: OffsetDateTime,
 }
 
 #[async_trait]
@@ -36,12 +42,13 @@ impl GlobalFileRepository for GlobalFileRepositoryImpl {
         let gf = sqlx::query_as!(
             GlobalFile,
             r#"
-            INSERT INTO global_files (id, original_id)
-            VALUES ($1, $2)
-            RETURNING id, original_id
+            INSERT INTO global_files (id, original_id, created_at)
+            VALUES ($1, $2, $3)
+            RETURNING id, original_id, created_at
             "#,
             global_file.id,
-            global_file.original_id
+            global_file.original_id,
+            global_file.created_at
         )
         .fetch_one(&self.pool)
         .await
@@ -55,6 +62,8 @@ impl GlobalFileRepository for GlobalFileRepositoryImpl {
             r#"
             SELECT
                 g.id            AS "global_id",
+                g.created_at    AS "shared_at",
+                u.full_name     AS "owner_name",
                 f.id            AS "id",
                 f.name          AS "name",
                 f.owner_id      AS "owner_id",
@@ -69,6 +78,7 @@ impl GlobalFileRepository for GlobalFileRepositoryImpl {
                 f.hash          AS "hash"
             FROM global_files g
             JOIN files f ON f.id = g.original_id
+            JOIN users u ON u.id = f.owner_id
             WHERE f.is_deleted = FALSE
             "#
         )
@@ -80,6 +90,8 @@ impl GlobalFileRepository for GlobalFileRepositoryImpl {
             .into_iter()
             .map(|r| GlobalFileWithMeta {
                 id: r.global_id,
+                owner_name: r.owner_name,
+                shared_at: r.shared_at,
                 file: File {
                     id: r.id,
                     name: r.name,

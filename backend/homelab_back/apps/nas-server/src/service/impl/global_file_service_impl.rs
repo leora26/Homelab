@@ -4,6 +4,7 @@ use crate::service::contract::global_file_service::GlobalFileService;
 use async_trait::async_trait;
 use derive_new::new;
 use homelab_core::nas_domain::global_file::GlobalFile;
+use sqlx::types::time::OffsetDateTime;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -23,7 +24,7 @@ impl GlobalFileService for GlobalFileServiceImpl {
             return Ok(());
         }
 
-        let global_file = GlobalFile::new(Uuid::new_v4(), file_id);
+        let global_file = GlobalFile::new(Uuid::new_v4(), file_id, OffsetDateTime::now_utc());
         self.global_file_repository.save(global_file).await?;
 
         Ok(())

@@ -2,10 +2,10 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use derive_new::new;
 use tonic::{Request, Response, Status};
-use homelab_proto::nas::{GetStorageProfileByIdRequest, StorageProfileResponse};
+use homelab_proto::nas::{GetStorageProfileByIdRequest, StorageProfileResponse, StorageStatsResponse};
 use homelab_proto::nas::storage_profile_service_server::StorageProfileService;
 use crate::AppState;
-use crate::helpers::proto_mappers::map_storage_profile_to_proto;
+use crate::helpers::proto_mappers::{map_storage_profile_to_proto, map_storage_stats_to_proto};
 use homelab_core::auth::extractor::RequestIdentityExt;
 
 #[derive(new)]
@@ -27,5 +27,17 @@ impl StorageProfileService for GrpcStorageProfileService {
             .ok_or_else(|| Status::not_found(format!("No storage was found with given id: {}", id)))?;
 
         Ok(Response::new(map_storage_profile_to_proto(sp)))
+    }
+
+    async fn get_storage_stats(&self, request: Request<()>) -> Result<Response<StorageStatsResponse>, Status> {
+        // Identity from the token — every figure below is owner-scoped to the caller.
+        let id = request.get_internal_id(&self.app_state.cached_identity_resolver).await?;
+
+        let stats = self.app_state
+            .storage_profile_service
+            .get_storage_stats(id)
+            .await?;
+
+        Ok(Response::new(map_storage_stats_to_proto(stats)))
     }
 }

@@ -8,13 +8,7 @@ use async_trait::async_trait;
 use derive_new::new;
 use homelab_core::auth::extractor::RequestIdentityExt;
 use homelab_proto::nas::folder_service_server::FolderService;
-use homelab_proto::nas::{
-    CleanUpDeletedFolderRequest, CleanUpTrashRequest, CreateFolderRequest, DeleteAllFolderRequest,
-    DeleteFolderRequest, FileListResponse, FolderResponse, FolderResponseList,
-    GetAllSubfoldersRequest, GetDeletedFoldersRequest, GetFilesForFolderRequest, GetFolderRequest,
-    GetRootFolderRequest, GetTrashFilesForFolderRequest, GetTrashSubfoldersForFolderRequest,
-    MoveFolderRequest, RenameFolderRequest, RestoreDeletedFolderRequest, SearchFolderRequest,
-};
+use homelab_proto::nas::{CleanUpDeletedFolderRequest, CleanUpTrashRequest, CreateFolderRequest, DeleteAllFolderRequest, DeleteFolderRequest, FileListResponse, FolderResponse, FolderResponseList, GetAllSubfoldersRequest, GetDeletedFoldersRequest, GetFilesForFolderRequest, GetFolderRequest, GetRootFolderRequest, GetTrashFilesForFolderRequest, GetTrashSubfoldersForFolderRequest, MoveFolderRequest, RenameFolderRequest, RestoreDeletedFolderRequest, SearchFolderRequest};
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
 use uuid::Uuid;
@@ -113,7 +107,21 @@ impl FolderService for GrpcFolderService {
             .get_by_folder(folder_id)
             .await?;
 
-        let proto_files = files.into_iter().map(|f| map_file_to_proto(f)).collect();
+        let file_ids: Vec<Uuid> = files.iter().map(|f| f.id).collect();
+
+        let mut labels = self
+            .app_state
+            .file_label_service
+            .get_labels_for_files(&file_ids, user_id)
+            .await?;
+
+        let proto_files = files
+            .into_iter()
+            .map(|f| {
+                let labels = labels.remove(&f.id).unwrap_or_default();
+                map_file_to_proto(f, labels)
+            })
+            .collect();
 
         Ok(Response::new(FileListResponse { files: proto_files }))
     }
@@ -138,7 +146,7 @@ impl FolderService for GrpcFolderService {
             .get_trash_files(folder_id)
             .await?;
 
-        let proto_files = files.into_iter().map(|f| map_file_to_proto(f)).collect();
+        let proto_files = files.into_iter().map(|f| map_file_to_proto(f, Vec::new())).collect();
 
         Ok(Response::new(FileListResponse { files: proto_files }))
     }

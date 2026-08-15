@@ -2,12 +2,15 @@ use homelab_core::nas_domain::file::{File, FileType as DomainFileType, UploadSta
 use homelab_core::nas_domain::file_label::FileLabel;
 use homelab_core::nas_domain::folder::Folder;
 use crate::db::global_file_repository::GlobalFileWithMeta;
+use crate::db::label_repository::LabelWithCount;
 use homelab_core::nas_domain::label::Label;
 use homelab_proto::common::EntityId;
-use homelab_proto::nas::{FileLabelResponse, FileResponse, FileType as ProtoFileType, FolderResponse, GlobalFileResponse, LabelResponse, StorageProfileResponse, UploadStatus as ProtoUploadStatus};
+use homelab_proto::nas::{FileLabelResponse, FileResponse, FileType as ProtoFileType, FolderResponse, GlobalFileResponse, LabelResponse, LabelWithCountResponse, StorageProfileResponse, UploadStatus as ProtoUploadStatus};
 use tonic::Status;
 use uuid::Uuid;
 use homelab_core::nas_domain::storage_profile::StorageProfile;
+use homelab_core::nas_domain::storage_stats::StorageStats;
+use homelab_proto::nas::StorageStatsResponse;
 use homelab_core::nas_domain::volume::VolumeStatus;
 use homelab_proto::nas::VolumeStatusResponse;
 
@@ -22,6 +25,19 @@ pub fn map_volume_to_proto (s: VolumeStatus) -> VolumeStatusResponse {
     }
 }
 
+pub fn map_storage_stats_to_proto(s: StorageStats) -> StorageStatsResponse {
+    StorageStatsResponse {
+        file_count: s.file_count,
+        folder_count: s.folder_count,
+        trashed_item_count: s.trashed_item_count,
+        trashed_bytes: s.trashed_bytes,
+        labelled_file_count: s.labelled_file_count,
+        unlabelled_file_count: s.unlabelled_file_count,
+        shared_file_count: s.shared_file_count,
+        shared_bytes: s.shared_bytes,
+    }
+}
+
 pub fn map_storage_profile_to_proto(sp: StorageProfile) -> StorageProfileResponse {
     StorageProfileResponse {
         user_id: Option::from(map_id_to_proto(sp.user_id)),
@@ -31,7 +47,7 @@ pub fn map_storage_profile_to_proto(sp: StorageProfile) -> StorageProfileRespons
     }
 }
 
-pub fn map_file_to_proto(f: File) -> FileResponse {
+pub fn map_file_to_proto(f: File, labels: Vec<Label>) -> FileResponse {
     FileResponse {
         id: Option::from(map_id_to_proto(f.id)),
         name: f.name,
@@ -65,7 +81,8 @@ pub fn map_file_to_proto(f: File) -> FileResponse {
             seconds: f.updated_at.unix_timestamp(),
             nanos: f.updated_at.nanosecond() as i32,
         }),
-        hash: f.hash
+        hash: f.hash,
+        labels: labels.into_iter().map(map_label_to_proto).collect(),
     }
 }
 
@@ -74,7 +91,12 @@ pub fn map_global_file_to_proto(g: GlobalFileWithMeta) -> GlobalFileResponse {
     GlobalFileResponse {
         id: Option::from(map_id_to_proto(g.id)),
         original_id: Option::from(map_id_to_proto(original_id)),
-        file: Some(map_file_to_proto(g.file)),
+        file: Some(map_file_to_proto(g.file, Vec::new())),
+        owner_name: g.owner_name,
+        shared_at: Some(prost_types::Timestamp {
+            seconds: g.shared_at.unix_timestamp(),
+            nanos: g.shared_at.nanosecond() as i32,
+        }),
     }
 }
 
@@ -96,6 +118,17 @@ pub fn map_label_to_proto(l: Label) -> LabelResponse {
         id: Option::from(map_id_to_proto(l.id)),
         name: l.name,
         color: l.color,
+        created_at: Some(prost_types::Timestamp {
+            seconds: l.created_at.unix_timestamp(),
+            nanos: l.created_at.nanosecond() as i32,
+        }),
+    }
+}
+
+pub fn map_label_with_count_to_proto(lwc: LabelWithCount) -> LabelWithCountResponse {
+    LabelWithCountResponse {
+        label: Some(map_label_to_proto(lwc.label)),
+        file_count: lwc.file_count,
     }
 }
 

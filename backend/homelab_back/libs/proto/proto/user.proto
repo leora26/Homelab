@@ -12,6 +12,7 @@ service UserService {
   rpc Finalize (FinalizeUserRequest) returns (google.protobuf.Empty);
   rpc ToggleBlockState (ToggleBlockStatusRequest) returns (google.protobuf.Empty);
   rpc SetStorageQuota (SetStorageQuotaRequest) returns (google.protobuf.Empty);
+  rpc GetUserCount (google.protobuf.Empty) returns (UserCountResponse);
 }
 
 enum Role {
@@ -53,4 +54,8 @@ message ToggleBlockStatusRequest {
 message SetStorageQuotaRequest {
   common.EntityId id = 1;
   int64 allowed_storage = 2;
+}
+
+message UserCountResponse {
+  int64 count = 1;
 }

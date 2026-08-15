@@ -4,6 +4,7 @@ use derive_new::new;
 use uuid::Uuid;
 use homelab_core::events::{UserCreatedEvent, UserUpdatedEvent};
 use homelab_core::nas_domain::storage_profile::StorageProfile;
+use homelab_core::nas_domain::storage_stats::StorageStats;
 use crate::db::storage_profile_repository::StorageProfileRepository;
 use crate::events::rabbitmq::RabbitMqPublisher;
 use crate::helpers::data_error::DataError;
@@ -68,5 +69,9 @@ impl StorageProfileService for StorageProfileServiceImpl {
         }
 
         self.storage_profile_repo.save(sp).await
+    }
+
+    async fn get_storage_stats(&self, id: Uuid) -> Result<StorageStats, DataError> {
+        self.storage_profile_repo.get_stats(id).await
     }
 }

@@ -18,6 +18,7 @@ pub trait UserService: Send + Sync {
     async fn get_by_id(&self, id: Uuid) -> Result<Option<User>, DataError>;
     async fn toggle_blocked(&self, id: Uuid, blocked: bool) -> Result<(), DataError>;
     async fn set_storage_quota(&self, id: Uuid, allowed_storage: i64) -> Result<(), DataError>;
+    async fn get_user_count(&self) -> Result<i64, DataError>;
 }
 
 #[derive(new)]
@@ -119,5 +120,9 @@ impl UserService for UserServiceImpl {
         };
 
         Ok(())
+    }
+
+    async fn get_user_count(&self) -> Result<i64, DataError> {
+        self.user_repo.get_user_count().await
     }
 }
