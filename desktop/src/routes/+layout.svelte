@@ -1,10 +1,22 @@
 <script lang="ts">
+    import "@fontsource/ibm-plex-sans/400.css";
+    import "@fontsource/ibm-plex-sans/500.css";
+    import "@fontsource/ibm-plex-sans/600.css";
+    import "@fontsource/ibm-plex-mono/400.css";
+    import "@fontsource/ibm-plex-mono/500.css";
+    import "$lib/styles/tokens.css";
+    import "$lib/styles/base.css";
+
     import { onMount } from "svelte";
+    import { goto } from "$app/navigation";
     import { listen } from "@tauri-apps/api/event";
-    import Sidebar from "$lib/components/Sidebar.svelte";
-    import NotificationManager from "$lib/components/common/NotificationManager.svelte";
+
+    import Titlebar from "$lib/components/shell/Titlebar.svelte";
+    import Sidebar from "$lib/components/shell/Sidebar.svelte";
+    import ToastHost from "$lib/components/ui/ToastHost.svelte";
     import Login from "$lib/components/Login.svelte";
-    import { safeInvoke } from "$lib/components/helpers/safeInvoke";
+    import { session } from "$lib/stores/session.svelte";
+    import { safeInvoke } from "$lib/utils/safeInvoke";
 
     let { children } = $props();
 
@@ -12,64 +24,108 @@
     let isChecking = $state(true);
 
     onMount(() => {
-        let unlistenFn: () => void;
+        let unlisten: (() => void) | undefined;
 
-        const setupAuth = async () => {
-            const res = await safeInvoke<boolean>("get_auth_status");
-            if (res.ok) {
-                isAuthenticated = res.data;
-            }
+        (async () => {
+            const status = await safeInvoke<boolean>("get_auth_status");
+            if (status.ok) isAuthenticated = status.data;
             isChecking = false;
 
-            unlistenFn = await listen<boolean>("auth_state_changed", (event) => {
+            if (isAuthenticated) await session.load();
+
+            unlisten = await listen<boolean>("auth_state_changed", async (event) => {
                 isAuthenticated = event.payload;
+
+                if (event.payload) {
+                    await session.load();
+                    // The handoff lands a signed-in user on the Dashboard.
+                    goto("/");
+                } else {
+                    session.clear();
+                }
             });
-        };
+        })();
 
-        setupAuth();
-
-        return () => {
-            if (unlistenFn) {
-                unlistenFn();
-            }
-        };
+        return () => unlisten?.();
     });
 </script>
 
-{#if isChecking}
-    <div class="loader">Loading Pavuk NAS...</div>
-{:else if !isAuthenticated}
-    <Login />
-{:else}
-    <div class="app-layout">
-        <Sidebar />
-        <main class="content">
-            {@render children()}
-        </main>
-    </div>
-    <NotificationManager />
-{/if}
+<!--
+  The window chrome is ours: `decorations: false` in tauri.conf.json means this element
+  is the entire window, including its border and corner radius.
+-->
+<div class="window">
+    {#if isChecking}
+        <div class="boot">
+            <span class="mark"></span>
+            <p>Starting Pavuk…</p>
+        </div>
+    {:else if !isAuthenticated}
+        <Login />
+    {:else}
+        <Titlebar machine={session.machine} />
+
+        <div class="body">
+            <Sidebar profile={session.profile} />
+            <main class="content">
+                {@render children()}
+            </main>
+        </div>
+    {/if}
+</div>
+
+<ToastHost />
 
 <style>
-    .app-layout {
-        display: flex;
+    .window {
         height: 100vh;
-        font-family: sans-serif;
+        display: flex;
+        flex-direction: column;
+        background: var(--canvas);
+        border: 1px solid var(--bd-window);
+        border-radius: var(--r-window);
+        overflow: hidden;
     }
 
+    .body {
+        flex: 1;
+        display: flex;
+        min-height: 0;
+    }
+
+    /*
+     * Routes own their own padding — the handoff gives each screen a different value —
+     * so the pane only establishes the scroll container and the flex context.
+     */
     .content {
         flex: 1;
-        padding: 2rem;
-        background: #f4f4f9;
-        overflow-y: auto;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
     }
 
-    .loader {
+    .boot {
+        flex: 1;
         display: flex;
-        height: 100vh;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
-        font-size: 1.5rem;
-        color: #555;
+        gap: 14px;
+        color: var(--tx-mut-2);
+        font-size: var(--fs-nav);
+    }
+
+    .boot .mark {
+        width: 26px;
+        height: 26px;
+        border-radius: 7px;
+        background: var(--accent);
+        animation: pulse 1.4s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.45; }
     }
 </style>

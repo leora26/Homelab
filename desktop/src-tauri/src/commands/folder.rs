@@ -1,8 +1,9 @@
+use crate::helpers::grpc_error::grpc_message;
 use crate::common::EntityId;
 use crate::helpers::mappings::{map_file_proto_to_view, map_folder_proto_to_view};
 use crate::helpers::with_auth::with_auth;
 use crate::nas::folder_service_client::FolderServiceClient;
-use crate::nas::{CleanUpDeletedFolderRequest, CleanUpTrashRequest, CreateFolderRequest, DeleteFolderRequest, GetAllSubfoldersRequest, GetDeletedFoldersRequest, GetFilesForFolderRequest, GetRootFolderRequest, GetTrashFilesForFolderRequest, GetTrashSubfoldersForFolderRequest, RenameFolderRequest, RestoreDeletedFolderRequest};
+use crate::nas::{CleanUpDeletedFolderRequest, CleanUpTrashRequest, CreateFolderRequest, DeleteFolderRequest, GetAllSubfoldersRequest, GetDeletedFoldersRequest, GetFilesForFolderRequest, GetFolderRequest, GetRootFolderRequest, GetTrashFilesForFolderRequest, GetTrashSubfoldersForFolderRequest, RenameFolderRequest, RestoreDeletedFolderRequest};
 use crate::types::model::{FileView, FolderView};
 use crate::AppState;
 use tonic::Request;
@@ -21,17 +22,7 @@ pub async fn get_root_folder(
     // Owner is resolved from the auth token on the backend.
     let request = Request::new(GetRootFolderRequest { user_id: None });
 
-    let response = client.get_root_folder(request).await.map_err(|e| {
-        eprintln!(
-            "🛑 gRPC Error Code when fetching root folder: {:?}",
-            e.code()
-        );
-        format!(
-            "gRPC error details when fetching root folder: [{:?}] {}",
-            e.code(),
-            e.message()
-        )
-    });
+    let response = client.get_root_folder(request).await.map_err(|e| grpc_message(&e));
 
     let root_folder = response?.into_inner();
 
@@ -53,14 +44,7 @@ pub async fn get_files_for_folder(
         id: Some(EntityId { value: folder_id }),
     });
 
-    let response = client.get_files_for_folder(request).await.map_err(|e| {
-        eprintln!("🛑 gRPC Error Code when fetching files: {:?}", e.code());
-        format!(
-            "gRPC error details when fetching files: [{:?}] {}",
-            e.code(),
-            e.message()
-        )
-    });
+    let response = client.get_files_for_folder(request).await.map_err(|e| grpc_message(&e));
 
     let files = response?.into_inner();
 
@@ -69,8 +53,6 @@ pub async fn get_files_for_folder(
         .into_iter()
         .map(|f| map_file_proto_to_view(f))
         .collect();
-
-    println!("{:#?}", mapped_files);
 
     Ok(mapped_files)
 }
@@ -90,17 +72,7 @@ pub async fn get_subfolders(
         id: Some(EntityId { value: folder_id }),
     });
 
-    let response = client.get_subfolders(request).await.map_err(|e| {
-        eprintln!(
-            "🛑 gRPC Error Code when fetching subfolders: {:?}",
-            e.code()
-        );
-        format!(
-            "gRPC error details when fetching subfolders: [{:?}] {}",
-            e.code(),
-            e.message()
-        )
-    });
+    let response = client.get_subfolders(request).await.map_err(|e| grpc_message(&e));
 
     let subfolders = response?.into_inner();
 
@@ -134,17 +106,7 @@ pub async fn create_folder(
         owner_id: None,
     });
 
-    let response = client.create_folder(request).await.map_err(|e| {
-        eprintln!(
-            "🛑 gRPC Error Code when creating new folder: {:?}",
-            e.code()
-        );
-        format!(
-            "gRPC error details when creating new folder: [{:?}] {}",
-            e.code(),
-            e.message()
-        )
-    });
+    let response = client.create_folder(request).await.map_err(|e| grpc_message(&e));
 
     let new_folder = response?.into_inner();
 
@@ -168,14 +130,7 @@ pub async fn delete_selected_folder(
         }),
     });
 
-    client.delete_folder(request).await.map_err(|e| {
-        eprintln!("🛑 gRPC Error: [{:?}] {}", e.code(), e.message());
-        format!(
-            "Failed to delete folder {}: {}",
-            selected_folder_id,
-            e.message()
-        )
-    })?;
+    client.delete_folder(request).await.map_err(|e| grpc_message(&e))?;
 
     Ok(())
 }
@@ -199,14 +154,7 @@ pub async fn cleanup_deleted_folder(
         user_id: None,
     });
 
-    client.clean_up_deleted_folder(request).await.map_err(|e| {
-        eprintln!("🛑 gRPC Error: [{:?}] {}", e.code(), e.message());
-        format!(
-            "Failed to clean up folder {}: {}",
-            deleted_folder_id,
-            e.message()
-        )
-    })?;
+    client.clean_up_deleted_folder(request).await.map_err(|e| grpc_message(&e))?;
 
     Ok(())
 }
@@ -224,10 +172,7 @@ pub async fn cleanup_trash(
     // Owner is resolved from the auth token on the backend.
     let request = tonic::Request::new(CleanUpTrashRequest { user_id: None });
 
-    client.clean_up_trash(request).await.map_err(|e| {
-        eprintln!("🛑 gRPC Error: [{:?}] {}", e.code(), e.message());
-        format!("Failed to clean up trash: {}", e.message())
-    })?;
+    client.clean_up_trash(request).await.map_err(|e| grpc_message(&e))?;
 
     Ok(())
 }
@@ -245,10 +190,7 @@ pub async fn get_deleted_folder(
     // Owner is resolved from the auth token on the backend.
     let request = tonic::Request::new(GetDeletedFoldersRequest { owner_id: None });
 
-    let response = client.get_deleted_folders(request).await.map_err(|e| {
-        eprintln!("🛑 gRPC Error: [{:?}] {}", e.code(), e.message());
-        format!("Failed to fetch deleted folders: {}", e.message())
-    });
+    let response = client.get_deleted_folders(request).await.map_err(|e| grpc_message(&e));
 
     let deleted_folders = response?.into_inner();
 
@@ -281,14 +223,7 @@ pub async fn get_trash_files_by_folder(
     let response = client
         .get_trash_files_for_folder(request)
         .await
-        .map_err(|e| {
-            eprintln!("🛑 gRPC Error: [{:?}] {}", e.code(), e.message());
-            format!(
-                "Failed to fetch deleted files for folder {}: {}",
-                folder_id,
-                e.message()
-            )
-        });
+        .map_err(|e| grpc_message(&e));
 
     let deleted_files = response?.into_inner();
 
@@ -321,14 +256,7 @@ pub async fn get_trash_subfolders_by_folder(
     let response = client
         .get_trash_subfolder_for_folder(request)
         .await
-        .map_err(|e| {
-            eprintln!("🛑 gRPC Error: [{:?}] {}", e.code(), e.message());
-            format!(
-                "Failed to fetch deleted subfolders for folder {}: {}",
-                folder_id,
-                e.message()
-            )
-        });
+        .map_err(|e| grpc_message(&e));
 
     let deleted_subfolders = response?.into_inner();
 
@@ -358,14 +286,7 @@ pub async fn rename_folder(
         new_name: new_name.clone(),
     });
 
-    let response = client.rename_folder(request).await.map_err(|e| {
-        eprintln!("🛑 gRPC Error Code when renaming folder: {:?}", e.code());
-        format!(
-            "gRPC error details when renaming folder: [{:?}] {}",
-            e.code(),
-            e.message()
-        )
-    });
+    let response = client.rename_folder(request).await.map_err(|e| grpc_message(&e));
 
     let rename = response?.into_inner();
 
@@ -389,14 +310,30 @@ pub async fn restore_folder(
         }),
     });
 
-    client.restore_deleted_folder(request).await.map_err(|e| {
-        eprintln!("🛑 gRPC Error Code when restoring folder: {:?}", e.code());
-        format!(
-            "gRPC error details when restoring folder: [{:?}] {}",
-            e.code(),
-            e.message()
-        )
-    })?;
+    client.restore_deleted_folder(request).await.map_err(|e| grpc_message(&e))?;
 
     Ok(())
+}
+
+
+#[tauri::command]
+pub async fn get_folder(
+    folder_id: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<FolderView, String> {
+    let token = auth_token(&state).await?;
+    let mut client = FolderServiceClient::with_interceptor(
+        state.nas_grpc_channel.clone(),
+        with_auth(token),
+    );
+    
+    let req = tonic::Request::new(GetFolderRequest {
+        id: Some(EntityId {
+            value: folder_id
+        })
+    });
+    
+    let res = client.get_folder(req).await.map_err(|e| grpc_message(&e));
+    
+    Ok(map_folder_proto_to_view(res?.into_inner()))
 }

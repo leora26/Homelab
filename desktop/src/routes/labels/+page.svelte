@@ -1,271 +1,328 @@
 <script lang="ts">
+    import { Tag } from "@lucide/svelte";
+
+    import Button from "$lib/components/ui/Button.svelte";
+    import EmptyState from "$lib/components/ui/EmptyState.svelte";
+    import LabelChip from "$lib/components/ui/LabelChip.svelte";
+    import ConfirmDialog from "$lib/components/dialogs/ConfirmDialog.svelte";
+    import LabelFormDialog from "$lib/components/dialogs/LabelFormDialog.svelte";
+
+    import { safeInvoke } from "$lib/utils/safeInvoke";
+    import { toasts } from "$lib/stores/toasts.svelte";
+    import { session } from "$lib/stores/session.svelte";
+    import { formatCount, formatDate, pluralise } from "$lib/utils/format";
     import type { LabelView } from "$lib/types/models";
-    import { safeInvoke } from "$lib/components/helpers/safeInvoke";
-    import { notifications } from "$lib/stores/notificationStore";
-    import LabelChip from "$lib/components/label/LabelChip.svelte";
-    import LabelFormModal from "$lib/components/label/LabelFormModal.svelte";
-    import FormModal from "$lib/components/common/FormModal.svelte";
-    import NotificationManager from "$lib/components/common/NotificationManager.svelte";
 
     let labels = $state<LabelView[]>([]);
-    let isLoading = $state(false);
+    let loading = $state(true);
     let error = $state<string | null>(null);
 
-    // null editing => create mode; otherwise editing that label.
-    let isFormOpen = $state(false);
     let editing = $state<LabelView | null>(null);
+    let showForm = $state(false);
+    let deleteTarget = $state<LabelView | null>(null);
+    let busy = $state(false);
 
-    let isDeleteOpen = $state(false);
-    let toDelete = $state<LabelView | null>(null);
-
-    const fetchLabels = async () => {
-        isLoading = true;
+    async function load() {
+        loading = true;
         error = null;
 
-        const res = await safeInvoke<LabelView[]>("get_labels");
-        if (res.ok) {
-            labels = res.data;
-        } else {
-            error = res.error;
-        }
+        const result = await safeInvoke<LabelView[]>("get_labels");
+        if (result.ok) labels = result.data;
+        else error = result.error;
 
-        isLoading = false;
-    };
+        loading = false;
+    }
 
     $effect(() => {
-        fetchLabels();
+        load();
     });
 
-    const openCreate = () => {
+    const labelledTotal = $derived(session.stats?.labelled_file_count ?? null);
+    const unlabelledTotal = $derived(session.stats?.unlabelled_file_count ?? null);
+
+    async function submit(name: string, color: string) {
+        const result = editing
+            ? await safeInvoke<LabelView>("change_label", { id: editing.id, name, color })
+            : await safeInvoke<LabelView>("create_label", { name, color });
+
+        if (!result.ok) throw new Error(result.error);
+
+        showForm = false;
+        const wasEditing = editing !== null;
         editing = null;
-        isFormOpen = true;
-    };
 
-    const openEdit = (label: LabelView) => {
-        editing = label;
-        isFormOpen = true;
-    };
+        await load();
+        await session.refreshStorage();
+        toasts.success(wasEditing ? "Label updated" : "Label created", name);
+    }
 
-    // Shared handler for the create/edit modal. Throws on failure so the modal keeps
-    // itself open and shows the error inline.
-    const handleSubmit = async (name: string, color: string) => {
-        if (editing) {
-            const res = await safeInvoke<LabelView>("change_label", { id: editing.id, name, color });
-            if (!res.ok) throw new Error(res.error);
-            notifications.notify("SUCCESS", "Label updated", `"${name}" was saved.`);
-        } else {
-            const res = await safeInvoke<LabelView>("create_label", { name, color });
-            if (!res.ok) throw new Error(res.error);
-            notifications.notify("SUCCESS", "Label created", `"${name}" was added.`);
+    async function confirmDelete() {
+        if (!deleteTarget) return;
+
+        busy = true;
+        const result = await safeInvoke("delete_label", { id: deleteTarget.id });
+        busy = false;
+
+        if (!result.ok) {
+            toasts.error("Delete failed", result.error);
+            return;
         }
 
-        isFormOpen = false;
-        editing = null;
-        await fetchLabels();
-    };
+        const name = deleteTarget.name;
+        deleteTarget = null;
 
-    const openDelete = (label: LabelView) => {
-        toDelete = label;
-        isDeleteOpen = true;
-    };
-
-    const confirmDelete = async () => {
-        if (!toDelete) return;
-
-        const res = await safeInvoke("delete_label", { id: toDelete.id });
-        if (res.ok) {
-            notifications.notify("SUCCESS", "Label deleted", `"${toDelete.name}" was removed.`);
-            await fetchLabels();
-        } else {
-            notifications.notify("FAILURE", "Delete failed", res.error);
-        }
-
-        isDeleteOpen = false;
-        toDelete = null;
-    };
+        await load();
+        await session.refreshStorage();
+        toasts.success("Label deleted", `"${name}" was removed from every file.`);
+    }
 </script>
 
-<div class="labels-page">
-    <header class="page-header">
-        <div>
-            <h2>🏷️ Labels</h2>
-            <p>Create and organize labels you can later attach to your files.</p>
+<div class="page">
+    <header class="head">
+        <div class="heading">
+            <h1 class="page-title">Labels</h1>
+            <p class="page-subtitle">
+                Colour-coded tags you can attach to any file. Deleting a label never deletes files.
+            </p>
         </div>
-        <button class="btn primary" onclick={openCreate}>➕ New Label</button>
+
+        <Button
+            variant="primary"
+            onclick={() => {
+                editing = null;
+                showForm = true;
+            }}
+        >
+            New label
+        </Button>
     </header>
 
-    <div class="list-wrapper">
-        {#if isLoading}
-            <div class="status-message">
-                <div class="spinner"></div>
-                <p>Loading labels...</p>
-            </div>
-        {:else if error}
-            <div class="status-message error">
-                <p>⚠️ {error}</p>
-            </div>
-        {:else if labels.length === 0}
-            <div class="status-message empty-state">
-                <p>You haven't created any labels yet.</p>
-                <button class="btn primary" onclick={openCreate}>Create your first label</button>
-            </div>
-        {:else}
-            <ul class="label-list">
-                {#each labels as label (label.id)}
-                    <li class="label-row">
-                        <LabelChip name={label.name} color={label.color} />
-                        <div class="row-actions">
-                            <button class="btn small" onclick={() => openEdit(label)}>✏️ Edit</button>
-                            <button class="btn small danger" onclick={() => openDelete(label)}>🗑️ Delete</button>
+    <div class="body">
+        <div class="card">
+            {#if loading}
+                <div class="skeletons">
+                    {#each Array(4) as _, index (index)}
+                        <div class="skeleton"></div>
+                    {/each}
+                </div>
+            {:else if error}
+                <EmptyState icon={Tag} title="Couldn't load labels" body={error} />
+            {:else if labels.length === 0}
+                <EmptyState
+                    icon={Tag}
+                    title="No labels yet"
+                    body="Labels let you group files across folders — a file can carry as many as you like."
+                >
+                    {#snippet action()}
+                        <Button
+                            variant="primary"
+                            onclick={() => {
+                                editing = null;
+                                showForm = true;
+                            }}
+                        >
+                            Create your first label
+                        </Button>
+                    {/snippet}
+                </EmptyState>
+            {:else}
+                <div class="thead">
+                    <span>Label</span>
+                    <span>Files</span>
+                    <span>Created</span>
+                    <span class="right">Actions</span>
+                </div>
+
+                <div class="tbody">
+                    {#each labels as label (label.id)}
+                        <div class="trow">
+                            <span class="cell-label">
+                                <LabelChip name={label.name} color={label.color} />
+                            </span>
+                            <span class="mono muted">{formatCount(label.file_count)}</span>
+                            <span class="mono muted">{formatDate(label.created_at)}</span>
+                            <span class="cell-actions">
+                                <Button
+                                    size="sm"
+                                    onclick={() => {
+                                        editing = label;
+                                        showForm = true;
+                                    }}
+                                >
+                                    Edit
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onclick={() => (deleteTarget = label)}
+                                >
+                                    Delete
+                                </Button>
+                            </span>
                         </div>
-                    </li>
-                {/each}
-            </ul>
+                    {/each}
+                </div>
+            {/if}
+        </div>
+
+        {#if labels.length > 0}
+            <p class="footer">
+                {pluralise(labels.length, "label")}
+                {#if labelledTotal !== null}
+                    · {formatCount(labelledTotal)} labelled files
+                {/if}
+                {#if unlabelledTotal !== null}
+                    · {formatCount(unlabelledTotal)} files with no label
+                {/if}
+            </p>
         {/if}
     </div>
 </div>
 
-<LabelFormModal
-        isOpen={isFormOpen}
-        title={editing ? "Edit Label" : "New Label"}
-        submitText={editing ? "Save Changes" : "Create Label"}
-        loadingText={editing ? "Saving..." : "Creating..."}
-        initialName={editing?.name ?? ""}
-        initialColor={editing?.color ?? "#3B82F6"}
-        onClose={() => { isFormOpen = false; editing = null; }}
-        onSubmit={handleSubmit}
+<LabelFormDialog
+    open={showForm}
+    initialName={editing?.name ?? ""}
+    initialColor={editing?.color}
+    onsubmit={submit}
+    onclose={() => {
+        showForm = false;
+        editing = null;
+    }}
 />
 
-<FormModal
-        isOpen={isDeleteOpen}
-        title="Delete Label"
-        description={`Delete "${toDelete?.name ?? ''}"? It will be removed from any files it's attached to. This cannot be undone.`}
-        fields={[]}
-        submitText="Yes, Delete"
-        loadingText="Deleting..."
-        onClose={() => { isDeleteOpen = false; toDelete = null; }}
-        onSubmit={confirmDelete}
+<ConfirmDialog
+    open={deleteTarget !== null}
+    title="Delete label"
+    body={`"${deleteTarget?.name ?? ""}" will be removed from ${
+        deleteTarget ? pluralise(deleteTarget.file_count, "file") : "any files"
+    }. The files themselves are not deleted.`}
+    confirmLabel="Delete label"
+    {busy}
+    onconfirm={confirmDelete}
+    onclose={() => (deleteTarget = null)}
 />
-
-<NotificationManager />
 
 <style>
-    .labels-page {
+    .page {
+        flex: 1;
+        min-height: 0;
         display: flex;
         flex-direction: column;
-        height: calc(100vh - 4rem);
-        color: #1e1e2f;
+        overflow: hidden;
     }
 
-    .page-header {
+    .head {
         display: flex;
+        align-items: flex-end;
         justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 1.5rem;
-        gap: 1rem;
+        gap: 20px;
+        padding: 24px 28px 18px;
+        flex: none;
     }
 
-    .page-header h2 {
-        margin: 0 0 0.25rem 0;
-        font-size: 1.5rem;
+    .heading {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        max-width: 60ch;
     }
 
-    .page-header p {
-        margin: 0;
-        color: #666;
-        font-size: 0.9rem;
+    .body {
+        flex: 1;
+        min-height: 0;
+        padding: 0 28px 22px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
     }
 
-    .list-wrapper {
+    .card {
+        flex: 1;
+        min-height: 0;
+        border: 1px solid var(--bd);
+        border-radius: var(--r-card);
+        background: var(--card);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .thead,
+    .trow {
+        display: grid;
+        grid-template-columns: 1fr 110px 150px 168px;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .thead {
+        padding: 9px 18px;
+        border-bottom: 1px solid var(--bd);
+        font-size: var(--fs-label);
+        text-transform: uppercase;
+        letter-spacing: var(--track-th);
+        color: var(--tx-faint-2);
+        flex: none;
+    }
+
+    .tbody {
         flex: 1;
         overflow-y: auto;
-        background: white;
-        border: 1px solid #e1e4e8;
-        border-radius: 8px;
+        min-height: 0;
     }
 
-    .label-list {
-        list-style: none;
-        margin: 0;
-        padding: 0;
+    .trow {
+        padding: 12px 18px;
+        border-bottom: 1px solid var(--bd-row);
+        transition: background var(--t-hover);
     }
 
-    .label-row {
+    .trow:hover {
+        background: var(--hover-row);
+    }
+
+    .cell-label {
         display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.85rem 1.5rem;
-        border-bottom: 1px solid #f0f2f5;
-        gap: 1rem;
+        min-width: 0;
     }
 
-    .label-row:last-child {
-        border-bottom: none;
+    .muted {
+        color: var(--tx-mut);
+        font-size: var(--fs-btn);
     }
 
-    .row-actions {
+    .cell-actions {
         display: flex;
-        gap: 0.5rem;
-        flex-shrink: 0;
+        gap: 8px;
+        justify-content: flex-end;
     }
 
-    .btn {
-        padding: 0.5rem 1rem;
-        border-radius: 6px;
-        font-weight: 500;
-        cursor: pointer;
-        border: 1px solid #d1d5db;
-        background: #f0f2f5;
-        transition: opacity 0.2s;
+    .right {
+        text-align: right;
     }
 
-    .btn.primary {
-        background: #007bff;
-        color: white;
-        border-color: #0069d9;
+    .footer {
+        font-size: var(--fs-sm);
+        color: var(--tx-faint-2);
+        flex: none;
     }
 
-    .btn.small {
-        padding: 0.35rem 0.7rem;
-        font-size: 0.8rem;
-    }
-
-    .btn.danger {
-        color: #d32f2f;
-        border-color: #f2c2c2;
-        background: #fdf0f0;
-    }
-
-    .status-message {
+    .skeletons {
+        padding: 14px 18px;
         display: flex;
         flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 1rem;
-        padding: 4rem 2rem;
-        color: #888;
-        height: 100%;
+        gap: 14px;
     }
 
-    .status-message.error {
-        color: #d32f2f;
+    .skeleton {
+        height: 20px;
+        border-radius: var(--r-badge);
+        background: var(--bd-row);
+        animation: shimmer 1.3s ease-in-out infinite;
     }
 
-    .empty-state {
-        font-style: italic;
-    }
-
-    .spinner {
-        width: 30px;
-        height: 30px;
-        border: 3px solid #f3f3f3;
-        border-top: 3px solid #007bff;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+    @keyframes shimmer {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
     }
 </style>

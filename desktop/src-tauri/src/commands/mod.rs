@@ -7,3 +7,4 @@ pub mod user;
 pub mod login;
 pub mod label;
 pub mod file_label;
+pub mod machine;

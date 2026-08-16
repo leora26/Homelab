@@ -1,3 +1,4 @@
+use crate::helpers::grpc_error::grpc_message;
 use crate::common::EntityId;
 use crate::helpers::mappings::map_global_file_proto_to_view;
 use crate::helpers::with_auth::with_auth;
@@ -23,7 +24,7 @@ pub async fn get_global_files(
     let response = client
         .get_all(Request::new(()))
         .await
-        .map_err(|e| format!("gRPC GetAll global files failed: {}", e))?;
+        .map_err(|e| grpc_message(&e))?;
 
     let list = response.into_inner();
 
@@ -56,7 +57,7 @@ pub async fn make_file_global(
     client
         .make_global(request)
         .await
-        .map_err(|e| format!("gRPC MakeGlobal failed: {}", e))?;
+        .map_err(|e| grpc_message(&e))?;
 
     Ok(())
 }
@@ -81,7 +82,7 @@ pub async fn make_file_private(
     client
         .make_private(request)
         .await
-        .map_err(|e| format!("gRPC MakePrivate failed: {}", e))?;
+        .map_err(|e| grpc_message(&e))?;
 
     Ok(())
 }
@@ -106,7 +107,7 @@ pub async fn is_file_global(
     let response = client
         .is_global(request)
         .await
-        .map_err(|e| format!("gRPC IsGlobal failed: {}", e))?;
+        .map_err(|e| grpc_message(&e))?;
 
     Ok(response.into_inner().is_global)
 }

@@ -1,12 +1,10 @@
-use chrono::DateTime;
 use prost_types::Timestamp;
 
-pub fn format_timestamp(timestamp: Option<Timestamp>) -> String {
-    match timestamp {
-        Some(ts) => match DateTime::from_timestamp(ts.seconds, ts.nanos as u32) {
-            Some(dt) => dt.format("%Y-%m-%d %H:%M").to_string(),
-            None => "Invalid Date".to_string(),
-        },
-        None => "Unknown".to_string(),
-    }
+/// Protobuf timestamp to unix seconds.
+///
+/// The webview receives raw seconds and does its own formatting — it needs to sort
+/// columns, render relative dates and filter by range, none of which work on a
+/// pre-formatted string.
+pub fn to_unix(ts: Option<Timestamp>) -> Option<i64> {
+    ts.map(|ts| ts.seconds)
 }

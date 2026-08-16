@@ -85,7 +85,7 @@ pub async fn get_labels_for_file(
     let labels = labels_response
         .labels
         .into_iter()
-        .map(|l| map_label_proto_to_view(l))
+        .map(|l| map_label_proto_to_view(l, 0))
         .collect();
 
     Ok(labels)
