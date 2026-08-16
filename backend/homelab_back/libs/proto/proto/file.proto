@@ -54,6 +54,8 @@ message FileResponse {
   google.protobuf.Timestamp updated_at = 11;
   optional string hash = 12;
   repeated LabelResponse labels = 13;
+  // Set only while the file is in the trash; drives the Trash screen's Deleted column.
+  optional google.protobuf.Timestamp deleted_at = 14;
 }
 
 message FileListResponse {

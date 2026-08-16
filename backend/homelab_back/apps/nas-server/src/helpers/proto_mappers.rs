@@ -25,6 +25,15 @@ pub fn map_volume_to_proto (s: VolumeStatus) -> VolumeStatusResponse {
     }
 }
 
+/// Shared timestamp conversion — the domain uses `time::OffsetDateTime`, the wire uses
+/// `prost_types::Timestamp`.
+pub fn map_time_to_proto(t: sqlx::types::time::OffsetDateTime) -> prost_types::Timestamp {
+    prost_types::Timestamp {
+        seconds: t.unix_timestamp(),
+        nanos: t.nanosecond() as i32,
+    }
+}
+
 pub fn map_storage_stats_to_proto(s: StorageStats) -> StorageStatsResponse {
     StorageStatsResponse {
         file_count: s.file_count,
@@ -83,6 +92,7 @@ pub fn map_file_to_proto(f: File, labels: Vec<Label>) -> FileResponse {
         }),
         hash: f.hash,
         labels: labels.into_iter().map(map_label_to_proto).collect(),
+        deleted_at: f.deleted_at.map(map_time_to_proto),
     }
 }
 
@@ -110,6 +120,7 @@ pub fn map_folder_to_proto(f: Folder) -> FolderResponse {
             seconds: f.created_at.unix_timestamp(),
             nanos: f.created_at.nanosecond() as i32,
         }),
+        deleted_at: f.deleted_at.map(map_time_to_proto),
     }
 }
 

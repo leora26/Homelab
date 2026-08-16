@@ -63,7 +63,8 @@ impl FileRepository for FileRepositoryImpl {
                 upload_status as "upload_status: _",
                 created_at,
                 updated_at,
-                hash
+                hash,
+                deleted_at
             FROM files
             WHERE id = $1 AND is_deleted = FALSE
             "#,
@@ -85,7 +86,7 @@ impl FileRepository for FileRepositoryImpl {
             f.file_type as "file_type: _", 
             f.parent_folder_id, f.is_deleted, f.ttl, f.size, 
             f.upload_status as "upload_status: _", 
-            f.created_at, f.updated_at, f.hash
+            f.created_at, f.updated_at, f.hash, f.deleted_at
         FROM files f
         LEFT JOIN folders p ON f.parent_folder_id = p.id
         WHERE f.is_deleted = TRUE 
@@ -111,7 +112,7 @@ impl FileRepository for FileRepositoryImpl {
                 file_type as "file_type: _",
                 is_deleted, ttl, size,
                 upload_status as "upload_status: _",
-                created_at, updated_at, hash
+                created_at, updated_at, hash, deleted_at
             FROM files
             WHERE id = $1
             "#,
@@ -134,7 +135,7 @@ impl FileRepository for FileRepositoryImpl {
                 parent_folder_id, is_deleted,
                 ttl, size,
                 upload_status as "upload_status: _",
-                created_at, updated_at, hash
+                created_at, updated_at, hash, deleted_at
             FROM files
             WHERE is_deleted = FALSE AND id = ANY($1)
             "#,
@@ -168,7 +169,7 @@ impl FileRepository for FileRepositoryImpl {
                 f.parent_folder_id, f.is_deleted,
                 f.ttl, f.size,
                 f.upload_status as "upload_status: _",
-                f.created_at, f.updated_at, f.hash
+                f.created_at, f.updated_at, f.hash, f.deleted_at
             FROM files f
             LEFT JOIN file_labels fl ON fl.file_id = f.id
             WHERE f.owner_id = $1
@@ -205,7 +206,7 @@ impl FileRepository for FileRepositoryImpl {
                 file_type as "file_type: _",
                 is_deleted, ttl, size,
                 upload_status as "upload_status: _",
-                created_at, updated_at, hash
+                created_at, updated_at, hash, deleted_at
             FROM files
             WHERE parent_folder_id = $1 AND name = $2 AND is_deleted = FALSE
             "#,
@@ -228,16 +229,17 @@ impl FileRepository for FileRepositoryImpl {
                            parent_folder_id, file_type,
                            is_deleted, size,
                            upload_status, created_at,
-                           updated_at, hash
+                           updated_at, hash,
+                           deleted_at
                            )
-        VALUES ($1,$2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        VALUES ($1,$2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         RETURNING
         id, name, owner_id,
         parent_folder_id,
         file_type as "file_type: _",
         is_deleted, ttl, size,
         upload_status as "upload_status: _",
-        created_at, updated_at, hash
+        created_at, updated_at, hash, deleted_at
         "#,
             file.id,
             file.name,
@@ -249,7 +251,8 @@ impl FileRepository for FileRepositoryImpl {
             file.upload_status as _,
             file.created_at,
             file.updated_at,
-            file.hash
+            file.hash,
+            file.deleted_at
     )
             .fetch_one(&self.pool)
             .await
@@ -274,7 +277,8 @@ impl FileRepository for FileRepositoryImpl {
                 upload_status = $8,
                 created_at = $10,
                 updated_at = $11,
-                hash = $12
+                hash = $12,
+                deleted_at = $13
             WHERE id = $9
             RETURNING 
             id, name, owner_id, 
@@ -282,7 +286,7 @@ impl FileRepository for FileRepositoryImpl {
             parent_folder_id, is_deleted, 
             ttl, size, 
             upload_status as "upload_status: _", 
-            created_at, updated_at, hash
+            created_at, updated_at, hash, deleted_at
             "#,
             file.name,
             file.owner_id,
@@ -295,7 +299,8 @@ impl FileRepository for FileRepositoryImpl {
             file.id,
             file.created_at,
             file.updated_at,
-            file.hash
+            file.hash,
+            file.deleted_at
         )
             .fetch_one(&self.pool)
             .await
@@ -353,7 +358,8 @@ impl FileRepository for FileRepositoryImpl {
                 f.upload_status as "upload_status: _", 
                 f.created_at, 
                 f.updated_at,
-                f.hash
+                f.hash,
+                f.deleted_at
             FROM files f
             INNER JOIN file_labels fl ON f.id = fl.file_id
             WHERE fl.label_id = $1 AND f.owner_id = $2
@@ -378,7 +384,7 @@ impl FileRepository for FileRepositoryImpl {
                 parent_folder_id, 
                is_deleted, ttl, size, 
                 upload_status as "upload_status: _", 
-                created_at, updated_at, hash
+                created_at, updated_at, hash, deleted_at
             FROM files
             WHERE is_deleted = TRUE 
               AND ttl IS NOT NULL 
@@ -407,7 +413,7 @@ impl FileRepository for FileRepositoryImpl {
             f.file_type as "file_type: _",
             f.parent_folder_id, f.is_deleted, f.ttl, f.size,
             f.upload_status as "upload_status: _",
-            f.created_at, f.updated_at, f.hash
+            f.created_at, f.updated_at, f.hash, f.deleted_at
         FROM files f
         WHERE f.parent_folder_id IN (SELECT id FROM folder_tree)
           AND f.is_deleted = true
@@ -432,7 +438,7 @@ impl FileRepository for FileRepositoryImpl {
             file_type as "file_type: _",
             parent_folder_id, is_deleted, ttl, size,
             upload_status as "upload_status: _",
-            created_at, updated_at, hash
+            created_at, updated_at, hash, deleted_at
         FROM files
         WHERE is_deleted = true
         LIMIT $1
@@ -455,7 +461,7 @@ impl FileRepository for FileRepositoryImpl {
                 file_type as "file_type: _",
                 parent_folder_id, is_deleted, ttl, size,
                 upload_status as "upload_status: _",
-                created_at, updated_at, hash
+                created_at, updated_at, hash, deleted_at
             FROM files
             WHERE is_deleted = true
             AND owner_id = $1

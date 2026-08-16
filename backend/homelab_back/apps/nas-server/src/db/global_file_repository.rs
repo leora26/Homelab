@@ -75,7 +75,8 @@ impl GlobalFileRepository for GlobalFileRepositoryImpl {
                 f.upload_status AS "upload_status: UploadStatus",
                 f.created_at    AS "created_at",
                 f.updated_at    AS "updated_at",
-                f.hash          AS "hash"
+                f.hash          AS "hash",
+                f.deleted_at    AS "deleted_at"
             FROM global_files g
             JOIN files f ON f.id = g.original_id
             JOIN users u ON u.id = f.owner_id
@@ -105,6 +106,7 @@ impl GlobalFileRepository for GlobalFileRepositoryImpl {
                     created_at: r.created_at,
                     updated_at: r.updated_at,
                     hash: r.hash,
+                    deleted_at: r.deleted_at,
                 },
             })
             .collect();
