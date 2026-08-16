@@ -33,6 +33,9 @@ message FolderResponse {
   string name = 3;
   common.EntityId owner_id = 4;
   google.protobuf.Timestamp created_at = 5;
+  // Set only while the folder is in the trash. Trash sorts folders and files in one
+  // list, so both carry a deletion timestamp.
+  optional google.protobuf.Timestamp deleted_at = 6;
 }
 
 message FolderResponseList {

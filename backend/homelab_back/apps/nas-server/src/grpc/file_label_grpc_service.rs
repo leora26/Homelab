@@ -113,7 +113,7 @@ impl FileLabelService for GrpcFileLabelService {
             .get_files_by_label(label_id, internal_user_id)
             .await?;
 
-        let proto_files = files.into_iter().map(map_file_to_proto).collect();
+        let proto_files = files.into_iter().map(|f| map_file_to_proto(f, Vec::new())).collect();
 
         Ok(Response::new(FileListResponse { files: proto_files }))
     }

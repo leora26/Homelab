@@ -17,6 +17,8 @@ message GlobalFileResponse {
   common.EntityId id = 1;
   common.EntityId original_id = 2;
   FileResponse file = 3;
+  string owner_name = 4;                    // users.full_name of file.owner_id
+  google.protobuf.Timestamp shared_at = 5;  // global_files.created_at
 }
 
 message GlobalFileListResponse {

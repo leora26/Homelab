@@ -18,6 +18,8 @@ pub trait UserService: Send + Sync {
     async fn get_by_id(&self, id: Uuid) -> Result<Option<User>, DataError>;
     async fn toggle_blocked(&self, id: Uuid, blocked: bool) -> Result<(), DataError>;
     async fn set_storage_quota(&self, id: Uuid, allowed_storage: i64) -> Result<(), DataError>;
+    async fn get_user_count(&self) -> Result<i64, DataError>;
+    async fn update_profile(&self, user_id: Uuid, full_name: String) -> Result<User, DataError>;
 }
 
 #[derive(new)]
@@ -119,5 +121,52 @@ impl UserService for UserServiceImpl {
         };
 
         Ok(())
+    }
+
+    async fn get_user_count(&self) -> Result<i64, DataError> {
+        self.user_repo.get_user_count().await
+    }
+
+    /// Renames a user, leaving everything else about the account alone.
+    ///
+    /// Deliberately not routed through `finalize`: that rebuilds the user with
+    /// `User::new_complete`, which resets `role` to `User` and `created_at` to now, and
+    /// publishes `user.created` — which would try to insert a second storage profile.
+    /// `user.updated` is the non-destructive event; the nas handler keeps the existing
+    /// quota when the storage fields are absent.
+    async fn update_profile(&self, user_id: Uuid, full_name: String) -> Result<User, DataError> {
+        let cleaned = full_name.trim().to_string();
+
+        if cleaned.is_empty() {
+            return Err(DataError::ValidationError(
+                "Your name cannot be empty".to_string(),
+            ));
+        }
+
+        let mut user = self
+            .user_repo
+            .get_by_id(user_id)
+            .await?
+            .ok_or_else(|| DataError::EntityNotFoundException("User".to_string()))?;
+
+        user.full_name = cleaned;
+
+        self.user_repo.save(user.clone()).await?;
+
+        let event = UserUpdatedEvent::new(
+            user.id,
+            Some(user.email.clone()),
+            Some(user.full_name.clone()),
+            None,
+            None,
+            user.is_blocked,
+        );
+
+        if let Err(e) = self.publisher.publish(&event).await {
+            // The rename is already committed; a failed projection shouldn't fail it.
+            eprintln!("Failed to publish user.updated: {:?}", e);
+        }
+
+        Ok(user)
     }
 }

@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount, onDestroy } from "svelte";
     import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-    import { safeInvoke } from "$lib/components/helpers/safeInvoke";
+    import { safeInvoke } from "$lib/utils/safeInvoke";
     import { goto } from "$app/navigation";
 
     let isLoggingIn = $state(false);

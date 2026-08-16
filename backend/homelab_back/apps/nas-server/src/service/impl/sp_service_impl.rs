@@ -4,6 +4,7 @@ use derive_new::new;
 use uuid::Uuid;
 use homelab_core::events::{UserCreatedEvent, UserUpdatedEvent};
 use homelab_core::nas_domain::storage_profile::StorageProfile;
+use homelab_core::nas_domain::storage_stats::StorageStats;
 use crate::db::storage_profile_repository::StorageProfileRepository;
 use crate::events::rabbitmq::RabbitMqPublisher;
 use crate::helpers::data_error::DataError;
@@ -29,37 +30,43 @@ impl StorageProfileService for StorageProfileServiceImpl {
     }
 
     async fn apply_user_update(&self, event: UserUpdatedEvent) -> Result<(), DataError> {
-        let mut sp = self.storage_profile_repo.get_by_id(event.user_id)
+        let sp = self.storage_profile_repo.get_by_id(event.user_id)
             .await?
             .ok_or_else(|| DataError::EntityNotFoundException("Storage profile".to_string()))?;
 
-        sp.update_sp(
-            event.allowed_storage.unwrap_or(sp.allowed_storage),
-            event.is_blocked
-        );
-
-        self.storage_profile_repo.save(sp).await
+        // Only the quota and block flag come from this event; `taken_storage` is owned
+        // by the file operations and must not be written back from a stale read.
+        self.storage_profile_repo
+            .update_quota_and_block(
+                event.user_id,
+                event.allowed_storage.unwrap_or(sp.allowed_storage),
+                event.is_blocked,
+            )
+            .await
     }
 
     async fn get_by_id(&self, id: Uuid) -> Result<Option<StorageProfile>, DataError> {
         self.storage_profile_repo.get_by_id(id).await
     }
 
-    async fn reduce_taken_storage(&self, id: Uuid, size: i64) -> Result<(), DataError> {
-        let mut sp = self
+    async fn sync_taken_storage(&self, id: Uuid) -> Result<(), DataError> {
+        // Recompute first, then announce — the event has to carry the value that was
+        // actually stored, and publishing from a pre-write read is how these two drifted
+        // apart before.
+        let taken_storage = self.storage_profile_repo.recompute_taken_storage(id).await?;
+
+        let sp = self
             .storage_profile_repo
             .get_by_id(id)
             .await?
             .ok_or_else(|| DataError::EntityNotFoundException("Storage Profile".to_string()))?;
-
-        sp.reduce_taken_storage_size(size);
 
         let sp_event: UserUpdatedEvent = UserUpdatedEvent::new(
             sp.user_id.clone(),
             None,
             None,
             Some(sp.allowed_storage.clone()),
-            Some(sp.taken_storage.clone()),
+            Some(taken_storage),
             sp.is_blocked.clone(),
         );
 
@@ -67,6 +74,10 @@ impl StorageProfileService for StorageProfileServiceImpl {
             eprintln!("Failed to publish event: {:?}", e);
         }
 
-        self.storage_profile_repo.save(sp).await
+        Ok(())
+    }
+
+    async fn get_storage_stats(&self, id: Uuid) -> Result<StorageStats, DataError> {
+        self.storage_profile_repo.get_stats(id).await
     }
 }

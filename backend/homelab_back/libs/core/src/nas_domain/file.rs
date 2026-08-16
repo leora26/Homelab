@@ -60,7 +60,10 @@ pub struct File {
     pub upload_status: UploadStatus,
     pub created_at: OffsetDateTime,
     pub updated_at: OffsetDateTime,
-    pub hash: Option<String>
+    pub hash: Option<String>,
+    /// When the file was moved to the trash. `None` while it is live — `ttl` still
+    /// carries the retention deadline, this is the moment the user deleted it.
+    pub deleted_at: Option<OffsetDateTime>,
 }
 
 impl File {
@@ -92,7 +95,8 @@ impl File {
             upload_status: UploadStatus::Pending,
             created_at,
             updated_at,
-            hash: None
+            hash: None,
+            deleted_at: None,
         }
     }
 
@@ -103,12 +107,16 @@ impl File {
     }
 
     pub fn set_as_deleted(&mut self) {
+        let now = OffsetDateTime::now_utc();
+
         self.is_deleted = true;
-        self.ttl = Some(OffsetDateTime::now_utc() + Duration::days(30));
+        self.deleted_at = Some(now);
+        self.ttl = Some(now + Duration::days(30));
     }
 
     pub fn set_as_undeleted(&mut self) {
         self.is_deleted = false;
+        self.deleted_at = None;
         self.ttl = None;
     }
 

@@ -1,9 +1,11 @@
 use derive_new::new;
 use fast_image_resize::{FilterType, Image, PixelType, ResizeAlg, Resizer};
 use homelab_core::nas_domain::file::{File, FileType};
+use std::env;
 use std::num::NonZeroU32;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Stdio;
+use std::sync::OnceLock;
 use tokio::process::Command;
 use tokio::task;
 use crate::service::contract::preview_service::PreviewService;
@@ -17,7 +19,7 @@ impl PreviewService for PreviewServiceImpl {
             let file_path = file.build_file_path(&storage_path);
             let base_path = file_path.clone();
 
-            let ffmpeg_binary = "/usr/lib/jellyfin-ffmpeg/ffmpeg";
+            let ffmpeg_binary = Self::ffmpeg_binary();
 
             let thread_result = match file.file_type {
                 FileType::Image => {
@@ -28,7 +30,8 @@ impl PreviewService for PreviewServiceImpl {
                 }
                 FileType::Video => {
                     let f_path = file_path.to_string_lossy().to_string();
-                    let p_path = base_path.to_string_lossy().to_string();
+                    let preview_path = base_path.with_extension("preview.jpg");
+                    let p_path = preview_path.to_string_lossy().to_string();
 
                     let video_result =
                         match Self::try_extract_cover(ffmpeg_binary, &f_path, &p_path).await {
@@ -49,13 +52,26 @@ impl PreviewService for PreviewServiceImpl {
                             }
                         };
 
+                    // A failed attempt can still leave a zero-byte file behind, and the read
+                    // side only checks whether the preview *exists* — so a leftover stub is
+                    // served as a broken image forever. Clear it when nothing worked.
+                    if video_result.is_err() {
+                        let _ = tokio::fs::remove_file(&preview_path).await;
+                    }
+
                     Ok(video_result)
                 }
                 FileType::Audio => {
                     let f_path = file_path.to_string_lossy().to_string();
-                    let p_path = base_path.to_string_lossy().to_string();
+                    let preview_path = base_path.with_extension("preview.jpg");
+                    let p_path = preview_path.to_string_lossy().to_string();
 
-                    let _ = Self::try_extract_cover(ffmpeg_binary, &f_path, &p_path).await;
+                    // Audio without embedded cover art is normal, not a failure — but the
+                    // stub ffmpeg may have opened still has to go.
+                    if Self::try_extract_cover(ffmpeg_binary, &f_path, &p_path).await.is_err() {
+                        let _ = tokio::fs::remove_file(&preview_path).await;
+                    }
+
                     Ok(Ok(()))
                 }
                 FileType::Pdf if file.name.ends_with(".pdf") => {
@@ -100,6 +116,32 @@ impl PreviewService for PreviewServiceImpl {
 }
 
 impl PreviewServiceImpl {
+    /// Resolves the transcoder once per process.
+    ///
+    /// Jellyfin's build stays the default because it ships the NVENC/CUDA support the GPU
+    /// path needs, but hard-coding it meant every video preview died with ENOENT on a host
+    /// that only has the distro package. `FFMPEG_PATH` wins if set; otherwise we fall back
+    /// to whatever `ffmpeg` is on PATH.
+    fn ffmpeg_binary() -> &'static str {
+        static BINARY: OnceLock<String> = OnceLock::new();
+
+        BINARY
+            .get_or_init(|| {
+                if let Ok(configured) = env::var("FFMPEG_PATH") {
+                    return configured;
+                }
+
+                const JELLYFIN: &str = "/usr/lib/jellyfin-ffmpeg/ffmpeg";
+
+                if Path::new(JELLYFIN).exists() {
+                    return JELLYFIN.to_string();
+                }
+
+                "ffmpeg".to_string()
+            })
+            .as_str()
+    }
+
     async fn generate_pdf_preview(input: &str, base_path: &PathBuf) -> Result<(), String> {
         let parent = base_path.parent().ok_or("Invalid parent dir")?;
         let temp_prefix = base_path
@@ -225,57 +267,65 @@ impl PreviewServiceImpl {
         }
     }
 
-    async fn extract_frame_gpu(ffmpeg: &str, input: &str, output: &str) -> Result<(), String> {
-        let status = Command::new(ffmpeg)
-            .arg("-y")
-            .arg("-hwaccel")
-            .arg("cuda")
+    /// Grabs a frame, optionally through the GPU decoder.
+    ///
+    /// Uses `output()` rather than `status()` deliberately. `status()` drops all three
+    /// stdio handles the moment the child is spawned so it can't deadlock on a pipe nobody
+    /// reads — which closes the read end of a piped stderr. ffmpeg writes its banner there
+    /// before doing anything else, takes SIGPIPE, and dies with signal 13 every single
+    /// time. `output()` keeps the pipe and drains it, so the process survives *and* we get
+    /// ffmpeg's actual complaint instead of an exit code.
+    async fn extract_frame(
+        ffmpeg: &str,
+        input: &str,
+        output: &str,
+        hwaccel: bool,
+    ) -> Result<(), String> {
+        let mut command = Command::new(ffmpeg);
+
+        command.arg("-y");
+
+        if hwaccel {
+            command.arg("-hwaccel").arg("cuda");
+        }
+
+        let result = command
             .arg("-ss")
             .arg("00:00:05")
             .arg("-i")
             .arg(input)
-            .arg("-frame:v")
+            .arg("-frames:v")
             .arg("1")
+            // `-2` rather than `-1`: the height is derived from the aspect ratio, and
+            // mjpeg can't encode an odd one.
             .arg("-vf")
-            .arg("scale=320:-1")
+            .arg("scale=320:-2")
             .arg(output)
             .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::piped())
-            .status()
+            .output()
             .await
             .map_err(|e| e.to_string())?;
 
-        if status.success() {
-            Ok(())
-        } else {
-            Err(format!("GPU Extraction exit code: {}", status))
+        if result.status.success() {
+            return Ok(());
         }
+
+        // Everything before the failure is banner and stream metadata.
+        let stderr = String::from_utf8_lossy(&result.stderr);
+        let reason = stderr
+            .lines()
+            .rev()
+            .find(|line| !line.trim().is_empty())
+            .unwrap_or("no stderr output");
+
+        Err(format!("{} ({})", reason.trim(), result.status))
+    }
+
+    async fn extract_frame_gpu(ffmpeg: &str, input: &str, output: &str) -> Result<(), String> {
+        Self::extract_frame(ffmpeg, input, output, true).await
     }
 
     async fn extract_frame_cpu(ffmpeg: &str, input: &str, output: &str) -> Result<(), String> {
-        let status = Command::new(ffmpeg)
-            .arg("-y")
-            .arg("-ss")
-            .arg("00:00:05")
-            .arg("-i")
-            .arg(input)
-            .arg("-frame:v")
-            .arg("1")
-            .arg("-vf")
-            .arg("scale=320:-1")
-            .arg(output)
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::piped())
-            .status()
-            .await
-            .map_err(|e| e.to_string())?;
-
-        if status.success() {
-            Ok(())
-        } else {
-            Err(format!("CPU Extraction exit code: {}", status))
-        }
+        Self::extract_frame(ffmpeg, input, output, false).await
     }
 }

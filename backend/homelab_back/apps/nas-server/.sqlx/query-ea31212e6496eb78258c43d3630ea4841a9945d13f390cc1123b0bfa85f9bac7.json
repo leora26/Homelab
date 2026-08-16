@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE storage_profiles\n            SET taken_storage = COALESCE((\n                SELECT SUM(size)\n                FROM files\n                WHERE owner_id = $1 AND upload_status = 'completed'\n            ), 0)\n            WHERE user_id = $1\n            RETURNING taken_storage\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "taken_storage",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "ea31212e6496eb78258c43d3630ea4841a9945d13f390cc1123b0bfa85f9bac7"
+}

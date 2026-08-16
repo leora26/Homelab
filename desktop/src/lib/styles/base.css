@@ -1,0 +1,177 @@
+/*
+ * Global reset and shared element styling. Screen- and component-specific rules live
+ * with their components; only things that are genuinely global belong here.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--canvas);
+  color: var(--tx);
+  font-family: var(--font-ui);
+  font-size: var(--fs-base);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* The window chrome is ours; nothing in the app should be text-selectable by
+     default except content the user might want to copy (marked with .selectable). */
+  user-select: none;
+  cursor: default;
+  overflow: hidden;
+}
+
+.selectable {
+  user-select: text;
+  cursor: text;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+figure {
+  margin: 0;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: var(--link);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--link-hover);
+}
+
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Keyboard focus is visible everywhere; pointer focus is not. The handoff only
+   specified resting and focused field states, so this is our addition. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--r-badge);
+}
+
+/* ---- scrollbars ---- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #232a38 transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #232a38;
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 6px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #2f3849;
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ---- shared type helpers ---- */
+
+/* Numbers, paths, IDs and timestamps — anything that should line up in a column. */
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Uppercase micro-label: sidebar sections, tree heading. */
+.eyebrow {
+  font-size: var(--fs-micro);
+  text-transform: uppercase;
+  letter-spacing: var(--track-wide);
+  color: var(--tx-faint-3);
+  font-weight: 500;
+}
+
+/* Page-level heading pair used by Dashboard, Global Files, Labels, Trash, Profile. */
+.page-title {
+  font-size: var(--fs-page-title);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--tx);
+}
+
+.page-subtitle {
+  font-size: var(--fs-base);
+  color: var(--tx-mut-2);
+  text-wrap: pretty;
+}
+
+/* Mono meta line above a page title, e.g. "elitebook-8570p · up 14d · Pavuk 0.4.1". */
+.page-meta {
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  color: var(--tx-faint-2);
+}
+
+/* Placeholder for an absent value — unlabelled files, folder sizes in Trash. */
+.empty-value {
+  font-size: var(--fs-caption);
+  color: var(--tx-ghost);
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

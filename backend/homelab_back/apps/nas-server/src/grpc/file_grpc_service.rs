@@ -50,7 +50,7 @@ impl FileService for GrpcFileService {
             return Err(Status::not_found("File not found"));
         }
 
-        Ok(Response::new(map_file_to_proto(file)))
+        Ok(Response::new(map_file_to_proto(file, Vec::new())))
     }
 
     async fn search_files(
@@ -93,7 +93,7 @@ impl FileService for GrpcFileService {
             .search_files(command)
             .await?;
 
-        let proto_files = files.into_iter().map(|f| map_file_to_proto(f)).collect();
+        let proto_files = files.into_iter().map(|f| map_file_to_proto(f, Vec::new())).collect();
 
         Ok(Response::new(FileListResponse { files: proto_files }))
     }
@@ -110,7 +110,7 @@ impl FileService for GrpcFileService {
             .get_all_deleted_files(internal_user_id)
             .await?;
 
-        let proto_files = files.into_iter().map(|f| map_file_to_proto(f)).collect();
+        let proto_files = files.into_iter().map(|f| map_file_to_proto(f, Vec::new())).collect();
 
         Ok(Response::new(FileListResponse { files: proto_files }))
     }
@@ -133,7 +133,7 @@ impl FileService for GrpcFileService {
         let file = self.app_state.file_write_service.upload(command).await?;
         println!("{:#?}", file);
 
-        Ok(Response::new(map_file_to_proto(file)))
+        Ok(Response::new(map_file_to_proto(file, Vec::new())))
     }
 
     async fn upload_content(
@@ -231,7 +231,7 @@ impl FileService for GrpcFileService {
             .update_file_name(command, file_id)
             .await?;
 
-        Ok(Response::new(map_file_to_proto(file)))
+        Ok(Response::new(map_file_to_proto(file, Vec::new())))
     }
 
     async fn undelete_file(
@@ -254,7 +254,7 @@ impl FileService for GrpcFileService {
             .update_deleted_file(file_id)
             .await?;
 
-        Ok(Response::new(map_file_to_proto(file)))
+        Ok(Response::new(map_file_to_proto(file, Vec::new())))
     }
 
     async fn delete_chosen_files(
@@ -326,7 +326,7 @@ impl FileService for GrpcFileService {
 
         let file = self.app_state.file_write_service.move_file(command).await?;
 
-        Ok(Response::new(map_file_to_proto(file)))
+        Ok(Response::new(map_file_to_proto(file, Vec::new())))
     }
 
     async fn copy_file(
@@ -351,7 +351,7 @@ impl FileService for GrpcFileService {
 
         let file = self.app_state.file_write_service.copy_file(command).await?;
 
-        Ok(Response::new(map_file_to_proto(file)))
+        Ok(Response::new(map_file_to_proto(file, Vec::new())))
     }
 
     async fn update_file_content(

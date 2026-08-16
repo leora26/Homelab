@@ -12,6 +12,10 @@ service UserService {
   rpc Finalize (FinalizeUserRequest) returns (google.protobuf.Empty);
   rpc ToggleBlockState (ToggleBlockStatusRequest) returns (google.protobuf.Empty);
   rpc SetStorageQuota (SetStorageQuotaRequest) returns (google.protobuf.Empty);
+  rpc GetUserCount (google.protobuf.Empty) returns (UserCountResponse);
+  // Lets a signed-in user edit their own display name. Identity comes from the token,
+  // so a caller can only ever rename themselves.
+  rpc UpdateProfile (UpdateProfileRequest) returns (UserResponse);
 }
 
 enum Role {
@@ -53,4 +57,12 @@ message ToggleBlockStatusRequest {
 message SetStorageQuotaRequest {
   common.EntityId id = 1;
   int64 allowed_storage = 2;
+}
+
+message UserCountResponse {
+  int64 count = 1;
+}
+
+message UpdateProfileRequest {
+  string full_name = 1;
 }

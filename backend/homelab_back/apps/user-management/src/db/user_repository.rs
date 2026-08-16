@@ -1,11 +1,11 @@
-use std::error::Error;
 use crate::helpers::data_error::DataError;
 use crate::helpers::data_error::DataError::DatabaseError;
 use async_trait::async_trait;
-use homelab_core::user_domain::user::{User, Role};
-use sqlx::PgPool;
-use uuid::Uuid;
 use homelab_core::auth::resolver::ExternalIdResolver;
+use homelab_core::user_domain::user::{Role, User};
+use sqlx::PgPool;
+use std::error::Error;
+use uuid::Uuid;
 
 #[async_trait]
 pub trait UserRepository: Send + Sync {
@@ -15,6 +15,7 @@ pub trait UserRepository: Send + Sync {
     async fn get_by_id(&self, id: Uuid) -> Result<Option<User>, DataError>;
     async fn save(&self, user: User) -> Result<(), DataError>;
     async fn toggle_blocked(&self, user: User) -> Result<(), DataError>;
+    async fn get_user_count(&self) -> Result<i64, DataError>;
 }
 
 #[derive(Clone)]
@@ -31,10 +32,7 @@ impl UserRepositoryImpl {
 #[async_trait]
 impl ExternalIdResolver for UserRepositoryImpl {
     async fn resolve_external_id(&self, external_id: &str) -> Result<String, Box<dyn Error>> {
-        let record = sqlx::query!(
-            "SELECT id FROM users WHERE external_id = $1",
-            external_id
-        )
+        let record = sqlx::query!("SELECT id FROM users WHERE external_id = $1", external_id)
             .fetch_one(&self.pool)
             .await?;
 
@@ -42,10 +40,7 @@ impl ExternalIdResolver for UserRepositoryImpl {
     }
 
     async fn is_blocked(&self, internal_id: Uuid) -> Result<bool, Box<dyn Error>> {
-        let record = sqlx::query!(
-            "SELECT is_blocked FROM users WHERE id = $1",
-            internal_id
-        )
+        let record = sqlx::query!("SELECT is_blocked FROM users WHERE id = $1", internal_id)
             .fetch_one(&self.pool)
             .await?;
 
@@ -155,10 +150,24 @@ impl UserRepository for UserRepositoryImpl {
             user.is_blocked,
             user.id
         )
-            .execute(&self.pool)
-            .await
-            .map_err(|e| DataError::DatabaseError(e))?;
+        .execute(&self.pool)
+        .await
+        .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(())
+    }
+
+    async fn get_user_count(&self) -> Result<i64, DataError> {
+        let count = sqlx::query!(
+            r#"
+        SELECT count(*) as user_count
+        FROM users
+        "#,
+        )
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| DataError::DatabaseError(e))?;
+
+        Ok(count.user_count.unwrap_or_default())
     }
 }

@@ -26,7 +26,7 @@ pub async fn get_labels(state: tauri::State<'_, AppState>) -> Result<Vec<LabelVi
     let labels = label_response
         .labels
         .into_iter()
-        .map(|l| map_label_proto_to_view(l))
+        .filter_map(|l| l.label.map(|label| map_label_proto_to_view(label, l.file_count)))
         .collect();
 
     Ok(labels) 
@@ -51,7 +51,8 @@ pub async fn create_label(
 
     let label_response = response.into_inner();
 
-    let label = map_label_proto_to_view(label_response);
+    // A freshly created label has no files yet.
+    let label = map_label_proto_to_view(label_response, 0);
 
     Ok(label)
 }
@@ -99,5 +100,6 @@ pub async fn change_label(
 
     let label_response = response.into_inner();
 
-    Ok(map_label_proto_to_view(label_response))
+    // ChangeLabel returns the label alone; the Labels screen refetches for counts.
+    Ok(map_label_proto_to_view(label_response, 0))
 }

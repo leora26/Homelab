@@ -11,6 +11,9 @@ pub struct Folder {
     pub owner_id: Uuid,
     pub created_at: OffsetDateTime,
     pub is_deleted: bool,
+    /// When the folder was moved to the trash; `None` while it is live. Trash sorts
+    /// files and folders together, so both carry the same field.
+    pub deleted_at: Option<OffsetDateTime>,
 }
 
 impl Folder {
@@ -22,6 +25,7 @@ impl Folder {
             owner_id,
             created_at: OffsetDateTime::now_utc(),
             is_deleted: false,
+            deleted_at: None,
         }
     }
 
@@ -33,6 +37,7 @@ impl Folder {
             owner_id,
             created_at: OffsetDateTime::now_utc(),
             is_deleted: false,
+            deleted_at: None,
         }
     }
 

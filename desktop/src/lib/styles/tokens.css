@@ -1,0 +1,155 @@
+/*
+ * Pavuk Console — design tokens.
+ *
+ * Transcribed from the design handoff's token table. Every hex here is authoritative;
+ * component styles must reference these variables rather than repeating literals, so a
+ * palette change is a single-file edit.
+ *
+ * The app is dark-only by design — there is no light theme and no theme switch.
+ */
+
+:root {
+  /* ---- surfaces ---- */
+  --canvas: #0f1218;          /* content background */
+  --rail: #12161e;            /* sidebar, details rail */
+  --titlebar: #141822;
+  --card: #131822;
+  --inset: #0d1016;           /* fields, search inputs */
+  --sunken: #0f141c;          /* disk widget, sign-in cards */
+  --sunken-alt: #101620;      /* bulk-label row in the upload dialog */
+  --dialog: #141922;
+  --dialog-footer: #111621;
+
+  /* ---- borders, strongest to faintest ---- */
+  --bd-strong: #2b3342;
+  --bd-window: #262b36;
+  --bd: #212734;
+  --bd-alt: #232936;
+  --bd-dialog: #222a38;
+  --bd-card: #232a38;
+  --bd-pane: #1c2230;         /* pane dividers, table header rule */
+  --bd-row: #1a202b;          /* card table rows */
+  --bd-row-soft: #171d28;     /* file table rows */
+  --bd-meta: #1f2634;         /* meta lists, sidebar footer */
+
+  /* ---- text, brightest to faintest ---- */
+  --tx-hi: #ffffff;
+  --tx: #e6e8ee;
+  --tx-2: #c3c9d8;
+  --tx-mut: #9aa1b4;
+  --tx-mut-2: #8891a6;
+  --tx-faint: #7b8194;
+  --tx-faint-2: #6b7285;
+  --tx-faint-3: #5f6678;
+  --tx-ghost: #4d5468;        /* em-dash placeholders, disclosure arrows */
+
+  /* ---- accent ---- */
+  --accent: #3b6fff;
+  --accent-hover: #4a7bff;
+  --link: #8ab4ff;
+  --link-hover: #b9d0ff;
+  --nav-active: #1b2434;
+  --row-selected: #16202f;
+
+  /* ---- hover surfaces ---- */
+  --hover-nav: #171d28;
+  --hover-row: #161c27;
+  --hover-row-light: #151b25;  /* lighter panes: global files, dashboard tables */
+
+  /* ---- semantic ---- */
+  --success: #3ddc97;
+  --success-bg: #12291f;
+  --success-bd: #1f4033;
+
+  --warning: #e0a341;
+  --warning-bg: #2b2211;
+  --warning-bd: #4a3a1c;
+
+  --danger: #ff7a8a;
+  --danger-solid: #d24455;
+  --danger-solid-hover: #dd5162;
+  --danger-bg: #1f1418;
+  --danger-bg-strong: #3d1f26;
+  --danger-bg-tile: #2a161b;
+  --danger-bd: #3d2229;
+  --danger-bd-strong: #5a2a33;
+  --danger-tx-soft: #ffb3bd;
+
+  --purple: #a86cff;
+  --purple-bg: #241d33;
+  --purple-bd: #3a2e52;
+
+  --blue: #5b9dff;
+  --blue-bg: #1c2536;
+  --blue-bd: #27385a;
+
+  --slate: #7b8194;
+  --slate-bg: #1e232e;
+  --slate-bd: #2b3342;
+
+  /* Private / shared visibility chips */
+  --private-bg: #1a2434;
+  --private-tx: #8ab4ff;
+  --private-bd: #24314a;
+
+  --overlay: rgba(5, 7, 10, 0.79);
+
+  /* ---- type ---- */
+  --font-ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --fs-micro: 10px;      /* sidebar section labels, uppercase .16em */
+  --fs-label: 11px;      /* table headers, card labels, uppercase */
+  --fs-caption: 11.5px;  /* captions, meta lines */
+  --fs-sm: 12px;         /* secondary UI, links */
+  --fs-btn: 12.5px;      /* buttons, dense body */
+  --fs-base: 13px;       /* table rows, body */
+  --fs-nav: 13.5px;      /* nav items, primary form CTA */
+  --fs-card-title: 14px;
+  --fs-empty-title: 15px;
+  --fs-dialog-title: 16px;
+  --fs-name: 17px;
+  --fs-metric: 22px;
+  --fs-page-title: 25px;
+  --fs-quota: 34px;
+
+  --track-wide: 0.16em;  /* sidebar section labels */
+  --track-label: 0.1em;  /* card labels */
+  --track-th: 0.08em;    /* table headers */
+
+  /* ---- radii ---- */
+  --r-dot: 3px;
+  --r-badge: 4px;
+  --r-control: 6px;      /* buttons, fields, nav rows */
+  --r-inset: 8px;
+  --r-card: 9px;
+  --r-dialog: 10px;
+  --r-window: 12px;
+  --r-chip: 20px;
+
+  /* ---- fixed widths from the handoff ---- */
+  --w-sidebar: 228px;
+  --w-tree: 196px;
+  --w-rail: 264px;
+
+  --h-titlebar: 40px;
+
+  /* ---- motion ---- */
+  --t-hover: 130ms ease-out;
+  --t-dialog: 150ms ease-out;
+
+  --shadow-dialog: 0 24px 60px rgba(0, 0, 0, 0.6);
+}
+
+/*
+ * Extension badge colours. Keyed by the class the ExtBadge component derives from a
+ * filename, with a slate fallback for anything unrecognised.
+ */
+:root {
+  --ext-img-bg: #1d3a2d;   --ext-img-tx: #3ddc97;   /* png, gif, webp, svg */
+  --ext-jpg-bg: #1d2c46;   --ext-jpg-tx: #8ab4ff;   /* jpg, jpeg, bmp */
+  --ext-vid-bg: #39222c;   --ext-vid-tx: #ff7a8a;   /* mp4, mov, mkv */
+  --ext-zip-bg: #2a2438;   --ext-zip-tx: #a86cff;   /* zip, tar, gz */
+  --ext-doc-bg: #232a38;   --ext-doc-tx: #9aa1b4;   /* pdf, txt, md */
+  --ext-dir-bg: #232a38;   --ext-dir-tx: #7b8194;   /* folders */
+}

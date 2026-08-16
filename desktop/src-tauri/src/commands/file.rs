@@ -1,12 +1,14 @@
+use crate::helpers::grpc_error::grpc_message;
 use crate::common::EntityId;
 use crate::helpers::mappings::map_file_proto_to_view;
 use crate::helpers::with_auth::with_auth;
 use crate::nas::file_chunk::Data;
 use crate::nas::file_service_client::FileServiceClient;
 use crate::nas::{ArchiveFileRequest, CopyFileRequest, DeleteChosenFilesRequest, DeleteFileRequest, FileChunk, GetDeletedFilesRequest, InitFileRequest, MoveFileRequest, RemoveDeletedFileRequest, RenameFileRequest, SearchFilesRequest, UnarchiveFileRequest, UndeleteFileRequest};
-use crate::types::model::FileView;
+use crate::types::model::{FileView, UploadProgress};
 use crate::AppState;
 use async_stream::stream;
+use tauri::{AppHandle, Emitter};
 use tokio::fs;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
@@ -22,7 +24,7 @@ pub async fn init_file(
 ) -> Result<FileView, String> {
     let metadata = fs::metadata(&local_path)
         .await
-        .map_err(|e| format!("Failed to read file metadata for size: {}", e))?;
+        .map_err(|e| format!("Couldn't read {}: {}", local_path, e))?;
 
     let size = metadata.len() as i64;
 
@@ -43,15 +45,20 @@ pub async fn init_file(
     let response = client
         .init_file(request)
         .await
-        .map_err(|e| format!("gRPC InitFile failed: {}", e))?;
+        .map_err(|e| grpc_message(&e))?;
 
     let file_resp = response.into_inner();
 
     Ok(map_file_proto_to_view(file_resp))
 }
 
+/// Emit progress at most every 256 KB. One event per 64 KB chunk floods the webview on a
+/// large file and the UI can't render that fast anyway.
+const PROGRESS_EVERY_BYTES: i64 = 256 * 1024;
+
 #[tauri::command]
 pub async fn upload_content(
+    app: AppHandle,
     state: tauri::State<'_, AppState>,
     file_id: String,
     local_path: String,
@@ -62,9 +69,16 @@ pub async fn upload_content(
         with_auth(token),
     );
 
+    let total_bytes = fs::metadata(&local_path)
+        .await
+        .map(|m| m.len() as i64)
+        .unwrap_or(0);
+
     let mut file = File::open(&local_path)
         .await
-        .map_err(|e| format!("open file failed: {}", e))?;
+        .map_err(|e| format!("Couldn't open {}: {}", local_path, e))?;
+
+    let progress_id = file_id.clone();
 
     let outbound_stream = stream! {
         yield FileChunk {
@@ -72,6 +86,8 @@ pub async fn upload_content(
         };
 
         let mut buffer = vec![0; 64 * 1024];
+        let mut sent: i64 = 0;
+        let mut last_emitted: i64 = 0;
 
         loop {
             match file.read(&mut buffer).await {
@@ -80,6 +96,21 @@ pub async fn upload_content(
                     yield FileChunk {
                         data: Some(Data::Content(buffer[..n].to_vec())),
                     };
+
+                    sent += n as i64;
+
+                    // Always emit the final chunk so the bar lands on 100%.
+                    if sent - last_emitted >= PROGRESS_EVERY_BYTES || sent >= total_bytes {
+                        last_emitted = sent;
+                        let _ = app.emit(
+                            "upload_progress",
+                            UploadProgress {
+                                file_id: progress_id.clone(),
+                                bytes_sent: sent,
+                                total_bytes,
+                            },
+                        );
+                    }
                 }
                 Err(e) => {
                     eprintln!("Error reading file: {}", e);
@@ -94,7 +125,7 @@ pub async fn upload_content(
     client
         .upload_content(request)
         .await
-        .map_err(|e| format!("Upload stream failed: {}", e))?;
+        .map_err(|e| grpc_message(&e))?;
 
     Ok(())
 }
@@ -116,7 +147,7 @@ pub async fn delete_file(state: tauri::State<'_, AppState>, file_id: String) -> 
     let response = client
         .delete_file(request)
         .await
-        .map_err(|e| format!("Delete file failed: {}", e))?;
+        .map_err(|e| grpc_message(&e))?;
 
     let _ = response.into_inner();
 
@@ -143,7 +174,7 @@ pub async fn rename_file(
     let response = client
         .rename_file(request)
         .await
-        .map_err(|e| format!("Rename file failed: {}", e))?;
+        .map_err(|e| grpc_message(&e))?;
 
     let file_resp = response.into_inner();
 
@@ -166,7 +197,7 @@ pub async fn get_deleted_files(
     let response = client
         .get_deleted_files(request)
         .await
-        .map_err(|e| format!("Get deleted files failed: {}", e))?;
+        .map_err(|e| grpc_message(&e))?;
 
     let file_response = response.into_inner();
 
@@ -197,7 +228,7 @@ pub async fn restore_file(
     let response = client
         .undelete_file(request)
         .await
-        .map_err(|e| format!("Undelete file failed: {}", e))?;
+        .map_err(|e| grpc_message(&e))?;
 
     let file_resp = response.into_inner();
 
@@ -222,7 +253,7 @@ pub async fn delete_chosen_file(
     let response = client
         .delete_chosen_files(request)
         .await
-        .map_err(|e| format!("Delete chosen files failed: {}", e))?;
+        .map_err(|e| grpc_message(&e))?;
 
     let _ = response.into_inner();
 
@@ -247,7 +278,7 @@ pub async fn remove_deleted_file(
     let response = client
         .remove_delete_file(request)
         .await
-        .map_err(|e| format!("Remove delete file failed: {}", e))?;
+        .map_err(|e| grpc_message(&e))?;
 
     let _ = response.into_inner();
 
@@ -274,7 +305,7 @@ pub async fn move_file(
     let response = client
         .move_file(request)
         .await
-        .map_err(|e| format!("Move file failed: {}", e))?;
+        .map_err(|e| grpc_message(&e))?;
 
     let file_resp = response.into_inner();
 
@@ -302,7 +333,7 @@ pub async fn copy_file(
     let response = client
         .copy_file(request)
         .await
-        .map_err(|e| format!("Copy file failed: {}", e))?;
+        .map_err(|e| grpc_message(&e))?;
 
     let file_resp = response.into_inner();
 
@@ -328,7 +359,7 @@ pub async fn archive_file (
     let response = client
         .archive_file(request)
         .await
-        .map_err(|e| format!("Archive file failed: {}", e))?;
+        .map_err(|e| grpc_message(&e))?;
 
     let _ = response.into_inner();
 
@@ -353,7 +384,7 @@ pub async fn unarchive_file(
     let response = client
         .unarchive_file(request)
         .await
-        .map_err(|e| format!("Unarchive file failed: {}", e))?;
+        .map_err(|e| grpc_message(&e))?;
 
     let _ = response.into_inner();
 
@@ -387,7 +418,7 @@ pub async fn search_files(
     let response = client
         .search_files(request)
         .await
-        .map_err(|e| format!("Search files failed: {}", e))?;
+        .map_err(|e| grpc_message(&e))?;
 
     let files = response
         .into_inner()

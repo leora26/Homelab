@@ -1,12 +1,10 @@
 use crate::data::change_label_command::ChangeLabelCommand;
 use crate::data::create_label_command::CreateLabelCommand;
-use crate::helpers::proto_mappers::{map_entity_id, map_label_to_proto};
+use crate::helpers::proto_mappers::{map_entity_id, map_label_to_proto, map_label_with_count_to_proto};
 use crate::AppState;
 use derive_new::new;
 use homelab_proto::nas::label_service_server::LabelService;
-use homelab_proto::nas::{
-    ChangeLabelRequest, CreateLabelRequest, DeleteLabelRequest, LabelListResponse, LabelResponse,
-};
+use homelab_proto::nas::{ChangeLabelRequest, CreateLabelRequest, DeleteLabelRequest, LabelResponse, LabelWithCountListResponse};
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
 use homelab_core::auth::extractor::RequestIdentityExt;
@@ -19,13 +17,16 @@ pub struct GrpcLabelService {
 
 #[tonic::async_trait]
 impl LabelService for GrpcLabelService {
-    async fn get_labels(&self, request: Request<()>) -> Result<Response<LabelListResponse>, Status> {
+    async fn get_labels(&self, request: Request<()>) -> Result<Response<LabelWithCountListResponse>, Status> {
         let internal_user_id = request.get_internal_id(&self.app_state.cached_identity_resolver).await?;
         let labels = self.app_state.label_service.get_all(internal_user_id).await?;
 
-        let proto_labels = labels.into_iter().map(|l| map_label_to_proto(l)).collect();
+        let proto_labels = labels
+            .into_iter()
+            .map(map_label_with_count_to_proto)
+            .collect();
 
-        Ok(Response::new(LabelListResponse {
+        Ok(Response::new(LabelWithCountListResponse {
             labels: proto_labels,
         }))
     }

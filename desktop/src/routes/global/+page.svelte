@@ -1,230 +1,316 @@
 <script lang="ts">
-    import type { GlobalFileView, UserProfileView } from "$lib/types/models";
-    import { safeInvoke } from "$lib/components/helpers/safeInvoke";
-    import { getFileIcon } from "$lib/components/helpers/file/getFileIcon";
-    import { formatBytes } from "$lib/components/helpers/file/formatBytes";
-    import PreviewSection from "$lib/components/file/PreviewSection.svelte";
-    import NotificationManager from "$lib/components/common/NotificationManager.svelte";
+    import { Globe } from "@lucide/svelte";
 
-    let globalFiles = $state<GlobalFileView[]>([]);
-    let isLoading = $state(false);
+    import EmptyState from "$lib/components/ui/EmptyState.svelte";
+    import ExtBadge from "$lib/components/ui/ExtBadge.svelte";
+    import SelectField from "$lib/components/ui/SelectField.svelte";
+    import TextField from "$lib/components/ui/TextField.svelte";
+    import DetailsRail from "$lib/components/file/DetailsRail.svelte";
+
+    import { safeInvoke } from "$lib/utils/safeInvoke";
+    import { session } from "$lib/stores/session.svelte";
+    import { ancestorsOf } from "$lib/utils/folderPath.svelte";
+    import { filePathString } from "$lib/utils/paths";
+    import { formatBytes, formatDate, pluralise } from "$lib/utils/format";
+    import type { GlobalFileView } from "$lib/types/models";
+
+    let items = $state<GlobalFileView[]>([]);
+    let loading = $state(true);
     let error = $state<string | null>(null);
-    let currentUserId = $state<string | null>(null);
-    let selectedFile = $state<GlobalFileView | null>(null);
 
-    const fetchGlobalFiles = async () => {
-        isLoading = true;
+    let selected = $state<GlobalFileView | null>(null);
+    let selectedPath = $state("");
+    let nameFilter = $state("");
+    let ownerFilter = $state("");
+
+    async function load() {
+        loading = true;
         error = null;
 
-        const res = await safeInvoke<GlobalFileView[]>("get_global_files");
-        if (res.ok) {
-            globalFiles = res.data;
+        const result = await safeInvoke<GlobalFileView[]>("get_global_files");
 
-            // Keep the current selection if it's still shared, otherwise clear it.
-            if (selectedFile && !globalFiles.some((g) => g.id === selectedFile!.id)) {
-                selectedFile = null;
-            }
+        if (result.ok) {
+            items = result.data;
+            if (selected && !items.some((item) => item.id === selected!.id)) selected = null;
         } else {
-            error = res.error;
+            error = result.error;
         }
 
-        isLoading = false;
-    };
+        loading = false;
+    }
 
     $effect(() => {
-        fetchGlobalFiles();
+        load();
+    });
 
-        safeInvoke<UserProfileView>("get_user_profile").then((res) => {
-            if (res.ok) currentUserId = res.data.id;
+    $effect(() => {
+        const current = selected;
+        selectedPath = "";
+        if (!current || current.file.owner_id !== session.user?.id) return;
+
+        ancestorsOf(current.file.parent_folder_id).then((segments) => {
+            if (selected?.id === current.id) {
+                selectedPath = filePathString(segments, current.file.name);
+            }
         });
     });
 
-    const handleGlobalChange = (isGlobal: boolean) => {
-        // A file made private is no longer global; refresh the list and drop the preview.
-        if (!isGlobal) {
-            selectedFile = null;
-        }
-        fetchGlobalFiles();
-    };
+    const owners = $derived([
+        { value: "", label: "All owners" },
+        ...[...new Set(items.map((item) => item.owner_name))]
+            .sort()
+            .map((name) => ({ value: name, label: name })),
+    ]);
+
+    const visible = $derived.by(() => {
+        const needle = nameFilter.trim().toLowerCase();
+        return items.filter((item) => {
+            if (needle && !item.file.name.toLowerCase().includes(needle)) return false;
+            if (ownerFilter && item.owner_name !== ownerFilter) return false;
+            return true;
+        });
+    });
+
+    const totalBytes = $derived(items.reduce((sum, item) => sum + item.file.size, 0));
+
+    const canManageSelected = $derived(
+        selected !== null && selected.file.owner_id === session.user?.id,
+    );
 </script>
 
-<div class="global-page">
-    <header class="page-header">
-        <h2>🌐 Global Files</h2>
-        <p>Files shared with every user. Anyone can view and download them; only the owner can un-share.</p>
+<div class="page">
+    <header class="head">
+        <div class="heading">
+            <h1 class="page-title">Global Files</h1>
+            <p class="page-subtitle">
+                Shared with every user on this machine. Anyone can view and download; only the
+                owner can un-share.
+            </p>
+        </div>
+
+        <p class="mono totals">
+            {pluralise(items.length, "file")} · {formatBytes(totalBytes)}
+        </p>
     </header>
 
-    <main class="split-view">
-        <section class="content-pane">
-            <div class="table-wrapper">
-                {#if isLoading}
-                    <div class="status-message">
-                        <div class="spinner"></div>
-                        <p>Loading global files...</p>
-                    </div>
-                {:else if error}
-                    <div class="status-message error">
-                        <p>⚠️ {error}</p>
-                    </div>
-                {:else if globalFiles.length === 0}
-                    <div class="status-message empty-state">
-                        <p>No global files have been shared yet.</p>
-                    </div>
-                {:else}
-                    <table class="file-table">
-                        <thead>
-                        <tr>
-                            <th class="col-name">Name</th>
-                            <th class="col-date">Date Modified</th>
-                            <th class="col-size">Size</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {#each globalFiles as gf (gf.id)}
-                            <tr
-                                    class:selected={selectedFile?.id === gf.id}
-                                    onclick={() => selectedFile = gf}
-                            >
-                                <td class="col-name">
-                                    <span class="icon">{getFileIcon(gf.file.file_type)}</span>
-                                    {gf.file.name}
-                                </td>
-                                <td class="col-date">{gf.file.updated_at}</td>
-                                <td class="col-size">{formatBytes(gf.file.size)}</td>
-                            </tr>
-                        {/each}
-                        </tbody>
-                    </table>
-                {/if}
-            </div>
+    <div class="filters">
+        <div class="filter-field">
+            <TextField bind:value={nameFilter} placeholder="Filter by name" />
+        </div>
+        <SelectField bind:value={ownerFilter} options={owners} width={160} />
+    </div>
+
+    <div class="panes">
+        <section class="table-pane">
+            {#if loading}
+                <div class="skeletons">
+                    {#each Array(5) as _, index (index)}
+                        <div class="skeleton"></div>
+                    {/each}
+                </div>
+            {:else if error}
+                <EmptyState icon={Globe} title="Couldn't load shared files" body={error} />
+            {:else if items.length === 0}
+                <EmptyState
+                    icon={Globe}
+                    title="Nothing shared yet"
+                    body="Files shared with everyone on this machine will appear here."
+                />
+            {:else if visible.length === 0}
+                <EmptyState
+                    icon={Globe}
+                    title="No matching files"
+                    body="Try a different name, or switch back to all owners."
+                />
+            {:else}
+                <div class="thead">
+                    <span>Name</span>
+                    <span>Shared by</span>
+                    <span>Shared since</span>
+                    <span class="right">Size</span>
+                </div>
+
+                <div class="tbody">
+                    {#each visible as item (item.id)}
+                        <button
+                            class="trow"
+                            class:selected={selected?.id === item.id}
+                            onclick={() => (selected = item)}
+                        >
+                            <span class="cell-name">
+                                <ExtBadge name={item.file.name} size={24} />
+                                <span class="truncate">{item.file.name}</span>
+                            </span>
+                            <span class="muted truncate">{item.owner_name}</span>
+                            <span class="mono muted">{formatDate(item.shared_at)}</span>
+                            <span class="mono muted right">{formatBytes(item.file.size)}</span>
+                        </button>
+                    {/each}
+                </div>
+
+                <div class="tfoot">
+                    Showing {visible.length} of {items.length}
+                    {#if selected}· 1 selected{/if}
+                </div>
+            {/if}
         </section>
 
-        {#if selectedFile}
-            <PreviewSection
-                    selectedFile={selectedFile.file}
-                    closePreview={() => selectedFile = null}
-                    showManagementActions={false}
-                    canToggleGlobal={currentUserId === selectedFile.file.owner_id}
-                    onGlobalChange={handleGlobalChange}
+        {#if selected}
+            <DetailsRail
+                file={selected.file}
+                labels={selected.file.labels}
+                path={selectedPath || "—"}
+                ownerName={selected.owner_name}
+                canManage={canManageSelected}
+                onclose={() => (selected = null)}
+                onsharechange={load}
             />
         {/if}
-    </main>
+    </div>
 </div>
 
-<NotificationManager />
-
 <style>
-    .global-page {
-        display: flex;
-        flex-direction: column;
-        height: calc(100vh - 4rem);
-        color: #1e1e2f;
-    }
-
-    .page-header {
-        margin-bottom: 1.5rem;
-    }
-
-    .page-header h2 {
-        margin: 0 0 0.25rem 0;
-        font-size: 1.5rem;
-    }
-
-    .page-header p {
-        margin: 0;
-        color: #666;
-        font-size: 0.9rem;
-    }
-
-    .split-view {
-        display: flex;
-        gap: 1.5rem;
+    .page {
         flex: 1;
         min-height: 0;
-        overflow: hidden;
-    }
-
-    .content-pane {
-        background: white;
-        border-radius: 8px;
-        border: 1px solid #e1e4e8;
         display: flex;
         flex-direction: column;
         overflow: hidden;
-        flex: 1;
     }
 
-    .table-wrapper {
+    .head {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 24px 28px 16px;
+        flex: none;
+    }
+
+    .heading {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        max-width: 60ch;
+    }
+
+    .totals {
+        font-size: var(--fs-sm);
+        color: var(--tx-faint-2);
+        flex: none;
+    }
+
+    .filters {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 0 28px 14px;
+        border-bottom: 1px solid var(--bd-pane);
+        flex: none;
+    }
+
+    .filter-field {
+        flex: 1;
+        max-width: 420px;
+    }
+
+    .panes {
+        flex: 1;
+        display: flex;
+        min-height: 0;
+    }
+
+    .table-pane {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .thead,
+    .trow {
+        display: grid;
+        grid-template-columns: minmax(240px, 1fr) 104px 104px 84px;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .thead {
+        padding: 9px 22px;
+        border-bottom: 1px solid var(--bd-pane);
+        font-size: var(--fs-label);
+        text-transform: uppercase;
+        letter-spacing: var(--track-th);
+        color: var(--tx-faint-2);
+        flex: none;
+    }
+
+    .tbody {
         flex: 1;
         overflow-y: auto;
+        min-height: 0;
     }
 
-    .file-table {
+    .trow {
         width: 100%;
-        border-collapse: collapse;
+        padding: 11px 22px;
+        font-size: var(--fs-base);
+        color: var(--tx);
+        border-bottom: 1px solid var(--bd-row-soft);
+        border-left: 2px solid transparent;
         text-align: left;
+        transition: background var(--t-hover);
     }
 
-    .file-table th {
-        background: #f8f9fa;
-        padding: 0.75rem 1.5rem;
-        font-size: 0.85rem;
-        color: #666;
-        font-weight: 600;
-        border-bottom: 1px solid #e1e4e8;
-        position: sticky;
-        top: 0;
-        z-index: 10;
-        user-select: none;
+    .trow:hover {
+        background: var(--hover-row-light);
     }
 
-    .file-table td {
-        padding: 0.75rem 1.5rem;
-        border-bottom: 1px solid #f0f2f5;
-        font-size: 0.9rem;
+    .trow.selected {
+        background: var(--row-selected);
+        border-left-color: var(--accent);
     }
 
-    .file-table tbody tr {
-        cursor: pointer;
-        transition: background 0.15s ease;
+    .cell-name {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
     }
 
-    .file-table tbody tr:hover {
-        background: #f8f9fa;
+    .muted {
+        color: var(--tx-mut);
+        font-size: var(--fs-sm);
     }
 
-    .file-table tbody tr.selected {
-        background: #eaf3ff;
+    .right {
+        text-align: right;
     }
 
-    .col-name { width: 55%; }
-    .col-name .icon { margin-right: 0.5rem; }
-    .col-date { width: 30%; color: #666; }
-    .col-size { width: 15%; color: #666; text-align: right; }
+    .tfoot {
+        padding: 9px 22px;
+        border-top: 1px solid var(--bd-pane);
+        font-size: var(--fs-caption);
+        color: var(--tx-faint-2);
+        flex: none;
+    }
 
-    .status-message {
+    .skeletons {
+        padding: 14px 22px;
         display: flex;
         flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 4rem 2rem;
-        color: #888;
-        height: 100%;
+        gap: 14px;
     }
-    .status-message.error { color: #d32f2f; }
-    .empty-state { font-style: italic; }
 
-    .spinner {
-        width: 30px;
-        height: 30px;
-        border: 3px solid #f3f3f3;
-        border-top: 3px solid #007bff;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        margin-bottom: 1rem;
+    .skeleton {
+        height: 20px;
+        border-radius: var(--r-badge);
+        background: var(--bd-row);
+        animation: shimmer 1.3s ease-in-out infinite;
     }
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+
+    @keyframes shimmer {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
     }
 </style>

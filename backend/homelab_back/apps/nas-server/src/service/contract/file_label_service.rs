@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use crate::data::create_file_label_command::CreateFileLabelCommand;
 use crate::helpers::data_error::DataError;
 use async_trait::async_trait;
@@ -23,4 +24,9 @@ pub trait FileLabelService: Send + Sync {
         owner_id: Uuid,
     ) -> Result<Vec<Label>, DataError>;
     async fn delete_file_label(&self, file_id: Uuid, label_id: Uuid) -> Result<(), DataError>;
+    async fn get_labels_for_files(
+        &self,
+        files: &[Uuid],
+        owner_id: Uuid,
+    ) -> Result<HashMap<Uuid, Vec<Label>>, DataError>;
 }

@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use uuid::Uuid;
 use homelab_core::events::{UserCreatedEvent, UserUpdatedEvent};
 use homelab_core::nas_domain::storage_profile::StorageProfile;
+use homelab_core::nas_domain::storage_stats::StorageStats;
 use crate::helpers::data_error::DataError;
 
 #[async_trait]
@@ -12,5 +13,9 @@ pub trait StorageProfileService: Send + Sync {
     /// (nas owns that). Idempotent — safe to re-apply nas's own emitted updates.
     async fn apply_user_update(&self, event: UserUpdatedEvent) -> Result<(), DataError>;
     async fn get_by_id(&self, id: Uuid) -> Result<Option<StorageProfile>, DataError>;
-    async fn reduce_taken_storage(&self, id: Uuid, size: i64) -> Result<(), DataError>;
+    /// Rebuilds `taken_storage` from the user's files and announces the result. Call it
+    /// after any change to what a user stores; it replaces the old delta arithmetic, which
+    /// could not recover from a single missed adjustment.
+    async fn sync_taken_storage(&self, id: Uuid) -> Result<(), DataError>;
+    async fn get_storage_stats(&self, id: Uuid) -> Result<StorageStats, DataError>; 
 }

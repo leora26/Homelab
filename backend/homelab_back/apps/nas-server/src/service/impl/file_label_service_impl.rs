@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use crate::data::create_file_label_command::CreateFileLabelCommand;
 use crate::db::file_label_repository::FileLabelRepository;
 use crate::db::file_repository::FileRepository;
@@ -68,5 +69,9 @@ impl FileLabelService for FileLabelServiceImpl {
         self.file_label_repo
             .delete(FileLabel::new(file_id, label_id))
             .await
+    }
+
+    async fn get_labels_for_files(&self, files: &[Uuid], owner_id: Uuid) -> Result<HashMap<Uuid, Vec<Label>>, DataError> {
+        self.label_repo.get_labels_for_files(files, owner_id).await
     }
 }

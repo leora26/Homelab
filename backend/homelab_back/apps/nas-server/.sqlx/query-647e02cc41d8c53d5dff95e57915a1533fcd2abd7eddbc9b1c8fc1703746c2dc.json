@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                (SELECT COUNT(*) FROM files\n                  WHERE owner_id = $1 AND is_deleted = FALSE) AS \"file_count!\",\n\n                (SELECT COUNT(*) FROM folders\n                  WHERE owner_id = $1 AND is_deleted = FALSE\n                    AND parent_folder_id IS NOT NULL) AS \"folder_count!\",\n\n                -- Top-level only: an item whose parent is itself trashed is not its own\n                -- row in Trash. Same filter the Trash listing queries use, so this count\n                -- matches what the screen renders.\n                (\n                  (SELECT COUNT(*) FROM files f\n                     LEFT JOIN folders p ON p.id = f.parent_folder_id\n                    WHERE f.owner_id = $1 AND f.is_deleted = TRUE\n                      AND (p.id IS NULL OR p.is_deleted = FALSE))\n                  +\n                  (SELECT COUNT(*) FROM folders f\n                     LEFT JOIN folders p ON p.id = f.parent_folder_id\n                    WHERE f.owner_id = $1 AND f.is_deleted = TRUE\n                      AND (p.id IS NULL OR p.is_deleted = FALSE))\n                ) AS \"trashed_item_count!\",\n\n                (SELECT COALESCE(SUM(size), 0)::BIGINT FROM files\n                  WHERE owner_id = $1 AND is_deleted = TRUE) AS \"trashed_bytes!\",\n\n                (SELECT COUNT(*) FROM files f\n                  WHERE f.owner_id = $1 AND f.is_deleted = FALSE\n                    AND EXISTS (SELECT 1 FROM file_labels fl\n                                 WHERE fl.file_id = f.id)) AS \"labelled_file_count!\",\n\n                (SELECT COUNT(*) FROM files f\n                  WHERE f.owner_id = $1 AND f.is_deleted = FALSE\n                    AND NOT EXISTS (SELECT 1 FROM file_labels fl\n                                     WHERE fl.file_id = f.id)) AS \"unlabelled_file_count!\",\n\n                (SELECT COUNT(*) FROM global_files g\n                   JOIN files f ON f.id = g.original_id\n                  WHERE f.owner_id = $1 AND f.is_deleted = FALSE) AS \"shared_file_count!\",\n\n                (SELECT COALESCE(SUM(f.size), 0)::BIGINT FROM global_files g\n                   JOIN files f ON f.id = g.original_id\n                  WHERE f.owner_id = $1 AND f.is_deleted = FALSE) AS \"shared_bytes!\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "file_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "folder_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "trashed_item_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "trashed_bytes!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "labelled_file_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "unlabelled_file_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 6,
+        "name": "shared_file_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 7,
+        "name": "shared_bytes!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "647e02cc41d8c53d5dff95e57915a1533fcd2abd7eddbc9b1c8fc1703746c2dc"
+}

@@ -123,7 +123,7 @@ impl FolderRepository for FolderRepositoryImpl {
                 file_type as "file_type: _",
                 is_deleted, ttl, size,
                 upload_status as "upload_status: _",
-                created_at, updated_at, hash
+                created_at, updated_at, hash, deleted_at
             FROM files
             WHERE parent_folder_id = $1 AND file_type = ANY($2::file_type[]) AND is_deleted = FALSE
             "#,
@@ -146,7 +146,7 @@ impl FolderRepository for FolderRepositoryImpl {
             file_type as "file_type: _",
             is_deleted, ttl, size,
             upload_status as "upload_status: _",
-            created_at, updated_at, hash
+            created_at, updated_at, hash, deleted_at
         FROM files
         WHERE parent_folder_id = $1 AND is_deleted = FALSE
         "#,
@@ -165,7 +165,7 @@ impl FolderRepository for FolderRepositoryImpl {
             r#"
             INSERT INTO folders (id, name, owner_id, created_at, parent_folder_id, is_deleted)
             VALUES ($1, $2, $3, $4, $5, FALSE)
-            RETURNING id, name, owner_id, created_at, parent_folder_id, is_deleted
+            RETURNING id, name, owner_id, created_at, parent_folder_id, is_deleted, deleted_at
             "#,
             folder.id,
             folder.name,
@@ -185,15 +185,16 @@ impl FolderRepository for FolderRepositoryImpl {
             Folder,
             r#"
             UPDATE folders
-            SET name = $1, owner_id = $2, parent_folder_id = $3, is_deleted = $4
+            SET name = $1, owner_id = $2, parent_folder_id = $3, is_deleted = $4, deleted_at = $6
             WHERE id = $5
-            RETURNING id, name, owner_id, created_at, parent_folder_id, is_deleted
+            RETURNING id, name, owner_id, created_at, parent_folder_id, is_deleted, deleted_at
             "#,
             folder.name,
             folder.owner_id,
             folder.parent_folder_id,
             folder.is_deleted,
             folder.id,
+            folder.deleted_at,
         )
         .fetch_one(&self.pool)
         .await
@@ -250,7 +251,7 @@ impl FolderRepository for FolderRepositoryImpl {
             INNER JOIN folder_tree ft ON f.parent_folder_id = ft.id
         )
         UPDATE files 
-        SET is_deleted = true 
+        SET is_deleted = true, deleted_at = NOW() 
         WHERE parent_folder_id IN (SELECT id FROM folder_tree);
         "#,
             folder_id
@@ -268,7 +269,7 @@ impl FolderRepository for FolderRepositoryImpl {
                 INNER JOIN folder_tree ft ON f.parent_folder_id = ft.id
             )
             UPDATE folders
-            SET is_deleted = true
+            SET is_deleted = true, deleted_at = NOW()
             WHERE id IN (SELECT id FROM folder_tree);
             "#,
             folder_id
@@ -299,7 +300,7 @@ impl FolderRepository for FolderRepositoryImpl {
             INNER JOIN folder_tree ft ON f.parent_folder_id = ft.id
         )
         UPDATE files 
-        SET is_deleted = true 
+        SET is_deleted = true, deleted_at = NOW() 
         WHERE parent_folder_id IN (SELECT id FROM folder_tree);
         "#,
             folder_ids
@@ -317,7 +318,7 @@ impl FolderRepository for FolderRepositoryImpl {
             INNER JOIN folder_tree ft ON f.parent_folder_id = ft.id
         )
         UPDATE folders
-        SET is_deleted = true
+        SET is_deleted = true, deleted_at = NOW()
         WHERE id IN (SELECT id FROM folder_tree);
         "#,
             folder_ids
@@ -340,7 +341,7 @@ impl FolderRepository for FolderRepositoryImpl {
             f.file_type as "file_type: _",
             f.parent_folder_id, f.is_deleted, f.ttl, f.size,
             f.upload_status as "upload_status: _",
-            f.created_at, f.updated_at, f.hash
+            f.created_at, f.updated_at, f.hash, f.deleted_at
         FROM files f
         LEFT JOIN folders p ON f.parent_folder_id = p.id
         WHERE f.is_deleted = TRUE
@@ -448,7 +449,7 @@ impl FolderRepository for FolderRepositoryImpl {
             INNER JOIN folder_tree ft ON f.parent_folder_id = ft.id
         )
         UPDATE files
-        SET is_deleted = false
+        SET is_deleted = false, deleted_at = NULL
         WHERE parent_folder_id IN (SELECT id FROM folder_tree);
         "#,
             folder_id
@@ -466,7 +467,7 @@ impl FolderRepository for FolderRepositoryImpl {
                 INNER JOIN folder_tree ft ON f.parent_folder_id = ft.id
             )
             UPDATE folders
-            SET is_deleted = false
+            SET is_deleted = false, deleted_at = NULL
             WHERE id IN (SELECT id FROM folder_tree);
             "#,
             folder_id
