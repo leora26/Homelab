@@ -60,10 +60,8 @@ impl CleanUpService for CleanUpServiceImpl {
                 break;
             }
 
-            for (owner, freed_size) in freed_by_user {
-                if freed_size > 0 {
-                    self.sp_service.reduce_taken_storage(owner, freed_size).await?;
-                }
+            for owner in freed_by_user.into_keys() {
+                self.sp_service.sync_taken_storage(owner).await?;
             }
 
             tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
@@ -83,17 +81,8 @@ impl CleanUpServiceImpl {
             .await?
             .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
 
-        let freed_size_for_user = self.remove_deleted_files(vec![file.clone()]).await?;
-        let freed_size = freed_size_for_user
-            .get(&file.owner_id)
-            .copied()
-            .unwrap_or(0);
-
-        if freed_size > 0 {
-            self.sp_service
-                .reduce_taken_storage(file.owner_id, freed_size)
-                .await?;
-        }
+        self.remove_deleted_files(vec![file.clone()]).await?;
+        self.sp_service.sync_taken_storage(file.owner_id).await?;
 
         Ok(())
     }
@@ -109,14 +98,8 @@ impl CleanUpServiceImpl {
                 break;
             }
 
-            let freed_size_for_user = self.remove_deleted_files(batch).await?;
-            let freed_size = freed_size_for_user.get(&user_id).copied().unwrap_or(0);
-
-            if freed_size > 0 {
-                self.sp_service
-                    .reduce_taken_storage(user_id, freed_size)
-                    .await?;
-            }
+            self.remove_deleted_files(batch).await?;
+            self.sp_service.sync_taken_storage(user_id).await?;
 
             tokio::time::sleep(std::time::Duration::from_millis(200)).await;
         }
@@ -134,12 +117,8 @@ impl CleanUpServiceImpl {
                 break;
             }
 
-            let freed_by_user = self.remove_deleted_files(batch).await?;
-            let freed_size = freed_by_user.get(&user_id).copied().unwrap_or(0);
-
-            if freed_size > 0 {
-                self.sp_service.reduce_taken_storage(user_id, freed_size).await?;
-            }
+            self.remove_deleted_files(batch).await?;
+            self.sp_service.sync_taken_storage(user_id).await?;
 
             tokio::time::sleep(std::time::Duration::from_millis(200)).await;
         }

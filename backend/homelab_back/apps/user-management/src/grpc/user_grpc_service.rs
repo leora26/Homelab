@@ -3,7 +3,7 @@ use crate::helpers::proto_mappers::{map_entity_id, map_user_to_proto};
 use crate::AppState;
 use derive_new::new;
 use homelab_proto::user::user_service_server::UserService;
-use homelab_proto::user::{FinalizeUserRequest, GetUserByEmailRequest, GetUserByIdRequest, SetStorageQuotaRequest, ToggleBlockStatusRequest, UserCountResponse, UserList, UserResponse};
+use homelab_proto::user::{FinalizeUserRequest, GetUserByEmailRequest, GetUserByIdRequest, SetStorageQuotaRequest, ToggleBlockStatusRequest, UpdateProfileRequest, UserCountResponse, UserList, UserResponse};
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
 use homelab_core::auth::extractor::RequestIdentityExt;
@@ -84,6 +84,26 @@ impl UserService for GrpcUserService {
             .await?;
 
         Ok(Response::new(()))
+    }
+
+    async fn update_profile(
+        &self,
+        request: Request<UpdateProfileRequest>,
+    ) -> Result<Response<UserResponse>, Status> {
+        // Identity comes from the token, so a caller can only rename themselves.
+        let user_id = request
+            .get_internal_id(&self.app_state.cached_identity_resolver)
+            .await?;
+
+        let req = request.into_inner();
+
+        let user = self
+            .app_state
+            .user_service
+            .update_profile(user_id, req.full_name)
+            .await?;
+
+        Ok(Response::new(map_user_to_proto(user)))
     }
 
     async fn set_storage_quota(

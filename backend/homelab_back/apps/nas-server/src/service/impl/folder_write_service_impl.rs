@@ -69,9 +69,12 @@ impl FolderWriteService for FolderWriteServiceImpl {
     }
 
     async fn clean_up_trash(&self, user_id: Uuid) -> Result<(), DataError> {
+        // `All` is the whole-trash branch. `File` would make the consumer look for an
+        // id that this event deliberately doesn't carry, and fail with "Missing File ID"
+        // — which is why emptying the trash silently did nothing.
         let event = TrashCleanUpTriggeredEvent::new(
             user_id,
-            DeletionType::File,
+            DeletionType::All,
             None
         );
 

@@ -188,15 +188,8 @@ impl FileWriteService for FileWriteServiceImpl {
         f.set_file_hash(final_hash);
         self.file_repo.update(f.clone()).await?;
 
-        let mut sp: StorageProfile = self
-            .sp_repo
-            .get_by_id(f.owner_id)
-            .await?
-            .ok_or_else(|| DataError::EntityNotFoundException("User".to_string()))?;
-
-        sp.increase_storage_size(total_bytes);
-
-        self.sp_repo.save(sp).await?;
+        // The row is `completed` now, so a resync picks these bytes up.
+        self.resync_storage(f.owner_id).await?;
 
         let event: FileUpdatedEvent = FileUpdatedEvent::new(
             f.id.clone(),
@@ -360,7 +353,7 @@ impl FileWriteService for FileWriteServiceImpl {
             .await?
             .ok_or_else(|| DataError::EntityNotFoundException("File".to_string()))?;
 
-        let mut sp = self
+        let sp = self
             .sp_repo
             .get_by_id(file.owner_id)
             .await?
@@ -414,23 +407,32 @@ impl FileWriteService for FileWriteServiceImpl {
             return Err(DataError::IOError(e.to_string()));
         }
 
-        let sp_event: UserUpdatedEvent = UserUpdatedEvent::new(
-            sp.user_id.clone(),
-            None,
-            None,
-            Some(sp.allowed_storage.clone()),
-            Some(sp.taken_storage.clone()),
-            sp.is_blocked.clone(),
-        );
+        // Previews live beside the original as `{id}.preview.png` / `{id}.preview.jpg`
+        // and are keyed by file id, so a copy gets a new id and would otherwise have no
+        // preview at all. Carry whichever one exists across.
+        //
+        // Best-effort on purpose: a copy that lands without its thumbnail is still a
+        // valid copy, and failing the whole operation over a thumbnail would be worse.
+        for preview_extension in ["preview.png", "preview.jpg"] {
+            let source_preview = source_path.with_extension(preview_extension);
 
-        if let Err(e) = self.publisher.publish(&sp_event).await {
-            eprintln!("Failed to publish event: {:?}", e);
+            if tokio::fs::try_exists(&source_preview).await.unwrap_or(false) {
+                let dest_preview = dest_path.with_extension(preview_extension);
+
+                if let Err(e) = tokio::fs::copy(&source_preview, &dest_preview).await {
+                    eprintln!(
+                        "Failed to copy {} preview for {}: {}",
+                        preview_extension, new_file_id, e
+                    );
+                }
+            }
         }
 
+        // No usage event here — the copy hasn't been recorded yet, so anything published
+        // now would carry the pre-copy figure. `resync_storage` announces it below.
         match self.file_repo.save(new_file.clone()).await {
             Ok(uploaded_file) => {
-                sp.increase_storage_size(new_file.size);
-                self.sp_repo.save(sp).await?;
+                self.resync_storage(new_file.owner_id).await?;
 
                 let file_event: FileUploadedEvent = FileUploadedEvent::new(
                     new_file.id.clone(),
@@ -518,6 +520,8 @@ impl FileWriteService for FileWriteServiceImpl {
         let old_size = f.size;
         let size_diff = new_total_bytes - old_size;
 
+        // Only growth needs checking; replacing content with something smaller can never
+        // breach the quota. The usage figure itself is resynced from the row further down.
         if size_diff > 0 {
             let sp = self
                 .sp_repo
@@ -529,16 +533,6 @@ impl FileWriteService for FileWriteServiceImpl {
                 let _ = tokio::fs::remove_file(&temp_path).await;
                 return Err(DataError::NoFreeStorageError);
             }
-
-            let mut sp: StorageProfile = self
-                .sp_repo
-                .get_by_id(f.owner_id)
-                .await?
-                .ok_or_else(|| DataError::EntityNotFoundException("User".to_string()))?;
-
-            sp.increase_storage_size(size_diff);
-
-            self.sp_repo.save(sp).await?;
         }
 
         if let Err(e) = tokio::fs::rename(&temp_path, &target_path).await {
@@ -562,7 +556,10 @@ impl FileWriteService for FileWriteServiceImpl {
             eprintln!("Failed to publish event: {:?}", e);
         }
 
+        let owner_id = f.owner_id;
+
         self.file_repo.update(f).await?;
+        self.resync_storage(owner_id).await?;
 
         Ok(())
     }
@@ -609,30 +606,6 @@ impl FileWriteService for FileWriteServiceImpl {
             .map_err(|e| DataError::IOError(e.to_string()))?;
 
         let archived_size = metadata.len() as i64;
-        let original_size = file.size;
-
-        let mut sp = self
-            .sp_repo
-            .get_by_id(file.owner_id)
-            .await?
-            .ok_or_else(|| DataError::EntityNotFoundException("User".to_string()))?;
-
-        sp.reduce_taken_storage_size(original_size - archived_size);
-
-        let sp_event = UserUpdatedEvent::new(
-            sp.user_id.clone(),
-            None,
-            None,
-            Some(sp.allowed_storage.clone()),
-            Some(sp.taken_storage.clone()),
-            sp.is_blocked.clone(),
-        );
-
-        if let Err(e) = self.publisher.publish(&sp_event).await {
-            eprintln!("Failed to publish event: {:?}", e);
-        }
-
-        self.sp_repo.save(sp).await?;
 
         fs::remove_file(&original_path)
             .await
@@ -652,7 +625,13 @@ impl FileWriteService for FileWriteServiceImpl {
             file.is_archived(&self.storage_path),
         );
 
+        let owner_id = file.owner_id;
+
         self.file_repo.update(file).await?;
+
+        // After the row carries the archived size, never before — the figure is derived
+        // from the rows, so resyncing early would just recompute the old value.
+        self.resync_storage(owner_id).await?;
 
         if let Err(e) = self.publisher.publish(&event).await {
             eprintln!("Failed to publish event: {:?}", e);
@@ -719,37 +698,21 @@ impl FileWriteService for FileWriteServiceImpl {
         let unarchived_size = metadata.len() as i64;
         let original_compressed_size = file.size;
 
-        let mut sp = self
+        let sp = self
             .sp_repo
             .get_by_id(file.owner_id)
             .await?
             .ok_or_else(|| DataError::EntityNotFoundException("User".to_string()))?;
 
+        // Extracting usually grows the file, so it needs the same quota check an upload
+        // gets. Gzip inflates already-compressed formats, so this delta can also be
+        // negative — `validate_storage_size` handles that fine, it just always passes.
         let size_difference = unarchived_size - original_compressed_size;
 
         if !sp.validate_storage_size(size_difference) {
             let _ = fs::remove_file(&output_path).await;
             return Err(DataError::NoFreeStorageError);
         }
-
-        if size_difference > 0 {
-            sp.increase_storage_size(size_difference);
-        }
-
-        let sp_event = UserUpdatedEvent::new(
-            sp.user_id.clone(),
-            None,
-            None,
-            Some(sp.allowed_storage.clone()),
-            Some(sp.taken_storage.clone()),
-            sp.is_blocked.clone(),
-        );
-
-        if let Err(e) = self.publisher.publish(&sp_event).await {
-            eprintln!("Failed to publish event: {:?}", e);
-        }
-
-        self.sp_repo.save(sp).await?;
 
         fs::remove_file(&compressed_path)
             .await
@@ -770,7 +733,10 @@ impl FileWriteService for FileWriteServiceImpl {
             file.is_archived(&self.storage_path),
         );
 
+        let owner_id = file.owner_id;
+
         self.file_repo.update(file).await?;
+        self.resync_storage(owner_id).await?;
 
         if let Err(e) = self.publisher.publish(&event).await {
             eprintln!("Failed to publish event: {:?}", e);
@@ -793,6 +759,43 @@ impl FileWriteService for FileWriteServiceImpl {
         );
 
         if let Err(e) = self.publisher.publish(&clean_up_event).await {
+            eprintln!("Failed to publish event: {:?}", e);
+        }
+
+        Ok(())
+    }
+}
+
+impl FileWriteServiceImpl {
+    /// Rebuilds the owner's usage from their file rows, then announces the result.
+    ///
+    /// `taken_storage` used to be a running total that each operation nudged by a delta it
+    /// worked out itself. Every one of those deltas was a chance to miss a sign, skip a
+    /// direction, or lose the write to a concurrent update — and since nothing ever
+    /// re-derived the figure, each mistake stayed for good and they accumulated, which is
+    /// how a profile with no files left at all ended up reporting negative usage.
+    ///
+    /// Deriving it instead makes the next operation repair whatever the last one got
+    /// wrong. Call this *after* the file row is written, or it recomputes the old value.
+    async fn resync_storage(&self, owner_id: Uuid) -> Result<(), DataError> {
+        self.sp_repo.recompute_taken_storage(owner_id).await?;
+
+        let sp = self
+            .sp_repo
+            .get_by_id(owner_id)
+            .await?
+            .ok_or_else(|| DataError::EntityNotFoundException("User".to_string()))?;
+
+        let sp_event = UserUpdatedEvent::new(
+            sp.user_id.clone(),
+            None,
+            None,
+            Some(sp.allowed_storage.clone()),
+            Some(sp.taken_storage.clone()),
+            sp.is_blocked.clone(),
+        );
+
+        if let Err(e) = self.publisher.publish(&sp_event).await {
             eprintln!("Failed to publish event: {:?}", e);
         }
 

@@ -12,6 +12,15 @@ pub trait StorageProfileRepository: Send + Sync {
     async fn create(&self, storage_profile: StorageProfile) -> Result<StorageProfile, DataError>;
     async fn get_by_id(&self, id: Uuid) -> Result<Option<StorageProfile>, DataError>;
     async fn save(&self, storage_profile: StorageProfile) -> Result<(), DataError>;
+    /// Updates only the quota and block flag, leaving `taken_storage` untouched.
+    async fn update_quota_and_block(
+        &self,
+        user_id: Uuid,
+        allowed_storage: i64,
+        is_blocked: bool,
+    ) -> Result<(), DataError>;
+    /// Rebuilds `taken_storage` from the files that actually exist, returning the new value.
+    async fn recompute_taken_storage(&self, user_id: Uuid) -> Result<i64, DataError>;
     async fn get_stats(&self, id: Uuid) -> Result<StorageStats, DataError>;
 }
 
@@ -106,6 +115,64 @@ impl StorageProfileRepository for StorageProfileRepositoryImpl {
         .map_err(|e| DataError::DatabaseError(e))?;
 
         Ok(())
+    }
+
+    async fn update_quota_and_block(
+        &self,
+        user_id: Uuid,
+        allowed_storage: i64,
+        is_blocked: bool,
+    ) -> Result<(), DataError> {
+        // Deliberately narrow. `save` rewrites the whole row, so using it here would
+        // write back a `taken_storage` read before a concurrent upload, delete or
+        // archive committed — silently undoing that change.
+        sqlx::query!(
+            r#"
+            UPDATE storage_profiles
+            SET allowed_storage = $1, is_blocked = $2
+            WHERE user_id = $3
+            "#,
+            allowed_storage,
+            is_blocked,
+            user_id
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| DataError::DatabaseError(e))?;
+
+        Ok(())
+    }
+
+    async fn recompute_taken_storage(&self, user_id: Uuid) -> Result<i64, DataError> {
+        // `taken_storage` used to be a running total that every file operation nudged by a
+        // delta. One missed or duplicated adjustment stuck permanently, and the errors
+        // compounded — which is how a profile with no files at all ended up negative.
+        //
+        // Deriving it from the rows instead makes the counter self-healing: whatever the
+        // deltas got wrong, the next operation corrects.
+        //
+        // Completed files only. A pending upload has a row sized from the client's
+        // declared length but not all of its bytes on disk yet, and a failed one has no
+        // bytes at all — counting either would charge the user for storage they don't use.
+        // Trashed files are still counted: they occupy disk until the cleanup purges them.
+        let taken = sqlx::query_scalar!(
+            r#"
+            UPDATE storage_profiles
+            SET taken_storage = COALESCE((
+                SELECT SUM(size)
+                FROM files
+                WHERE owner_id = $1 AND upload_status = 'completed'
+            ), 0)
+            WHERE user_id = $1
+            RETURNING taken_storage
+            "#,
+            user_id
+        )
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| DataError::DatabaseError(e))?;
+
+        Ok(taken)
     }
 
     async fn get_stats(&self, id: Uuid) -> Result<StorageStats, DataError> {
