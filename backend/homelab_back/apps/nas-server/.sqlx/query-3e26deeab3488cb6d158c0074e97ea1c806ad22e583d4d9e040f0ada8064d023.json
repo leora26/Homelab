@@ -1,0 +1,158 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE files\n            SET\n                name = $1,\n                owner_id = $2,\n                file_type = $3,\n                parent_folder_id = $4,\n                is_deleted = $5,\n                ttl = $6,\n                size = $7,\n                upload_status = $8,\n                created_at = $10,\n                updated_at = $11,\n                hash = $12,\n                deleted_at = $13\n            WHERE id = $9\n            RETURNING \n            id, name, owner_id, \n            file_type as \"file_type: _\", \n            parent_folder_id, is_deleted, \n            ttl, size, \n            upload_status as \"upload_status: _\", \n            created_at, updated_at, hash, deleted_at\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "owner_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "file_type: _",
+        "type_info": {
+          "Custom": {
+            "name": "file_type",
+            "kind": {
+              "Enum": [
+                "text",
+                "image",
+                "video",
+                "audio",
+                "pdf",
+                "unknown",
+                "zip"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "parent_folder_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "is_deleted",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 6,
+        "name": "ttl",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "size",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 8,
+        "name": "upload_status: _",
+        "type_info": {
+          "Custom": {
+            "name": "upload_status",
+            "kind": {
+              "Enum": [
+                "pending",
+                "completed",
+                "failed"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "hash",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 12,
+        "name": "deleted_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid",
+        {
+          "Custom": {
+            "name": "file_type",
+            "kind": {
+              "Enum": [
+                "text",
+                "image",
+                "video",
+                "audio",
+                "pdf",
+                "unknown",
+                "zip"
+              ]
+            }
+          }
+        },
+        "Uuid",
+        "Bool",
+        "Timestamptz",
+        "Int8",
+        {
+          "Custom": {
+            "name": "upload_status",
+            "kind": {
+              "Enum": [
+                "pending",
+                "completed",
+                "failed"
+              ]
+            }
+          }
+        },
+        "Uuid",
+        "Timestamptz",
+        "Timestamptz",
+        "Varchar",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "3e26deeab3488cb6d158c0074e97ea1c806ad22e583d4d9e040f0ada8064d023"
+}

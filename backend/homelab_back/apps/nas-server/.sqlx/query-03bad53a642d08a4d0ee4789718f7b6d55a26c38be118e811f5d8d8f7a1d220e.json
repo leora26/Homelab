@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT f.*\n        FROM folders f\n        WHERE parent_folder_id IS NULL AND owner_id = $1",
+  "query": "\n            UPDATE folders\n            SET name = $1, owner_id = $2, parent_folder_id = $3, is_deleted = $4, deleted_at = $6\n            WHERE id = $5\n            RETURNING id, name, owner_id, created_at, parent_folder_id, is_deleted, deleted_at\n            ",
   "describe": {
     "columns": [
       {
@@ -41,7 +41,12 @@
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "Text",
+        "Uuid",
+        "Uuid",
+        "Bool",
+        "Uuid",
+        "Timestamptz"
       ]
     },
     "nullable": [
@@ -54,5 +59,5 @@
       true
     ]
   },
-  "hash": "bbba16d8b5d5beb5e05b7d7f39882770e534d1a7e403707f02b88e8aa2cd1264"
+  "hash": "03bad53a642d08a4d0ee4789718f7b6d55a26c38be118e811f5d8d8f7a1d220e"
 }

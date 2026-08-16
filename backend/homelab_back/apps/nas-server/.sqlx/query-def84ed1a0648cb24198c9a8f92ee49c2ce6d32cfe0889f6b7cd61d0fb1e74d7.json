@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT f.*\n        FROM folders f\n        WHERE parent_folder_id IS NULL AND owner_id = $1",
+  "query": "\n            INSERT INTO folders (id, name, owner_id, created_at, parent_folder_id, is_deleted)\n            VALUES ($1, $2, $3, $4, $5, FALSE)\n            RETURNING id, name, owner_id, created_at, parent_folder_id, is_deleted, deleted_at\n            ",
   "describe": {
     "columns": [
       {
@@ -41,6 +41,10 @@
     ],
     "parameters": {
       "Left": [
+        "Uuid",
+        "Text",
+        "Uuid",
+        "Timestamptz",
         "Uuid"
       ]
     },
@@ -54,5 +58,5 @@
       true
     ]
   },
-  "hash": "bbba16d8b5d5beb5e05b7d7f39882770e534d1a7e403707f02b88e8aa2cd1264"
+  "hash": "def84ed1a0648cb24198c9a8f92ee49c2ce6d32cfe0889f6b7cd61d0fb1e74d7"
 }

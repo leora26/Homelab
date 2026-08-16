@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT f.*\n        FROM folders f\n        WHERE id = $1",
+  "query": "\n            UPDATE labels\n            SET name = $1, color = $2\n            WHERE id = $3\n            RETURNING id, name, color, owner_id, created_at\n            ",
   "describe": {
     "columns": [
       {
@@ -15,32 +15,24 @@
       },
       {
         "ordinal": 2,
+        "name": "color",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
         "name": "owner_id",
         "type_info": "Uuid"
       },
       {
-        "ordinal": 3,
-        "name": "created_at",
-        "type_info": "Timestamptz"
-      },
-      {
         "ordinal": 4,
-        "name": "parent_folder_id",
-        "type_info": "Uuid"
-      },
-      {
-        "ordinal": 5,
-        "name": "is_deleted",
-        "type_info": "Bool"
-      },
-      {
-        "ordinal": 6,
-        "name": "deleted_at",
+        "name": "created_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
+        "Text",
+        "Text",
         "Uuid"
       ]
     },
@@ -49,10 +41,8 @@
       false,
       false,
       false,
-      true,
-      false,
-      true
+      false
     ]
   },
-  "hash": "212948c00c3a71652870d032c4d6af8a37dc884afdc7897923b49f4d5cac6745"
+  "hash": "ce33ba883ddc534b96260b54c9658eaa6f9acca941dc34e37174e6ea34db51f7"
 }

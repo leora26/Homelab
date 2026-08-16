@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH RECURSIVE folder_tree AS (\n            SELECT id FROM folders WHERE id = $1\n\n            UNION ALL\n\n            SELECT f.id FROM folders f\n            INNER JOIN folder_tree ft ON f.parent_folder_id = ft.id\n        )\n        UPDATE files\n        SET is_deleted = false, deleted_at = NULL\n        WHERE parent_folder_id IN (SELECT id FROM folder_tree);\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2eb75201d5b69285f56729cf61099fa86df4cbbd253bec4838e14f3976ff071a"
+}
